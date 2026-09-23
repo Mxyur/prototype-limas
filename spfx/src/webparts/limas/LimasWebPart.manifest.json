@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/client-side-web-part-manifest.schema.json",
+  "id": "23063404-cf95-4079-9723-3aa42c78145d",
+  "alias": "LimasWebPart",
+  "componentType": "WebPart",
+  "version": "*",
+  "manifestVersion": 2,
+  "requiresCustomScript": false,
+  "supportedHosts": [
+    "SharePointWebPart",
+    "SharePointFullPage",
+    "TeamsTab",
+    "TeamsPersonalApp"
+  ],
+  "supportsThemeVariants": true,
+  "supportsFullBleed": true,
+  "preconfiguredEntries": [
+    {
+      "groupId": "5c03119e-3074-46fd-976b-c60198311f70",
+      "group": {
+        "default": "Other"
+      },
+      "title": {
+        "default": "LIMAS"
+      },
+      "description": {
+        "default": "Limit Management System - Risk Management monitoring"
+      },
+      "officeFabricIconFontName": "BarChartVertical",
+      "properties": {
+        "title": "LIMAS"
+      }
+    }
+  ]
+}
