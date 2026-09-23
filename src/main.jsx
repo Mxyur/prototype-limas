@@ -200,65 +200,20 @@ function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Ban
 
 const mdFieldSource={
   Country:{
-    "Identitas||No":"Dataset team Country",
-    "Identitas||Negara":"Dataset team Country",
-    "Identitas||Code":"Dataset team Country",
-    "Identitas||Status":"Dataset team Country",
-
-    "Checklist Product||CL":"Big Data (adjusted Country)",
-    "Checklist Product||NCL":"NTF -> Provided by DWB",
-    "Checklist Product||COM":"Data Utilisasi Credit Line",
-    "Checklist Product||TRS":"Data Utilisasi Credit Line",
-    "Checklist Product||BOND":"Market Risk/Treasury",
-    "Checklist Product||NOS":"Internal Mandiri",
-
-    "Exposure Product||CL":"Big Data (adjusted Country)",
-    "Exposure Product||NCL":"NTF -> Provided by DWB",
-    "Exposure Product||COM":"Data Utilisasi Credit Line",
-    "Exposure Product||TRS":"Data Utilisasi Credit Line",
-    "Exposure Product||BOND":"Market Risk/Treasury",
-    "Exposure Product||NOS":"Internal Mandiri",
-    "Exposure Product||TOTAL":"get",
-
-    "Limit & Gap||Limit FIB / Formulasi":"internal",
-    "Limit & Gap||Limit FIB / Diputus":"internal",
-    "Limit & Gap||Country Limit / Country Limit":"Dataset Country",
-    "Limit & Gap||Country Limit / %Country Limit":"get",
-    "Limit & Gap||Gap Analysis / Needs":"get",
-    "Limit & Gap||Gap Analysis / Minus":"get",
-    "Limit & Gap||Gap Analysis / Add":"get",
-    "Limit & Gap||Final Limit / Final Limit":"calc",
-    "Limit & Gap||Final Limit / %Final Limit":"get"
-  }
-};
-const mdFieldDescription={
-  Country:{
-    "Identitas||No":"Identitas baris pada master monitoring.",
-    "Identitas||Negara":"Nama negara sebagai objek monitoring country limit.",
-    "Identitas||Code":"Kode negara yang digunakan sebagai key untuk join/mapping exposure product.",
-    "Identitas||Status":"Status master; pada MD termasuk input manual.",
-    "Checklist Product||CL":"Checklist keberadaan exposure CL; ditarik otomatis dari Master Cash Loan.",
-    "Checklist Product||NCL":"Checklist keberadaan exposure NCL; ditarik otomatis dari Master NCL melalui NTF/DWB.",
-    "Checklist Product||COM":"Checklist keberadaan Commercial Line; ditarik otomatis dari data utilisasi credit line.",
-    "Checklist Product||TRS":"Checklist keberadaan Treasury Line; ditarik otomatis dari data utilisasi credit line.",
-    "Checklist Product||BOND":"Checklist keberadaan exposure Bond dari Market Risk/Treasury.",
-    "Checklist Product||NOS":"Checklist keberadaan Nostro dari internal Mandiri.",
-    "Exposure Product||CL":"Exposure CL (Rp Juta/setara) hasil agregasi berdasarkan Code negara.",
-    "Exposure Product||NCL":"Exposure NCL (Rp Juta/setara) hasil agregasi berdasarkan Code negara.",
-    "Exposure Product||COM":"Exposure Commercial Line berdasarkan Comm Line Total Utilisasi.",
-    "Exposure Product||TRS":"Exposure Treasury Line berdasarkan Treasury Line Total Utilisasi.",
-    "Exposure Product||BOND":"Exposure Bond berdasarkan data Market Risk/Treasury.",
-    "Exposure Product||NOS":"Exposure Nostro berdasarkan data internal Mandiri.",
-    "Exposure Product||TOTAL":"Total exposure product; hasil get/agregasi dari field exposure product.",
-    "Limit & Gap||Limit FIB / Formulasi":"Nilai Formulasi Limit FIB dari source internal sesuai MD.",
-    "Limit & Gap||Limit FIB / Diputus":"Nilai Diputus Limit FIB dari source internal sesuai MD.",
-    "Limit & Gap||Country Limit / Country Limit":"Country Limit berasal dari Dataset Country.",
-    "Limit & Gap||Country Limit / %Country Limit":"Porsi Country Limit terhadap total seluruh country; pada MD bertanda get.",
-    "Limit & Gap||Gap Analysis / Needs":"Nilai Needs pada gap analysis; pada MD bertanda get.",
-    "Limit & Gap||Gap Analysis / Minus":"Nilai Minus pada gap analysis; pada MD bertanda get.",
-    "Limit & Gap||Gap Analysis / Add":"Nilai Add pada gap analysis; pada MD bertanda get.",
-    "Limit & Gap||Final Limit / Final Limit":"Final Limit merupakan hasil kalkulasi; MD menyatakan Final Limit = Country Limit - Minus + Add.",
-    "Limit & Gap||Final Limit / %Final Limit":"Persentase Final Limit terhadap total; pada MD bertanda get."
+    "Identitas||No":"Dataset team Country","Identitas||Negara":"Dataset team Country","Identitas||Code":"Dataset team Country","Identitas||Status":"Dataset team Country",
+    "Checklist Product||CL":"Big Data (adjusted Country)","Checklist Product||NCL":"NTF -> Provided by DWB","Checklist Product||COM":"Data Utilisasi Credit Line","Checklist Product||TRS":"Data Utilisasi Credit Line","Checklist Product||BOND":"Market Risk/Treasury","Checklist Product||NOS":"Internal Mandiri",
+    "Exposure Product||CL":"Big Data (adjusted Country)","Exposure Product||NCL":"NTF -> Provided by DWB","Exposure Product||COM":"Data Utilisasi Credit Line","Exposure Product||TRS":"Data Utilisasi Credit Line","Exposure Product||BOND":"Market Risk/Treasury","Exposure Product||NOS":"Internal Mandiri","Exposure Product||TOTAL":"get",
+    "Limit & Gap||Limit FIB / Formulasi":"internal","Limit & Gap||Limit FIB / Diputus":"internal","Limit & Gap||Country Limit / Country Limit":"Dataset Country","Limit & Gap||Country Limit / %Country Limit":"get","Limit & Gap||Gap Analysis / Needs":"get","Limit & Gap||Gap Analysis / Minus":"get","Limit & Gap||Gap Analysis / Add":"get","Limit & Gap||Final Limit / Final Limit":"calc","Limit & Gap||Final Limit / %Final Limit":"get"
+  },
+  CCL:{
+    "Bank Profile||Nama bank":"Dataset Utilisasi FI (provided by FI)",
+    "Bank Profile||CIF/Swift":"Internal","Bank Profile||Kategori Bank":"Internal","Bank Profile||Negara":"Internal",
+    "Bank Profile||Global Parent Bank":"Belum dicantumkan pada MD",
+    "Bank Profile||Apakah Bank termasuk Top 200 Bank Besar Dunia berdasarkan total aset menurut Banker's Almanac":"Belum dicantumkan pada MD",
+    "Risk & Capacity||Country Rating":"Tradingeconomics","Risk & Capacity||Bobot":"GET","Risk & Capacity||Rating":"internal","Risk & Capacity||Posisi Rating":"internal","Risk & Capacity||Rating Index":"master rating scale","Risk & Capacity||Limit Inhouse (Rp Miliar)":"dataset ccl","Risk & Capacity||Tier 1 Capital (Rp Miliar)":"data lapkeu Bank","Risk & Capacity||Capacity":"GET","Risk & Capacity||Capacity Limit Adjusted":"GET (adj)",
+    "Limit||CCL":"Input manual / keputusan komite","Limit||Utilisasi Capacity":"calc","Limit||Limit Contractual":"Input manual / keputusan komite",
+    "BMRI Exposure||Outstanding":"Core Banking Limit System","BMRI Exposure||Jenis Limit":"Core Banking Limit System","BMRI Exposure||Limit":"Core Banking Limit System","BMRI Exposure||Total":"Core Banking Limit System","BMRI Exposure||Bank Loan":"Core Banking Limit System","BMRI Exposure||Commercial Line":"Core Banking Limit System","BMRI Exposure||Treasury Line":"Core Banking Limit System","BMRI Exposure||Utilisasi CCL":"calc","BMRI Exposure||Utilisasi Limit Kontraktual":"calc","BMRI Exposure||Outstanding Maksimum":"Core Banking Limit System","BMRI Exposure||Utilisasi Maksimum Limit Kontraktual":"calc",
+    "Perusahaan Anak||Limit":"Input manual / Perusahaan Anak","Perusahaan Anak||Total":"Input manual / Perusahaan Anak","Perusahaan Anak||Bank Loan":"Input manual / Perusahaan Anak","Perusahaan Anak||Commercial Line":"Input manual / Perusahaan Anak","Perusahaan Anak||Treasury Line":"Input manual / Perusahaan Anak","Perusahaan Anak||Utilisasi CCL":"calc","Perusahaan Anak||Utilisasi Limit Kontraktual":"calc","Perusahaan Anak||Utilisasi Maksimum Limit Kontraktual":"calc"
   }
 };
 const defaultFieldSource=(type,section)=>{
@@ -322,7 +277,7 @@ const defaultFieldNote=(type,section,field)=>{
   return specific[`${type}|${section}|${field}`]||`Field ${field} digunakan sebagai ${section.toLowerCase()} untuk monitoring ${type}.`;
 };
 function loadFieldMeta(type){
-  const key=`limas_field_meta_v3_${type}`;
+  const key=`limas_field_meta_v4_${type}`;
   try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
   const out={};
   Object.entries(domains[type]?.sections||{}).forEach(([section,rows])=>{
@@ -336,7 +291,7 @@ function loadFieldMeta(type){
   });
   return out;
 }
-function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v3_${type}`,JSON.stringify(data));}catch(e){}}
+function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v4_${type}`,JSON.stringify(data));}catch(e){}}
 
 function Detail({nav,type}){
   const info=domains[type];
