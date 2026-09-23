@@ -81,3 +81,32 @@
   .metric-grid{grid-template-columns:1fr}
   .hero{padding:16px}
 }
+
+/* Final dashboard rendering hardening */
+.shell{width:100%;min-width:0}
+.side{flex:0 0 260px}
+.main{flex:1 1 auto;width:0;max-width:100%;overflow-x:hidden}
+.hero-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hero-grid>div{overflow:hidden}
+.hero-value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.metric-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.chart-list{display:flex;flex-direction:column;gap:16px;padding:4px 0 2px}
+.chart-row{width:100%}
+.chart-row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:7px;font-size:12px;color:var(--text)}
+.chart-row-head span{font-weight:900}
+.chart-track{height:12px;background:#e9eef5;border-radius:999px;overflow:hidden}
+.chart-track span{display:block;height:100%;min-width:8px;border-radius:999px;background:linear-gradient(90deg,#1c73e8,#5aa5ff)}
+@media(max-width:1100px){
+  .metric-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .hero-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .side{display:none}
+  .main{width:100%;padding:18px 16px 28px}
+  .hero-grid{grid-template-columns:1fr}
+  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-grid{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .metric-grid{grid-template-columns:1fr}
+}
