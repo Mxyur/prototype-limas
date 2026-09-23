@@ -191,7 +191,7 @@ function Dashboard({nav}){
         <DomainKpi label="Portfolio LPG" value="78%" sub="96 combinations • 6 EWS • 1 Breach" accent="yellow"/>
       </div>
       <div className="dash-grid">
-        <section className="card"><div className="head"><div><h2>Utilisasi per Domain</h2><p>Perbandingan limit vs exposure</p></div></div><div className="body"><div className="chart-bars">{[["Country",73],["CCL",61],["MLK",82],["CIL",55],["LPG",78]].map(([a,v])=><div className="barwrap" key={a}><div className="bar" style={{height:v*1.55}}></div><small>{a}<br/><b>{v}%</b></small></div>)}</div></div></section>
+        <section className="card"><div className="head"><div><h2>Utilisasi per Domain</h2><p>Perbandingan limit vs exposure</p></div></div><div className="body"><div className="chart-list">{[["Country",73],["CCL",61],["MLK",82],["CIL",55],["LPG",78]].map(([a,v])=><div className="chart-row" key={a}><div className="chart-row-head"><b>{a}</b><span>{v}%</span></div><div className="chart-track"><span style={{width:`${v}%`}}></span></div></div>)}</div></div></section>
         <section className="card"><div className="head"><div><h2>Distribusi Status</h2><p>Normal / EWS / Breach</p></div></div><div className="body"><div className="pie"></div><div className="legend"><div><i className="dot" style={{background:"#1c73e8"}}/> Normal 81%</div><div><i className="dot" style={{background:"#f2c04d"}}/> Early Warning 14%</div><div><i className="dot" style={{background:"#e45757"}}/> Breach 5%</div></div></div></section>
       </div>
       <div className="dash-grid">
