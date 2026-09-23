@@ -24,7 +24,7 @@ function loadMasterMeta(type){
 function saveMasterMeta(type,meta){try{window.localStorage.setItem(`limas_master_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
 function defaultProductProvenance(type){
   const info=domains[type];
-  return Object.fromEntries(info.products.map(product=>[product,{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[type]?.owner||"Risk Management"}]));
+  return Object.fromEntries(info.products.map(product=>[product,{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[safeType]?.owner||"Risk Management"}]));
 }
 function loadProductMeta(type){
   const key=`limas_product_meta_v1_${type}`;
@@ -287,7 +287,7 @@ function Monitor({type,nav}){
   </div></Layout>
 }
 
-function Setup({nav,setSel}){const [type,setType]=useState('Country');const info=domains[type];return <Layout screen="setup" onNav={nav}><Header title="Master Limit Setup" subtitle="Setup data master lengkap per domain sesuai workbook"/><div className="page"><section className="card"><div className="head"><div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • {info.name}</p></div><div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Excel</button></div></div><div className="body"><div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div><div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Section Master</th><th>Product</th><th>Source Sheet</th><th>Detail</th></tr></thead><tbody><tr><td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(info.sections).join(', ')}</td><td>{info.products.join(', ')}</td><td>{info.sheet}</td><td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td></tr></tbody></table></div></section></div></Layout>}
+function Setup({nav,setSel}){const [type,setType]=useState('Country');const info=domains[type];return <Layout screen="setup" onNav={nav}><Header title="Master Limit Setup" subtitle="Setup data master lengkap per domain sesuai workbook"/><div className="page"><section className="card"><div className="head"><div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • {info.name}</p></div><div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Excel</button></div></div><div className="body"><div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div><div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Section Master</th><th>Product</th><th>Source Sheet</th><th>Detail</th></tr></thead><tbody><tr><td className="key">{sampleKey(safeType)}</td><td>{sampleName(type)}</td><td>{Object.keys(info.sections).join(', ')}</td><td>{info.products.join(', ')}</td><td>{info.sheet}</td><td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td></tr></tbody></table></div></section></div></Layout>}
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
 
@@ -389,18 +389,19 @@ function loadFieldMeta(type){
 }
 function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
-function Detail({nav,type}){
-  const info=domains[type];
-  const [tab,setTab]=useState(Object.keys(info.sections)[0]);
-  const [meta,setMeta]=useState(()=>loadMasterMeta(type));
-  const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(type));
+function Detail({nav,type="Country"}){
+  const safeType=domains[type]?type:"Country";
+  const info=domains[safeType];
+  const [tab,setTab]=useState(()=>Object.keys(info.sections)[0]);
+  const [meta,setMeta]=useState(()=>loadMasterMeta(safeType));
+  const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(safeType));
   const [editing,setEditing]=useState(false);
   const [savedAt,setSavedAt]=useState("");
   const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
-  const startEdit=()=>{setMeta(loadMasterMeta(type));setFieldMeta(loadFieldMeta(type));setEditing(true);setSavedAt("");};
+  const startEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
   const cancelEdit=()=>{setMeta(loadMasterMeta(type));setFieldMeta(loadFieldMeta(type));setEditing(false);setSavedAt("");};
   const saveChanges=()=>{
-    saveFieldMeta(type,fieldMeta);
+    saveFieldMeta(safeType,fieldMeta);
     const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};
     saveMasterMeta(type,next);
     setMeta(next);
@@ -408,12 +409,12 @@ function Detail({nav,type}){
     setSavedAt(next.lastUpdated);
   };
   return <Layout screen="detail" onNav={nav}>
-    <Header title={`${type} • Master Limit Detail`} subtitle="Master, parameter, source reference, provenance dan traceability untuk objek monitoring"/>
+    <Header title={`${safeType} • Master Limit Detail`} subtitle="Master, parameter, source reference, provenance dan traceability untuk objek monitoring"/>
     <div className="page">
       <section className="card">
         <div className="head">
           <div>
-            <h2>{sampleName(type)}</h2>
+            <h2>{sampleName(safeType)}</h2>
             <p>Unique Key: <span className="key">{sampleKey(type)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p>
           </div>
           <div className="toolbar">
@@ -431,7 +432,7 @@ function Detail({nav,type}){
               <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
               <tbody>
                 {info.sections[tab].map(([f,v])=>{
-                  const fm=fieldMeta[`${tab}||${f}`]||{source:mdFieldSource[type]?.[`${tab}||${f}`]||defaultFieldSource(type,tab),note:defaultFieldNote(type,tab,f)};
+                  const fm=fieldMeta[`${tab}||${f}`]||{source:mdFieldSource[safeType]?.[`${tab}||${f}`]||defaultFieldSource(safeType,tab),note:defaultFieldNote(safeType,tab,f)};
                   return <tr key={f}>
                     <td><b>{f}</b></td>
                     <td>{v}</td>
@@ -456,7 +457,7 @@ function Detail({nav,type}){
             <table className="table provenance-table">
               <thead><tr><th>Product</th><th>Source Dataset</th><th>Source Key</th><th>Target Key</th><th>Exposure Field</th><th>Data Owner</th></tr></thead>
               <tbody>{info.products.map(p=><tr key={p}>
-                <td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[type]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td><td>{provenanceDefaults[type]?.owner||"Risk Management"}</td>
+                <td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[safeType]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td><td>{provenanceDefaults[type]?.owner||"Risk Management"}</td>
               </tr>)}</tbody>
             </table>
           </div>
@@ -483,6 +484,15 @@ function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH L
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
 function Products({nav}){const [p,setP]=useState('CASHLOAN');const fields=productFields[p]||[];const sample=productSample[p]||{};return <Layout screen="products" onNav={nav}><Header title="Product Source & Mapping" subtitle="Seluruh source field dari workbook master_dataproduk dan mapping ke setiap limit"/><div className="page"><section className="card"><div className="head"><div><h2>{p}</h2><p>Field source lengkap • contoh data • target limit mapping</p></div></div><div className="body"><div className="tabs">{Object.keys(productFields).map(x=><button className={`tab ${x===p?'active':''}`} key={x} onClick={()=>setP(x)}>{x}</button>)}</div><div className="grid2"><div><div className="section-title">Source Fields Lengkap</div><div className="rowgrid">{fields.map(f=><React.Fragment key={f}><div>{f}</div><div>{sample[f]||'—'}</div><div style={{color:'var(--muted)'}}>Source column</div></React.Fragment>)}</div></div><div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>domains[d].products.includes(p)).map(d=><div className="mini" key={d} style={{marginBottom:8}}><b>{d}</b><div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Target: {mapTargets[d]?.[p]||'—'} • Exposure: {sourceExposure[p]||'—'}</div></div>)}<div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div></div></div></section></div></Layout>}
 
+class AppErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={error:null}}
+  static getDerivedStateFromError(error){return {error}}
+  componentDidCatch(error){console.error("LIMAS runtime error",error)}
+  render(){
+    if(this.state.error) return <div style={{minHeight:"100vh",background:"#061126",color:"#fff",padding:"32px",fontFamily:"Inter,Segoe UI,Arial,sans-serif"}}><h2 style={{marginTop:0}}>LIMAS Runtime Error</h2><p style={{color:"#ffb4b4"}}>{this.state.error?.message||"Unknown error"}</p><button className="btn primary" onClick={()=>window.location.reload()}>Reload</button></div>;
+    return this.props.children;
+  }
+}
 function App(){
   const [login,setLogin]=useState(false);
   const [screen,setScreen]=useState("dashboard");
@@ -503,4 +513,4 @@ function App(){
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<AppErrorBoundary><App/></AppErrorBoundary>);
