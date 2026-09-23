@@ -290,7 +290,7 @@ const defaultFieldNote=(type,section,field)=>{
   return specific[`${type}|${section}|${field}`]||`Field ${field} digunakan sebagai ${section.toLowerCase()} untuk monitoring ${type}.`;
 };
 function loadFieldMeta(type){
-  const key=`limas_field_meta_v1_${type}`;
+  const key=`limas_field_meta_v2_${type}`;
   try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
   const out={};
   Object.entries(domains[type]?.sections||{}).forEach(([section,rows])=>{
@@ -300,7 +300,7 @@ function loadFieldMeta(type){
   });
   return out;
 }
-function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v1_${type}`,JSON.stringify(data));}catch(e){}}
+function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v2_${type}`,JSON.stringify(data));}catch(e){}}
 
 function Detail({nav,type}){
   const info=domains[type];
