@@ -7,6 +7,32 @@ const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_re
 const productSample={"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "273.52", "total_bade": "273.52", "project_location": "China", "code": "CN", "MatDate/Jatem": ""}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "14978.87", "BALANCE": "14978.87", "EXCHANGERT": "17310", "EQVIDR": "259284240", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "XXXXAEJX", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "Balance": "26.64"}};
 const mapTargets={"Country": {"CASHLOAN": "Country Code / Project Location", "NON CASH LOAN": "Country Code", "COMMERCIAL LINE (CRDT)": "Country Code / Bank Country", "TREASURY LINE (CRDT)": "Country Code / Bank Country", "BONDS": "Issuer Country", "NOSTRO": "Bank Country"}, "CCL": {"CASHLOAN": "Bank / Counterparty mapping", "NON CASH LOAN": "Swift Code / Counterparty", "COMMERCIAL LINE (CRDT)": "Swift Code", "TREASURY LINE (CRDT)": "Swift Code"}, "MLK": {"CASHLOAN": "CIF", "NON CASH LOAN": "CUSTID / CIF", "TREASURY LINE (CRDT)": "Debtor / CIF mapping"}, "CIL": {"Nominal Pertanggungan": "Insurance ID + Entity"}, "LPG": {"CASHLOAN": "CIF → Sector / Segment / Region", "NON CASH LOAN": "CUSTID/CIF → Sector / Segment / Region"}};
 const sourceExposure={"CASHLOAN": "total_bade", "NON CASH LOAN": "EQVIDR / BALANCE", "COMMERCIAL LINE (CRDT)": "Line Utilisasi", "TREASURY LINE (CRDT)": "Treasury Line Utilisasi", "BONDS": "Amount Eq. IDR Juta", "NOSTRO": "Balance", "Nominal Pertanggungan": "Nominal Pertanggungan"};
+
+const provenanceDefaults={
+  Country:{description:"Master limit negara untuk monitoring exposure lintas produk.",source:"CPR / Risk Management",dataset:"COUNTRY_MONITORING",system:"LIMAS Working Data",period:"Agustus 2026",owner:"CPR Risk Management",sourceNote:"Approved country limit dan data exposure hasil konsolidasi source product."},
+  CCL:{description:"Master CCL dan contractual limit untuk monitoring counterparty serta exposure BMRI/PA.",source:"FIB Group + SISM Group",dataset:"CCL_MONITORING",system:"LIMAS Working Data",period:"Agustus 2026",owner:"FIB / SISM",sourceNote:"BMRI data berasal dari FIB Group; data PA dikompilasi SISM sebelum monitoring."},
+  MLK:{description:"Master Limit Kredit untuk monitoring CIF dan Group Usaha.",source:"CRA / SISM Group",dataset:"MLK_Master",system:"LIMAS Working Data",period:"Agustus 2026",owner:"CRA / SISM",sourceNote:"Approved Master Limit menjadi reference monitoring; capacity/borrowing capacity tetap berasal dari proses perhitungan di luar LIMAS."},
+  CIL:{description:"Master CIL/EIL/CIT untuk monitoring kapasitas dan nominal pertanggungan asuransi.",source:"Risk Management / SISM",dataset:"CIL_Master",system:"LIMAS Working Data",period:"Agustus 2026",owner:"Risk Management / SISM",sourceNote:"Insurance capacity, EIL, CIT dan exposure disimpan sebagai reference/provenance untuk monitoring."},
+  LPG:{description:"Master LPG untuk monitoring konsentrasi sektor, segmen dan region.",source:"Risk Management / Business Unit",dataset:"LPG_Loanportfolio",system:"LIMAS Working Data",period:"Agustus 2026",owner:"Risk Management",sourceNote:"Approved LPG limit menjadi master reference; exposure CL/NCL diagregasi melalui mapping sektor, segmen dan region."}
+};
+function loadMasterMeta(type){
+  const key=`limas_master_meta_v1_${type}`;
+  try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
+  const d=provenanceDefaults[type]||{};
+  return {description:d.description||"",source:d.source||"",dataset:d.dataset||"",system:d.system||"",period:d.period||"",owner:d.owner||"",sourceNote:d.sourceNote||"",version:1,updatedBy:"Risk Management",lastUpdated:"Belum pernah disimpan"};
+}
+function saveMasterMeta(type,meta){try{window.localStorage.setItem(`limas_master_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
+function defaultProductProvenance(type){
+  const info=domains[type];
+  return Object.fromEntries(info.products.map(product=>[product,{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[type]?.owner||"Risk Management"}]));
+}
+function loadProductMeta(type){
+  const key=`limas_product_meta_v1_${type}`;
+  try{const saved=window.localStorage.getItem(key);if(saved){const parsed=JSON.parse(saved);return Object.fromEntries(domains[type].products.map(product=>[product,{product,...(parsed[product]||{})}]));}}catch(e){}
+  return defaultProductProvenance(type);
+}
+function saveProductMeta(type,meta){try{window.localStorage.setItem(`limas_product_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
+function nowLabel(){return new Intl.DateTimeFormat('id-ID',{dateStyle:'medium',timeStyle:'short'}).format(new Date());}
 function Status({v}){return <span className={`badge ${v==='Breach'?'breach':v==='Warning'?'warning':'normal'}`}>{v}</span>}
 function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Source & Mapping'],['warning','◉','Early Warning'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
@@ -170,7 +196,115 @@ function Monitor({type,nav}){
 function Setup({nav,setSel}){const [type,setType]=useState('Country');const info=domains[type];return <Layout screen="setup" onNav={nav}><Header title="Master Limit Setup" subtitle="Setup data master lengkap per domain sesuai workbook"/><div className="page"><section className="card"><div className="head"><div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • {info.name}</p></div><div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Excel</button></div></div><div className="body"><div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div><div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Section Master</th><th>Product</th><th>Source Sheet</th><th>Detail</th></tr></thead><tbody><tr><td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(info.sections).join(', ')}</td><td>{info.products.join(', ')}</td><td>{info.sheet}</td><td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td></tr></tbody></table></div></section></div></Layout>}
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
-function Detail({nav,type}){const info=domains[type];const [tab,setTab]=useState(Object.keys(info.sections)[0]);return <Layout screen="detail" onNav={nav}><Header title={`${type} • Master Limit Detail`} subtitle="Seluruh field master/parameter yang termuat dalam workbook monitoring"/><div className="page"><section className="card"><div className="head"><div><h2>{sampleName(type)}</h2><p>Unique Key: <span className="key">{sampleKey(type)}</span></p></div><button className="btn secondary" onClick={()=>nav('products')}>Product Source & Mapping</button></div><div className="body"><div className="tabs">{Object.keys(info.sections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div><div className="rowgrid"><div className="h">Field</div><div className="h">Sample Value</div><div className="h">Keterangan</div>{info.sections[tab].map(([f,v,n])=><React.Fragment key={f}><div>{f}</div><div>{v}</div><div style={{color:'var(--muted)'}}>{n}</div></React.Fragment>)}</div></div></section><section className="card"><div className="head"><div><h2>Product Scope & Mapping</h2><p>Detail source product untuk domain {type}</p></div></div><div className="body"><table className="table"><thead><tr><th>Product</th><th>Source Dataset</th><th>Source Key</th><th>Target Key</th><th>Exposure Field</th></tr></thead><tbody>{info.products.map(p=><tr key={p}><td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[type]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td></tr>)}</tbody></table></div></section></div></Layout>}
+function Detail({nav,type}){
+  const info=domains[type];
+  const [tab,setTab]=useState(Object.keys(info.sections)[0]);
+  const [meta,setMeta]=useState(()=>loadMasterMeta(type));
+  const [productMeta,setProductMeta]=useState(()=>loadProductMeta(type));
+  const [editing,setEditing]=useState(false);
+  const [productEditing,setProductEditing]=useState(false);
+  const [savedAt,setSavedAt]=useState("");
+  const updateMeta=(field,value)=>setMeta(m=>({...m,[field]:value}));
+  const updateProduct=(product,field,value)=>setProductMeta(m=>({...m,[product]:{...(m[product]||{product}),[field]:value}}));
+  const startEdit=()=>{setMeta(loadMasterMeta(type));setProductMeta(loadProductMeta(type));setEditing(true);setProductEditing(false);setSavedAt("");};
+  const cancelMeta=()=>{setMeta(loadMasterMeta(type));setEditing(false);setSavedAt("");};
+  const saveChanges=()=>{const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};saveMasterMeta(type,next);setMeta(next);setEditing(false);setSavedAt(next.lastUpdated);};
+  const saveSource=()=>{saveProductMeta(type,productMeta);setProductEditing(false);setSavedAt(nowLabel());};
+  const sourceRows=info.products.map(product=>productMeta[product]||{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[type]?.owner||"Risk Management"});
+  return <Layout screen="detail" onNav={nav}>
+    <Header title={`${type} • Master Limit Detail`} subtitle="Master, parameter, source reference, provenance dan traceability untuk objek monitoring"/>
+    <div className="page">
+      <section className="card">
+        <div className="head">
+          <div>
+            <h2>{sampleName(type)}</h2>
+            <p>Unique Key: <span className="key">{sampleKey(type)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p>
+          </div>
+          <div className="toolbar">
+            {!editing?<button className="btn primary" onClick={startEdit}>Edit Master Metadata</button>:<>
+              <button className="btn ghost" onClick={cancelMeta}>Batal</button>
+              <button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button>
+            </>}
+            <button className="btn secondary" onClick={()=>nav('products')}>Product Source & Mapping</button>
+          </div>
+        </div>
+        <div className="body">
+          <div className="tabs">{Object.keys(info.sections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
+          <div className="rowgrid">
+            <div className="h">Field</div><div className="h">Sample Value</div><div className="h">Keterangan</div>
+            {info.sections[tab].map(([f,v,n])=><React.Fragment key={f}><div>{f}</div><div>{v}</div><div style={{color:'var(--muted)'}}>{n}</div></React.Fragment>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="head">
+          <div><h2>Master Metadata & Keterangan</h2><p>Keterangan dapat diisi sebagai open text dan disimpan sebagai metadata master.</p></div>
+          {savedAt&&<span className="chip blue">Tersimpan {savedAt}</span>}
+        </div>
+        <div className="body">
+          <div className="form-grid">
+            <div className="field-block field-wide">
+              <label>Keterangan</label>
+              <textarea className="textarea" value={meta.description||""} disabled={!editing} onChange={e=>updateMeta("description",e.target.value)} placeholder="Masukkan keterangan tambahan terkait master limit..."/>
+            </div>
+            <div className="field-block"><label>Sumber Data</label><input className="input full" value={meta.source||""} disabled={!editing} onChange={e=>updateMeta("source",e.target.value)} placeholder="Unit / provider / sumber data"/></div>
+            <div className="field-block"><label>Nama Dataset / Report</label><input className="input full" value={meta.dataset||""} disabled={!editing} onChange={e=>updateMeta("dataset",e.target.value)} placeholder="Nama file / dataset / report"/></div>
+            <div className="field-block"><label>Source System</label><input className="input full" value={meta.system||""} disabled={!editing} onChange={e=>updateMeta("system",e.target.value)} placeholder="Sistem asal data"/></div>
+            <div className="field-block"><label>Periode Data</label><input className="input full" value={meta.period||""} disabled={!editing} onChange={e=>updateMeta("period",e.target.value)} placeholder="Contoh: Agustus 2026"/></div>
+            <div className="field-block"><label>PIC / Data Owner</label><input className="input full" value={meta.owner||""} disabled={!editing} onChange={e=>updateMeta("owner",e.target.value)} placeholder="Unit / PIC pemilik data"/></div>
+            <div className="field-block field-wide">
+              <label>Keterangan Source</label>
+              <textarea className="textarea" value={meta.sourceNote||""} disabled={!editing} onChange={e=>updateMeta("sourceNote",e.target.value)} placeholder="Asal data, dependency, cara diperoleh atau catatan source..."/>
+            </div>
+          </div>
+          <div className="provenance-footer">
+            <div><span>Last Updated</span><b>{meta.lastUpdated||"Belum pernah disimpan"}</b></div>
+            <div><span>Updated By</span><b>{meta.updatedBy||"—"}</b></div>
+            <div><span>Version</span><b>v{meta.version||1}</b></div>
+            <div><span>Status</span><b><Status v={editing?"Draft":"Saved"}/></b></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="head">
+          <div><h2>Product Scope & Mapping</h2><p>Source Data per product dikaitkan langsung dengan mapping dan exposure field yang membentuk monitoring.</p></div>
+          {!productEditing&&<button className="btn secondary" onClick={()=>setProductEditing(true)}>Edit Source Mapping</button>}
+        </div>
+        <div className="body">
+          <div className="table-wrap">
+            <table className="table provenance-table">
+              <thead><tr><th>Product</th><th>Source Dataset</th><th>Source Key</th><th>Target Key</th><th>Exposure Field</th><th>Data Owner</th></tr></thead>
+              <tbody>{sourceRows.map(row=><tr key={row.product}>
+                <td><b>{row.product}</b></td>
+                <td>{productEditing?<input className="input compact" value={row.dataset||""} onChange={e=>updateProduct(row.product,"dataset",e.target.value)}/>:row.dataset}</td>
+                <td>{productEditing?<input className="input compact" value={row.sourceKey||""} onChange={e=>updateProduct(row.product,"sourceKey",e.target.value)}/>:row.sourceKey}</td>
+                <td>{mapTargets[type]?.[row.product]||'—'}</td>
+                <td>{productEditing?<input className="input compact" value={row.exposureField||""} onChange={e=>updateProduct(row.product,"exposureField",e.target.value)}/>:row.exposureField}</td>
+                <td>{productEditing?<input className="input compact" value={row.owner||""} onChange={e=>updateProduct(row.product,"owner",e.target.value)}/>:row.owner}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          {productEditing&&<div className="toolbar" style={{marginTop:12}}><button className="btn ghost" onClick={()=>{setProductMeta(loadProductMeta(type));setProductEditing(false)}}>Batal Source</button><button className="btn primary" onClick={saveSource}>Simpan Source Mapping</button></div>}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="head"><div><h2>Data Provenance</h2><p>Traceability: siapa menyediakan data, periode data, source terakhir dan konteks penggunaannya.</p></div></div>
+        <div className="body">
+          <div className="provenance-grid">
+            <div className="provenance-box"><span>Sumber Utama</span><b>{meta.source||"—"}</b><small>{meta.dataset||"Dataset / report belum diisi"}</small></div>
+            <div className="provenance-box"><span>Source System</span><b>{meta.system||"—"}</b><small>Periode: {meta.period||"—"}</small></div>
+            <div className="provenance-box"><span>Data Owner</span><b>{meta.owner||"—"}</b><small>Updated by: {meta.updatedBy||"—"}</small></div>
+            <div className="provenance-box"><span>Last Updated</span><b>{meta.lastUpdated||"—"}</b><small>Version master: v{meta.version||1}</small></div>
+          </div>
+          <div className="source-note"><b>Konteks Source</b><div>{meta.sourceNote||"Belum ada catatan source."}</div></div>
+        </div>
+      </section>
+    </div>
+  </Layout>
+}
 function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
 function Products({nav}){const [p,setP]=useState('CASHLOAN');const fields=productFields[p]||[];const sample=productSample[p]||{};return <Layout screen="products" onNav={nav}><Header title="Product Source & Mapping" subtitle="Seluruh source field dari workbook master_dataproduk dan mapping ke setiap limit"/><div className="page"><section className="card"><div className="head"><div><h2>{p}</h2><p>Field source lengkap • contoh data • target limit mapping</p></div></div><div className="body"><div className="tabs">{Object.keys(productFields).map(x=><button className={`tab ${x===p?'active':''}`} key={x} onClick={()=>setP(x)}>{x}</button>)}</div><div className="grid2"><div><div className="section-title">Source Fields Lengkap</div><div className="rowgrid">{fields.map(f=><React.Fragment key={f}><div>{f}</div><div>{sample[f]||'—'}</div><div style={{color:'var(--muted)'}}>Source column</div></React.Fragment>)}</div></div><div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>domains[d].products.includes(p)).map(d=><div className="mini" key={d} style={{marginBottom:8}}><b>{d}</b><div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Target: {mapTargets[d]?.[p]||'—'} • Exposure: {sourceExposure[p]||'—'}</div></div>)}<div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div></div></div></section></div></Layout>}
@@ -188,7 +322,7 @@ function App(){
   if(!login) return <Login go={()=>setLogin(true)}/>;
   if(screen==="dashboard") return <Dashboard nav={nav}/>;
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;
-  if(screen==="detail") return <Detail nav={nav} type={sel} />;
+  if(screen==="detail") return <Detail nav={nav} type={sel} key={sel+":"+selKey} />;
   if(screen==="products") return <Products nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
