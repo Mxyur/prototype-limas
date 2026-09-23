@@ -196,21 +196,98 @@ function Monitor({type,nav}){
 function Setup({nav,setSel}){const [type,setType]=useState('Country');const info=domains[type];return <Layout screen="setup" onNav={nav}><Header title="Master Limit Setup" subtitle="Setup data master lengkap per domain sesuai workbook"/><div className="page"><section className="card"><div className="head"><div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • {info.name}</p></div><div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Excel</button></div></div><div className="body"><div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div><div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Section Master</th><th>Product</th><th>Source Sheet</th><th>Detail</th></tr></thead><tbody><tr><td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(info.sections).join(', ')}</td><td>{info.products.join(', ')}</td><td>{info.sheet}</td><td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td></tr></tbody></table></div></section></div></Layout>}
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
+
+const defaultFieldSource=(type,section)=>{
+  const map={
+    Country:{
+      "Identitas":"COUNTRY_MONITORING / Country Master",
+      "Checklist Product":"COUNTRY_MONITORING / Product Mapping",
+      "Exposure Product":"Source Product / Exposure Mapping",
+      "Limit & Gap":"Approved Country Limit / Working Paper"
+    },
+    CCL:{
+      "Bank Profile":"CCL_MONITORING / Counterparty Master",
+      "Risk & Capacity":"CCL Working Paper / Risk Assessment",
+      "Limit":"Approved CCL / Contractual Limit",
+      "BMRI Exposure":"Source BMRI Exposure / FIB Group",
+      "Perusahaan Anak":"Source PA Exposure / SISM Group"
+    },
+    MLK:{
+      "Profil Debitur":"MLK_Master / Debtor Master",
+      "Risk & Regulatory":"MLK Working Paper / Regulatory Reference",
+      "Financial & Capacity":"MLK Calculation Working Paper",
+      "Product Limit & Exposure":"Source Product / Exposure Mapping",
+      "Master Limit":"Approved Master Limit"
+    },
+    CIL:{
+      "Insurance Profile":"CIL_Master / Insurance Master",
+      "Capacity & Threshold":"CIL Working Paper / Approved Parameter",
+      "BMRI":"Insurance Data / BMRI",
+      "Mandiri Taspen":"Insurance Data / Mandiri Taspen",
+      "MTF":"Insurance Data / MTF",
+      "MUF":"Insurance Data / MUF",
+      "Consolidated":"CIL Working Paper / Consolidated Monitoring"
+    },
+    LPG:{
+      "Identitas":"LPG_Loanportfolio / LPG Master",
+      "Bankwide":"LPG Monitoring / Bankwide",
+      "Region Monitoring":"LPG Monitoring / Region",
+      "Validation":"LPG Crosscheck / Data Quality"
+    }
+  };
+  return map[type]?.[section]||"Master / Reference Data";
+};
+const defaultFieldNote=(type,section,field)=>{
+  const specific={
+    "Country|Identitas|Negara":"Nama negara yang menjadi objek monitoring country limit.",
+    "Country|Identitas|Code":"Country code unik yang digunakan sebagai key mapping exposure.",
+    "Country|Identitas|Status":"Status master apakah objek masih aktif digunakan dalam monitoring.",
+    "CCL|Bank Profile|Nama bank":"Nama counterparty bank yang menjadi objek monitoring CCL.",
+    "CCL|Bank Profile|CIF/Swift":"Identifier counterparty yang digunakan untuk matching data exposure.",
+    "CCL|Limit|CCL":"Approved Counterparty Credit Limit yang menjadi master monitoring.",
+    "CCL|Limit|Limit Contractual":"Batas kontraktual yang digunakan sebagai reference tambahan monitoring.",
+    "MLK|Profil Debitur|CIF":"Unique identifier debitur untuk mapping exposure dan Group Usaha.",
+    "MLK|Profil Debitur|Nama Debitur":"Nama debitur yang ditampilkan pada monitoring.",
+    "MLK|Profil Debitur|Group Usaha":"Group usaha untuk kebutuhan consolidated roll-up.",
+    "MLK|Master Limit|Master Limit":"Approved Master Limit yang digunakan sebagai reference monitoring.",
+    "CIL|Capacity & Threshold|Insurance Capacity (IC) (Rp Juta)":"Total insurance capacity yang menjadi basis reference monitoring.",
+    "CIL|Capacity & Threshold|Consolidated Insurance Threshold (CIT) (Rp Juta)":"Threshold monitoring consolidated insurance.",
+    "LPG|Identitas|Ecosystem LPG (Sektor)":"Sektor LPG yang menjadi objek monitoring portfolio.",
+    "LPG|Identitas|Segmen LPG":"Segmen portfolio yang digunakan dalam pembentukan key monitoring."
+  };
+  return specific[`${type}|${section}|${field}`]||`Field ${field} digunakan sebagai ${section.toLowerCase()} untuk monitoring ${type}.`;
+};
+function loadFieldMeta(type){
+  const key=`limas_field_meta_v1_${type}`;
+  try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
+  const out={};
+  Object.entries(domains[type]?.sections||{}).forEach(([section,rows])=>{
+    rows.forEach(([field])=>{
+      out[`${section}||${field}`]={source:defaultFieldSource(type,section),note:defaultFieldNote(type,section,field)};
+    });
+  });
+  return out;
+}
+function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v1_${type}`,JSON.stringify(data));}catch(e){}}
+
 function Detail({nav,type}){
   const info=domains[type];
   const [tab,setTab]=useState(Object.keys(info.sections)[0]);
   const [meta,setMeta]=useState(()=>loadMasterMeta(type));
-  const [productMeta,setProductMeta]=useState(()=>loadProductMeta(type));
+  const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(type));
   const [editing,setEditing]=useState(false);
-  const [productEditing,setProductEditing]=useState(false);
   const [savedAt,setSavedAt]=useState("");
-  const updateMeta=(field,value)=>setMeta(m=>({...m,[field]:value}));
-  const updateProduct=(product,field,value)=>setProductMeta(m=>({...m,[product]:{...(m[product]||{product}),[field]:value}}));
-  const startEdit=()=>{setMeta(loadMasterMeta(type));setProductMeta(loadProductMeta(type));setEditing(true);setProductEditing(false);setSavedAt("");};
-  const cancelMeta=()=>{setMeta(loadMasterMeta(type));setEditing(false);setSavedAt("");};
-  const saveChanges=()=>{const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};saveMasterMeta(type,next);setMeta(next);setEditing(false);setSavedAt(next.lastUpdated);};
-  const saveSource=()=>{saveProductMeta(type,productMeta);setProductEditing(false);setSavedAt(nowLabel());};
-  const sourceRows=info.products.map(product=>productMeta[product]||{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[type]?.owner||"Risk Management"});
+  const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
+  const startEdit=()=>{setMeta(loadMasterMeta(type));setFieldMeta(loadFieldMeta(type));setEditing(true);setSavedAt("");};
+  const cancelEdit=()=>{setMeta(loadMasterMeta(type));setFieldMeta(loadFieldMeta(type));setEditing(false);setSavedAt("");};
+  const saveChanges=()=>{
+    saveFieldMeta(type,fieldMeta);
+    const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};
+    saveMasterMeta(type,next);
+    setMeta(next);
+    setEditing(false);
+    setSavedAt(next.lastUpdated);
+  };
   return <Layout screen="detail" onNav={nav}>
     <Header title={`${type} • Master Limit Detail`} subtitle="Master, parameter, source reference, provenance dan traceability untuk objek monitoring"/>
     <div className="page">
@@ -221,8 +298,8 @@ function Detail({nav,type}){
             <p>Unique Key: <span className="key">{sampleKey(type)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p>
           </div>
           <div className="toolbar">
-            {!editing?<button className="btn primary" onClick={startEdit}>Edit Master Metadata</button>:<>
-              <button className="btn ghost" onClick={cancelMeta}>Batal</button>
+            {!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<>
+              <button className="btn ghost" onClick={cancelEdit}>Batal</button>
               <button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button>
             </>}
             <button className="btn secondary" onClick={()=>nav('products')}>Product Source & Mapping</button>
@@ -230,68 +307,45 @@ function Detail({nav,type}){
         </div>
         <div className="body">
           <div className="tabs">{Object.keys(info.sections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
-          <div className="rowgrid">
-            <div className="h">Field</div><div className="h">Sample Value</div><div className="h">Keterangan</div>
-            {info.sections[tab].map(([f,v,n])=><React.Fragment key={f}><div>{f}</div><div>{v}</div><div style={{color:'var(--muted)'}}>{n}</div></React.Fragment>)}
+          <div className="field-table-wrap">
+            <table className="table field-table">
+              <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+              <tbody>
+                {info.sections[tab].map(([f,v])=>{
+                  const fm=fieldMeta[`${tab}||${f}`]||{source:defaultFieldSource(type,tab),note:defaultFieldNote(type,tab,f)};
+                  return <tr key={f}>
+                    <td><b>{f}</b></td>
+                    <td>{v}</td>
+                    <td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td>
+                    <td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="head">
-          <div><h2>Master Metadata & Keterangan</h2><p>Keterangan dapat diisi sebagai open text dan disimpan sebagai metadata master.</p></div>
-          {savedAt&&<span className="chip blue">Tersimpan {savedAt}</span>}
-        </div>
-        <div className="body">
-          <div className="form-grid">
-            <div className="field-block field-wide">
-              <label>Keterangan</label>
-              <textarea className="textarea" value={meta.description||""} disabled={!editing} onChange={e=>updateMeta("description",e.target.value)} placeholder="Masukkan keterangan tambahan terkait master limit..."/>
-            </div>
-            <div className="field-block"><label>Sumber Data</label><input className="input full" value={meta.source||""} disabled={!editing} onChange={e=>updateMeta("source",e.target.value)} placeholder="Unit / provider / sumber data"/></div>
-            <div className="field-block"><label>Nama Dataset / Report</label><input className="input full" value={meta.dataset||""} disabled={!editing} onChange={e=>updateMeta("dataset",e.target.value)} placeholder="Nama file / dataset / report"/></div>
-            <div className="field-block"><label>Source System</label><input className="input full" value={meta.system||""} disabled={!editing} onChange={e=>updateMeta("system",e.target.value)} placeholder="Sistem asal data"/></div>
-            <div className="field-block"><label>Periode Data</label><input className="input full" value={meta.period||""} disabled={!editing} onChange={e=>updateMeta("period",e.target.value)} placeholder="Contoh: Agustus 2026"/></div>
-            <div className="field-block"><label>PIC / Data Owner</label><input className="input full" value={meta.owner||""} disabled={!editing} onChange={e=>updateMeta("owner",e.target.value)} placeholder="Unit / PIC pemilik data"/></div>
-            <div className="field-block field-wide">
-              <label>Keterangan Source</label>
-              <textarea className="textarea" value={meta.sourceNote||""} disabled={!editing} onChange={e=>updateMeta("sourceNote",e.target.value)} placeholder="Asal data, dependency, cara diperoleh atau catatan source..."/>
-            </div>
-          </div>
-          <div className="provenance-footer">
-            <div><span>Last Updated</span><b>{meta.lastUpdated||"Belum pernah disimpan"}</b></div>
-            <div><span>Updated By</span><b>{meta.updatedBy||"—"}</b></div>
-            <div><span>Version</span><b>v{meta.version||1}</b></div>
-            <div><span>Status</span><b><Status v={editing?"Draft":"Saved"}/></b></div>
-          </div>
+          <div className="field-help">{editing?"Mode edit: Source Data dan Keterangan dapat diubah per field, lalu disimpan.":"Setiap field memiliki Source Data dan Keterangan masing-masing."}</div>
         </div>
       </section>
 
       <section className="card">
         <div className="head">
           <div><h2>Product Scope & Mapping</h2><p>Source Data per product dikaitkan langsung dengan mapping dan exposure field yang membentuk monitoring.</p></div>
-          {!productEditing&&<button className="btn secondary" onClick={()=>setProductEditing(true)}>Edit Source Mapping</button>}
+          <button className="btn secondary" onClick={()=>nav('products')}>Buka Product Mapping</button>
         </div>
         <div className="body">
           <div className="table-wrap">
             <table className="table provenance-table">
               <thead><tr><th>Product</th><th>Source Dataset</th><th>Source Key</th><th>Target Key</th><th>Exposure Field</th><th>Data Owner</th></tr></thead>
-              <tbody>{sourceRows.map(row=><tr key={row.product}>
-                <td><b>{row.product}</b></td>
-                <td>{productEditing?<input className="input compact" value={row.dataset||""} onChange={e=>updateProduct(row.product,"dataset",e.target.value)}/>:row.dataset}</td>
-                <td>{productEditing?<input className="input compact" value={row.sourceKey||""} onChange={e=>updateProduct(row.product,"sourceKey",e.target.value)}/>:row.sourceKey}</td>
-                <td>{mapTargets[type]?.[row.product]||'—'}</td>
-                <td>{productEditing?<input className="input compact" value={row.exposureField||""} onChange={e=>updateProduct(row.product,"exposureField",e.target.value)}/>:row.exposureField}</td>
-                <td>{productEditing?<input className="input compact" value={row.owner||""} onChange={e=>updateProduct(row.product,"owner",e.target.value)}/>:row.owner}</td>
+              <tbody>{info.products.map(p=><tr key={p}>
+                <td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[type]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td><td>{provenanceDefaults[type]?.owner||"Risk Management"}</td>
               </tr>)}</tbody>
             </table>
           </div>
-          {productEditing&&<div className="toolbar" style={{marginTop:12}}><button className="btn ghost" onClick={()=>{setProductMeta(loadProductMeta(type));setProductEditing(false)}}>Batal Source</button><button className="btn primary" onClick={saveSource}>Simpan Source Mapping</button></div>}
         </div>
       </section>
 
       <section className="card">
-        <div className="head"><div><h2>Data Provenance</h2><p>Traceability: siapa menyediakan data, periode data, source terakhir dan konteks penggunaannya.</p></div></div>
+        <div className="head"><div><h2>Data Provenance</h2><p>Ringkasan provenance master; detail Source Data dan Keterangan tersedia per field di atas.</p></div>{savedAt&&<span className="chip blue">Tersimpan {savedAt}</span>}</div>
         <div className="body">
           <div className="provenance-grid">
             <div className="provenance-box"><span>Sumber Utama</span><b>{meta.source||"—"}</b><small>{meta.dataset||"Dataset / report belum diisi"}</small></div>
@@ -305,6 +359,7 @@ function Detail({nav,type}){
     </div>
   </Layout>
 }
+
 function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
 function Products({nav}){const [p,setP]=useState('CASHLOAN');const fields=productFields[p]||[];const sample=productSample[p]||{};return <Layout screen="products" onNav={nav}><Header title="Product Source & Mapping" subtitle="Seluruh source field dari workbook master_dataproduk dan mapping ke setiap limit"/><div className="page"><section className="card"><div className="head"><div><h2>{p}</h2><p>Field source lengkap • contoh data • target limit mapping</p></div></div><div className="body"><div className="tabs">{Object.keys(productFields).map(x=><button className={`tab ${x===p?'active':''}`} key={x} onClick={()=>setP(x)}>{x}</button>)}</div><div className="grid2"><div><div className="section-title">Source Fields Lengkap</div><div className="rowgrid">{fields.map(f=><React.Fragment key={f}><div>{f}</div><div>{sample[f]||'—'}</div><div style={{color:'var(--muted)'}}>Source column</div></React.Fragment>)}</div></div><div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>domains[d].products.includes(p)).map(d=><div className="mini" key={d} style={{marginBottom:8}}><b>{d}</b><div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Target: {mapTargets[d]?.[p]||'—'} • Exposure: {sourceExposure[p]||'—'}</div></div>)}<div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div></div></div></section></div></Layout>}
