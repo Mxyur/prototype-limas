@@ -1,0 +1,39 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "limas-spfx-client-side-solution",
+    "id": "4802fd32-700d-46b2-816e-2ce00103e67b",
+    "version": "0.1.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "developer": {
+      "name": "Risk Management",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.23.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "LIMAS - Limit Management System"
+      },
+      "longDescription": {
+        "default": "LIMAS internal risk limit monitoring prototype for Microsoft 365 / SharePoint Online."
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": ["Risk Management"]
+    },
+    "features": [
+      {
+        "title": "LIMAS Feature",
+        "description": "The feature that activates LIMAS.",
+        "id": "4802fd32-700d-46b2-816e-2ce00103e67b",
+        "version": "0.1.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/limas-spfx.sppkg"
+  }
+}
