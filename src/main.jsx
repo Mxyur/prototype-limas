@@ -94,13 +94,13 @@ function statusForReport(row){return row.status||row.statusMaster||"Normal";}
 function downloadReportCsv(type,rows){
   const cfg=reportConfig[type];
   const header=cfg.columns.map(x=>x[0]).join(",");
-  const body=rows.map(r=>cfg.columns.map(([,key])=>\`"\${String(fmtReport(r[key])).replaceAll('"','""')}"\`).join(",")).join("\\n");
-  const csv=header+"\\n"+body;
+  const body=rows.map(r=>cfg.columns.map(([,key])=>`"${String(fmtReport(r[key])).replaceAll('"','""')}"`).join(",")).join("\n");
+  const csv=header+"\n"+body;
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
   a.href=url;
-  a.download=\`LIMAS_\${type}_Monitoring_Report.csv\`;
+  a.download=`LIMAS_${type}_Monitoring_Report.csv`;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(url),500);
 }
