@@ -197,6 +197,38 @@ function Setup({nav,setSel}){const [type,setType]=useState('Country');const info
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
 
+
+const mdFieldSource={
+  Country:{
+    "Identitas||Negara":"Dataset team Country",
+    "Identitas||Code":"Dataset team Country",
+    "Identitas||Status":"Dataset team Country",
+    "Checklist Product||CL":"Big Data (adjusted Country)",
+    "Checklist Product||NCL":"NTF -> Provided by DWB",
+    "Checklist Product||COM":"Data Utilisasi Credit Line",
+    "Checklist Product||TRS":"Data Utilisasi Credit Line",
+    "Checklist Product||BOND":"Market Risk/Treasury",
+    "Checklist Product||NOS":"Internal Mandiri",
+    "Exposure Product||CL":"Big Data (adjusted Country)",
+    "Exposure Product||NCL":"NTF -> Provided by DWB",
+    "Exposure Product||COM":"Data Utilisasi Credit Line",
+    "Exposure Product||TRS":"Data Utilisasi Credit Line",
+    "Exposure Product||BOND":"Market Risk/Treasury",
+    "Exposure Product||NOS":"Internal Mandiri",
+    "Exposure Product||TOTAL":"get",
+    "Limit & Gap||Limit FIB / Formulasi":"internal",
+    "Limit & Gap||Limit FIB / Diputus":"internal",
+    "Limit & Gap||Country Limit / Country Limit":"Dataset Country",
+    "Limit & Gap||%Country Limit":"get",
+    "Limit & Gap||Country Limit / %Country Limit":"get",
+    "Limit & Gap||Gap Analysis / Needs":"get",
+    "Limit & Gap||Gap Analysis / Minus":"get",
+    "Limit & Gap||Gap Analysis / Add":"get",
+    "Limit & Gap||Final Limit / Final Limit":"calc",
+    "Limit & Gap||Final Limit / %Final Limit":"calc"
+  }
+};
+
 const defaultFieldSource=(type,section)=>{
   const map={
     Country:{
@@ -263,7 +295,7 @@ function loadFieldMeta(type){
   const out={};
   Object.entries(domains[type]?.sections||{}).forEach(([section,rows])=>{
     rows.forEach(([field])=>{
-      out[`${section}||${field}`]={source:defaultFieldSource(type,section),note:defaultFieldNote(type,section,field)};
+      out[`${section}||${field}`]={source:mdFieldSource[type]?.[`${section}||${field}`]||defaultFieldSource(type,section),note:defaultFieldNote(type,section,field)};
     });
   });
   return out;
@@ -312,7 +344,7 @@ function Detail({nav,type}){
               <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
               <tbody>
                 {info.sections[tab].map(([f,v])=>{
-                  const fm=fieldMeta[`${tab}||${f}`]||{source:defaultFieldSource(type,tab),note:defaultFieldNote(type,tab,f)};
+                  const fm=fieldMeta[`${tab}||${f}`]||{source:mdFieldSource[type]?.[`${tab}||${f}`]||defaultFieldSource(type,tab),note:defaultFieldNote(type,tab,f)};
                   return <tr key={f}>
                     <td><b>{f}</b></td>
                     <td>{v}</td>
@@ -323,7 +355,7 @@ function Detail({nav,type}){
               </tbody>
             </table>
           </div>
-          <div className="field-help">{editing?"Mode edit: Source Data dan Keterangan dapat diubah per field, lalu disimpan.":"Setiap field memiliki Source Data dan Keterangan masing-masing."}</div>
+          <div className="field-help">{editing?"Mode edit: Source Data mengikuti referensi MD secara default dan dapat disesuaikan bila source berubah.":"Source Data ditarik dari kolom Source pada MD master; nilai get/calc ditandai sebagai hasil pengambilan atau kalkulasi."}</div>
         </div>
       </section>
 
