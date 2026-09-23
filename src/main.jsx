@@ -217,44 +217,12 @@ const mdFieldSource={
   }
 };
 const defaultFieldSource=(type,section)=>{
+  if(type==="MLK"||type==="CIL"||type==="LPG") return "Belum dicantumkan pada MD";
   const map={
-    Country:{
-      "Identitas":"COUNTRY_MONITORING / Country Master",
-      "Checklist Product":"COUNTRY_MONITORING / Product Mapping",
-      "Exposure Product":"Source Product / Exposure Mapping",
-      "Limit & Gap":"Approved Country Limit / Working Paper"
-    },
-    CCL:{
-      "Bank Profile":"CCL_MONITORING / Counterparty Master",
-      "Risk & Capacity":"CCL Working Paper / Risk Assessment",
-      "Limit":"Approved CCL / Contractual Limit",
-      "BMRI Exposure":"Source BMRI Exposure / FIB Group",
-      "Perusahaan Anak":"Source PA Exposure / SISM Group"
-    },
-    MLK:{
-      "Profil Debitur":"MLK_Master / Debtor Master",
-      "Risk & Regulatory":"MLK Working Paper / Regulatory Reference",
-      "Financial & Capacity":"MLK Calculation Working Paper",
-      "Product Limit & Exposure":"Source Product / Exposure Mapping",
-      "Master Limit":"Approved Master Limit"
-    },
-    CIL:{
-      "Insurance Profile":"CIL_Master / Insurance Master",
-      "Capacity & Threshold":"CIL Working Paper / Approved Parameter",
-      "BMRI":"Insurance Data / BMRI",
-      "Mandiri Taspen":"Insurance Data / Mandiri Taspen",
-      "MTF":"Insurance Data / MTF",
-      "MUF":"Insurance Data / MUF",
-      "Consolidated":"CIL Working Paper / Consolidated Monitoring"
-    },
-    LPG:{
-      "Identitas":"LPG_Loanportfolio / LPG Master",
-      "Bankwide":"LPG Monitoring / Bankwide",
-      "Region Monitoring":"LPG Monitoring / Region",
-      "Validation":"LPG Crosscheck / Data Quality"
-    }
+    Country:{"Identitas":"MD Country","Checklist Product":"MD Country","Exposure Product":"MD Country","Limit & Gap":"MD Country"},
+    CCL:{"Bank Profile":"MD CCL","Risk & Capacity":"MD CCL","Limit":"MD CCL","BMRI Exposure":"MD CCL","Perusahaan Anak":"MD CCL"}
   };
-  return map[type]?.[section]||"Master / Reference Data";
+  return map[type]?.[section]||"Belum dicantumkan pada MD";
 };
 const defaultFieldNote=(type,section,field)=>{
   const specific={
@@ -277,7 +245,7 @@ const defaultFieldNote=(type,section,field)=>{
   return specific[`${type}|${section}|${field}`]||`Field ${field} digunakan sebagai ${section.toLowerCase()} untuk monitoring ${type}.`;
 };
 function loadFieldMeta(type){
-  const key=`limas_field_meta_v4_${type}`;
+  const key=`limas_field_meta_v5_${type}`;
   try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
   const out={};
   Object.entries(domains[type]?.sections||{}).forEach(([section,rows])=>{
@@ -291,7 +259,7 @@ function loadFieldMeta(type){
   });
   return out;
 }
-function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v4_${type}`,JSON.stringify(data));}catch(e){}}
+function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
 function Detail({nav,type}){
   const info=domains[type];
