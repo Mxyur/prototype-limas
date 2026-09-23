@@ -633,8 +633,6 @@ function App(){
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
-export default App;
-
 
 export default function Limas(props: ILimasProps): React.ReactElement {
   return (
