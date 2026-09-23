@@ -399,11 +399,11 @@ function Detail({nav,type="Country"}){
   const [savedAt,setSavedAt]=useState("");
   const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
   const startEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
-  const cancelEdit=()=>{setMeta(loadMasterMeta(type));setFieldMeta(loadFieldMeta(type));setEditing(false);setSavedAt("");};
+  const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
   const saveChanges=()=>{
     saveFieldMeta(safeType,fieldMeta);
     const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};
-    saveMasterMeta(type,next);
+    saveMasterMeta(safeType,next);
     setMeta(next);
     setEditing(false);
     setSavedAt(next.lastUpdated);
@@ -415,7 +415,7 @@ function Detail({nav,type="Country"}){
         <div className="head">
           <div>
             <h2>{sampleName(safeType)}</h2>
-            <p>Unique Key: <span className="key">{sampleKey(type)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p>
+            <p>Unique Key: <span className="key">{sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p>
           </div>
           <div className="toolbar">
             {!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<>
@@ -457,7 +457,7 @@ function Detail({nav,type="Country"}){
             <table className="table provenance-table">
               <thead><tr><th>Product</th><th>Source Dataset</th><th>Source Key</th><th>Target Key</th><th>Exposure Field</th><th>Data Owner</th></tr></thead>
               <tbody>{info.products.map(p=><tr key={p}>
-                <td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[safeType]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td><td>{provenanceDefaults[type]?.owner||"Risk Management"}</td>
+                <td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[safeType]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td><td>{provenanceDefaults[safeType]?.owner||"Risk Management"}</td>
               </tr>)}</tbody>
             </table>
           </div>
