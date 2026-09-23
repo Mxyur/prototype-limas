@@ -310,6 +310,40 @@ const mdFieldSource={
     "Perusahaan Anak||Limit":"Input manual / Perusahaan Anak","Perusahaan Anak||Total":"Input manual / Perusahaan Anak","Perusahaan Anak||Bank Loan":"Input manual / Perusahaan Anak","Perusahaan Anak||Commercial Line":"Input manual / Perusahaan Anak","Perusahaan Anak||Treasury Line":"Input manual / Perusahaan Anak","Perusahaan Anak||Utilisasi CCL":"calc","Perusahaan Anak||Utilisasi Limit Kontraktual":"calc","Perusahaan Anak||Utilisasi Maksimum Limit Kontraktual":"calc"
   }
 };
+const mdFieldDescription={
+  Country:{
+    "Identitas||No":"Identitas baris pada master monitoring.",
+    "Identitas||Negara":"Nama negara sebagai objek monitoring country limit.",
+    "Identitas||Code":"Kode negara sebagai key join/mapping exposure product.",
+    "Identitas||Status":"Status master country.",
+    "Checklist Product||CL":"Checklist keberadaan exposure Cash Loan.",
+    "Checklist Product||NCL":"Checklist keberadaan exposure Non Cash Loan.",
+    "Checklist Product||COM":"Checklist keberadaan Commercial Line.",
+    "Checklist Product||TRS":"Checklist keberadaan Treasury Line.",
+    "Checklist Product||BOND":"Checklist keberadaan Bond.",
+    "Checklist Product||NOS":"Checklist keberadaan Nostro.",
+    "Exposure Product||CL":"Exposure Cash Loan berdasarkan source product.",
+    "Exposure Product||NCL":"Exposure Non Cash Loan berdasarkan source product.",
+    "Exposure Product||COM":"Exposure Commercial Line berdasarkan utilisasi.",
+    "Exposure Product||TRS":"Exposure Treasury Line berdasarkan utilisasi.",
+    "Exposure Product||BOND":"Exposure Bond.",
+    "Exposure Product||NOS":"Exposure Nostro.",
+    "Exposure Product||TOTAL":"Total exposure product hasil agregasi.",
+    "Limit & Gap||Limit FIB / Formulasi":"Nilai Formulasi Limit FIB dari source internal.",
+    "Limit & Gap||Limit FIB / Diputus":"Nilai Diputus Limit FIB dari source internal.",
+    "Limit & Gap||Country Limit / Country Limit":"Country Limit berasal dari Dataset Country.",
+    "Limit & Gap||Country Limit / %Country Limit":"Persentase Country Limit terhadap total.",
+    "Limit & Gap||Gap Analysis / Needs":"Nilai Needs pada gap analysis.",
+    "Limit & Gap||Gap Analysis / Minus":"Nilai Minus pada gap analysis.",
+    "Limit & Gap||Gap Analysis / Add":"Nilai Add pada gap analysis.",
+    "Limit & Gap||Final Limit / Final Limit":"Final Limit hasil kalkulasi.",
+    "Limit & Gap||Final Limit / %Final Limit":"Persentase Final Limit terhadap total."
+  },
+  CCL:{},
+  MLK:{},
+  CIL:{},
+  LPG:{}
+};
 const defaultFieldSource=(type,section)=>{
   if(type==="MLK"||type==="CIL"||type==="LPG") return "Belum dicantumkan pada MD";
   const map={
