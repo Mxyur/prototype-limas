@@ -1238,6 +1238,8 @@ const productBusinessEnrichmentNote={
   "CREDIT LINE":"Field enrichment LIMAS karena source Credit Line belum menyediakan kantor pembukuan. Nilai wajib diisi dari reference/mapping yang disepakati; tidak diinfer dari Code, Negara, Swift Code, atau nama bank."
 };
 const productBusinessMappingLabel=(productId,kind)=>{
+  // Display labels use the canonical LIMAS business vocabulary; source field names are never renamed.
+
   const m=productBusinessMapping[productId]||{};
   if(kind==="country") return m.countryExposureField?m.countryExposureField+" → "+m.countryExposureLabel:m.countryExposureLabel||"—";
   if(kind==="booking") return m.bookingOfficeField?m.bookingOfficeField+" → "+m.bookingOfficeLabel:m.bookingOfficeLabel||"—";
@@ -1481,6 +1483,16 @@ const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN",
 const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
 
 
+// Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
+const CANONICAL_BUSINESS_LABELS={
+  countryExposure:"Country Exposure",
+  bookingOffice:"Booking Office",
+  bookingOfficeType:"Booking Office Type",
+  exposure:"Exposure",
+  productLimit:"Product Limit",
+  domesticLimit:"Domestic Limit",
+  overseasLimit:"Overseas Limit"
+};
 const productFieldNotes={
   "_CANONICAL_":{},
   "CASHLOAN":{
@@ -1564,6 +1576,24 @@ function saveProductCatalogMeta(item,meta){
   try{window.localStorage.setItem(catalogMetaKey(item.id),JSON.stringify(meta));}catch(e){}
 }
 
+function ProductDictionaryBusinessMapping({tab}){ 
+  const m=productBusinessMapping[tab]||{};
+  const enrichment=productBusinessEnrichment[tab]||[];
+  const items=[
+    ["Country Exposure",m.countryExposureField?m.countryExposureField+" → "+m.countryExposureLabel:(m.countryExposureLabel||"—")],
+    ["Booking Office",m.bookingOfficeField?m.bookingOfficeField+" → "+m.bookingOfficeLabel:(m.bookingOfficeLabel||"—")],
+    ["Booking Office Type",enrichment.includes("Booking Office Type")?"Business Enrichment / Reference":"Derived / Reference"],
+    ["Exposure",m.exposureField?m.exposureField+" → "+m.exposureLabel:(m.exposureLabel||"—")]
+  ];
+  return <div className="product-dictionary-summary">
+    <div className="section-title">Business Mapping Standard</div>
+    <div className="product-db-kpis">
+      {items.map(([label,value])=><div className="mini" key={label}><b>{label}</b><span className="muted-small">{value}</span></div>)}
+    </div>
+    {enrichment.length>0&&<div className="field-help"><b>Business Enrichment:</b> {enrichment.join(" + ")} — {productBusinessEnrichmentNote[tab]}</div>}
+  </div>;
+}
+
 function CreditLineFieldTable(){
   const fields=creditLineFields;
   const [editing,setEditing]=useState(false);
@@ -1584,9 +1614,10 @@ function CreditLineFieldTable(){
   };
   return <div className="product-field-block">
     <div className="product-field-toolbar">
-      <div><b>Credit Line • Source Fields Lengkap</b><span>Satu tabel dari source sheet Credit Line (CommLine and TL). Field asli dipertahankan; value diklasifikasikan ke Common / Commercial / Treasury.</span></div>
+      <div><b>Data Dictionary — Credit Line</b><span>Source fields dipertahankan apa adanya. Standard business mapping ditampilkan terpisah dari source schema.</span></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
+    <ProductDictionaryBusinessMapping tab="CREDIT LINE"/>
     <div className="table-wrap product-field-wrap">
       <table className="table field-table product-credit-table">
         <thead><tr><th>Field</th><th>Commercial Line</th><th>Treasury Line</th><th>Source Data</th><th>Keterangan</th></tr></thead>
@@ -1615,9 +1646,10 @@ function ProductFieldTable({tab,group="",fields=[],sample={}}){
   const cancel=()=>{setDraft(buildDraft());setEditing(false)};
   return <div className="product-field-block">
     <div className="product-field-toolbar">
-      <div><b>Source Fields & Data Dictionary</b><span>Field yang sama dengan Product Database • Sample Value • Source Data • Keterangan</span></div>
+      <div><b>Data Dictionary — Source Fields</b><span>Field source dipertahankan apa adanya • Sample Value • Source Data • Keterangan</span></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
+    <ProductDictionaryBusinessMapping tab={tab}/>
     <div className="table-wrap product-field-wrap">
       <table className="table field-table product-field-table">
         <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
