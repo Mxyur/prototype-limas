@@ -500,6 +500,8 @@ const creditLineSamples={
   "Commercial Line":productSample["COMMERCIAL LINE (CRDT)"]||{},
   "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
 };
+const creditLineFields=[...new Set([...creditLineGroups["Commercial Line"],...creditLineGroups["Treasury Line"]])];
+
 const productTabSource={
   "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
   "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
@@ -592,6 +594,40 @@ function loadProductCatalogMeta(item){
 }
 function saveProductCatalogMeta(item,meta){
   try{window.localStorage.setItem(catalogMetaKey(item.id),JSON.stringify(meta));}catch(e){}
+}
+
+function CreditLineFieldTable(){
+  const fields=creditLineFields;
+  const [editing,setEditing]=useState(false);
+  const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta("CREDIT LINE","Combined",f)]));
+  const [draft,setDraft]=useState(buildDraft);
+  React.useEffect(()=>{setEditing(false);setDraft(buildDraft())},[]);
+  const update=(f,key,value)=>setDraft(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
+  const save=()=>{fields.forEach(f=>saveProductFieldMeta("CREDIT LINE","Combined",f,draft[f]||{}));setEditing(false)};
+  const cancel=()=>{setDraft(buildDraft());setEditing(false)};
+  return <div className="product-field-block">
+    <div className="product-field-toolbar">
+      <div><b>Credit Line • Source Fields Lengkap</b><span>Commercial Line + Treasury Line dalam satu tabel dari source sheet Credit Line (CommLine and TL)</span></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
+    </div>
+    <div className="table-wrap product-field-wrap">
+      <table className="table field-table product-credit-table">
+        <thead><tr><th>Field</th><th>Commercial Line</th><th>Treasury Line</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+        <tbody>{fields.map(f=>{
+          const cHas=creditLineGroups["Commercial Line"].includes(f);
+          const tHas=creditLineGroups["Treasury Line"].includes(f);
+          const m=draft[f]||{};
+          return <tr key={f}>
+            <td><b>{f}</b></td>
+            <td>{cHas?(creditLineSamples["Commercial Line"][f]===0?0:(creditLineSamples["Commercial Line"][f]||"—")):"—"}</td>
+            <td>{tHas?(creditLineSamples["Treasury Line"][f]===0?0:(creditLineSamples["Treasury Line"][f]||"—")):"—"}</td>
+            <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+            <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+          </tr>
+        })}</tbody>
+      </table>
+    </div>
+  </div>;
 }
 
 function ProductFieldTable({tab,group="",fields,sample}){
@@ -691,11 +727,8 @@ function Products({nav}){
         </div>
         <div className="body">
           {view==="CREDIT LINE"
-            ? <div className="credit-line-groups">{Object.entries(creditLineGroups).map(([group,fields])=><section className="product-group" key={group}>
-                <div className="section-title">{group}</div>
-                <ProductFieldTable key={`${view}-${group}`} tab="CREDIT LINE" group={group} fields={fields} sample={creditLineSamples[group]}/>
-              </section>)}</div>
-            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
+            ? <CreditLineFieldTable/>
+            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}/>}
           }
           <ProductUsage view={view}/>
         </div>
