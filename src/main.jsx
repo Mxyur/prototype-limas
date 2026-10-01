@@ -19,7 +19,13 @@ const integrationRuntimeSource={
 };
 
 const integrationTargets={
-  Country:{"CASHLOAN":"Country Code / Project Location","NON CASH LOAN":"Country Code","CREDIT LINE":"Country Code / Bank Country","BONDS":"Issuer Country","NOSTRO":"Bank Country"},
+  Country:{
+    "CASHLOAN":"Country Exposure: Project Location / Country Code; Booking Office + Booking Office Type for Domestic/Overseas",
+    "NON CASH LOAN":"Country Exposure: Country Code; Booking Office + Booking Office Type for Domestic/Overseas",
+    "CREDIT LINE":"Country Exposure: Code / Bank Country; Booking Office + Booking Office Type for Domestic/Overseas",
+    "BONDS":"Country Exposure: Issuer Country; Booking Office + Booking Office Type for Domestic/Overseas",
+    "NOSTRO":"Country Exposure: Bank Country; Booking Office / Branch + Booking Office Type for Domestic/Overseas"
+},
   CCL:{"CASHLOAN":"Bank / Counterparty mapping","NON CASH LOAN":"Swift Code / Counterparty","CREDIT LINE":"Swift Code","Investment Line":"Swift Code / Entity"},
   MLK:{"CASHLOAN":"CIF","NON CASH LOAN":"CUSTID / CIF","CREDIT LINE":"CIF / Debtor mapping (Treasury scope)"},
   CIL:{"Nominal Pertanggungan":"Insurance Company + Entity"},
@@ -66,7 +72,7 @@ const domainDataContract={
     masterKey:"Country Code",
     masterObject:"Country",
     linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"],
-    utilizationGrain:"Country Code + Periode",
+    utilizationGrain:"Country Code + Product + Booking Office Type + Periode",
     masterDescription:"Country capacity limit + product allocation split Domestic/Overseas + adjustment/final limit. Domestic/Overseas is determined by Booking Office Type at product utilization level."
   },
   CCL:{
@@ -1191,12 +1197,13 @@ const productTabSource={
   "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
 };
 const canonicalProductUtilizationFields=["Booking Office","Booking Office Type","Booking Office Status","Country Exposure"];
+const countryIntegratedProductIds=["CASHLOAN","NON CASH LOAN","Investment Line","BONDS","NOSTRO"];
 const productTabFields={
-  "CASHLOAN":[...(productFields["CASHLOAN"]||[])],
-  "NON CASH LOAN":[...(productFields["NON CASH LOAN"]||[])],
-  "Investment Line":productFields["Investment Line"]||[],
-  "BONDS":productFields["BONDS"]||[],
-  "NOSTRO":productFields["NOSTRO"]||[],
+  "CASHLOAN":[...(productFields["CASHLOAN"]||[]),...canonicalProductUtilizationFields],
+  "NON CASH LOAN":[...(productFields["NON CASH LOAN"]||[]),...canonicalProductUtilizationFields],
+  "Investment Line":[...(productFields["Investment Line"]||[]),...canonicalProductUtilizationFields],
+  "BONDS":[...(productFields["BONDS"]||[]),...canonicalProductUtilizationFields],
+  "NOSTRO":[...(productFields["NOSTRO"]||[]),...canonicalProductUtilizationFields],
   "Nominal Pertanggungan":[
     "No","Perusahaan Asuransi","Jenis Prudk Asuransi","Entitas","EIL Entitas (Rp Juta)",
     "Nominal Pertanggungan 2025 (Rp Juta)","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)",
@@ -1404,12 +1411,19 @@ const creditLineSamples={
   "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
 };
 const creditLineFields=[...new Set(creditLineGroups["Commercial Line"])];
+const creditLineCanonicalFields=[...canonicalProductUtilizationFields];
 const creditLineTreasuryOnly=new Set(["Treasury DN","Treasury DN Utilisasi","Treasury LN","Treasury LN Utilisasi","Treasury Line Total","Treasury Line Total Utilisasi","TDN","TDN Utilisasi","TLN","TLN Utilisasi","Treasury Line","Total Utilisasi","CDN","CDN Utilisasi","CLN","CLN Utilisasi"]);
 const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN","Comm LN Utilisasi","Comm Line Total","Comm Line Total Utilisasi"]);
 const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
 
 
 const productFieldNotes={
+  "_CANONICAL_":{
+    "Booking Office":"Kantor pembukuan yang menjadi atribut canonical untuk menentukan bucket Domestic/Overseas.",
+    "Booking Office Type":"Tipe kantor pembukuan: Domestic atau Overseas. Untuk Country, field ini adalah determinant canonical split exposure.",
+    "Booking Office Status":"Status kualitas mapping Booking Office terhadap Booking Office Type.",
+    "Country Exposure":"Country key yang menjadi target Country Limit. Country dan Domestic/Overseas adalah dua dimensi berbeda."
+  },
   "CASHLOAN":{
     project_location:"Country mapping berdasarkan lokasi proyek.",
     code:"Country Code sebagai key mapping.",
@@ -1469,12 +1483,16 @@ function loadProductFieldMeta(tab,group,field){
     if(saved)return JSON.parse(saved);
   }catch(e){}
   const sheet=productTabSource[tab]||tab;
-  const note=productFieldNotes[tab]?.[field]||(
-    tab==="CREDIT LINE"
-      ? `${group} field dari source sheet Credit Line (CommLine and TL).`
-      : `Field ${field} digunakan sebagai source data ${tab}.`
-  );
-  return {source:`master_dataproduk.xlsx • ${sheet}`,note};
+  const canonicalSource={
+    "Booking Office":sheet+" / Booking Office reference",
+    "Booking Office Type":sheet+" / Booking Office reference",
+    "Booking Office Status":sheet+" / Booking Office reference",
+    "Country Exposure":sheet+" / Country mapping"
+  };
+  const note=productFieldNotes[tab]?.[field]||productFieldNotes._CANONICAL?.[field]||
+    (tab==="CREDIT LINE" ? group+" field dari source sheet Credit Line (CommLine and TL)." : "Field "+field+" digunakan sebagai source data "+tab+".");
+  const source=canonicalSource[field]||("master_dataproduk.xlsx • "+sheet);
+  return {source,note};
 }
 function saveProductFieldMeta(tab,group,field,meta){
   try{window.localStorage.setItem(productMetaKey(tab,group,field),JSON.stringify(meta));}catch(e){}
@@ -1492,7 +1510,7 @@ function saveProductCatalogMeta(item,meta){
 }
 
 function CreditLineFieldTable(){
-  const fields=creditLineFields;
+  const fields=[...creditLineFields,...creditLineCanonicalFields];
   const [editing,setEditing]=useState(false);
   const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta("CREDIT LINE","Combined",f)]));
   const [draft,setDraft]=useState(buildDraft);
@@ -1532,6 +1550,17 @@ function CreditLineFieldTable(){
   </div>;
 }
 
+function productDictionarySample(tab,field,sample){
+  if(canonicalProductUtilizationFields.includes(field)){
+    const row=(productDatabase[tab]||[])[0];
+    if(field==="Booking Office")return row?.bookingOffice||"—";
+    if(field==="Booking Office Type")return row?.bookingOfficeType||"Needs Mapping";
+    if(field==="Booking Office Status")return row?.bookingOfficeStatus||"Needs Mapping";
+    if(field==="Country Exposure")return row?.countryExposure||"—";
+  }
+  return sample[field]===0?0:(sample[field]||"—");
+}
+
 function ProductFieldTable({tab,group="",fields=[],sample={}}){
   const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta(tab,group,f)]));
   const [editing,setEditing]=useState(false);
@@ -1551,7 +1580,7 @@ function ProductFieldTable({tab,group="",fields=[],sample={}}){
         <tbody>{fields.map(f=>{
           const m=draft[f]||{};
           return <tr key={f}>
-            <td><b>{f}</b></td><td>{sample[f]===0?0:(sample[f]||"—")}</td>
+            <td><b>{f}</b></td><td>{productDictionarySample(tab,f,sample)}</td>
             <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
             <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
           </tr>
@@ -1604,11 +1633,11 @@ function ProductDatabaseTable({view}){
     <div className="body">
       <div className="product-db-kpis"><div className="mini"><b>Source Records</b><strong>{rows.length}</strong></div><div className="mini"><b>Mapped Records</b><strong>{mapped}</strong></div><div className="mini"><b>Unmapped Records</b><strong>{rows.length-mapped}</strong></div><div className="mini"><b>Direct Unmapped</b><strong>{directUnmapped}</strong></div><div className="mini"><b>LPG Classified</b><strong>{lpgClassified}</strong></div><div className="mini"><b>Mapping Issues</b><strong>{mappingIssues}</strong></div></div>
       <div className="table-wrap product-db-wrap"><table className="table product-db-table">
-        <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Booking Office</th><th>Booking Type</th><th>Country Exposure</th><th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
+        <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
         <tbody>{rows.map(r=><tr key={r.recordId}>
           <td className="key">{r.recordId}</td>
-          {fields.map(f=><td key={f}>{r.data[f]===0?0:(r.data[f]||"—")}</td>)}
-          <td>{r.bookingOffice||"—"}</td><td><Status v={r.bookingOfficeType||"Needs Mapping"}/></td><td>{r.countryExposure||"—"}</td><td>{r.sourceSystem}</td>
+          {fields.map(f=><td key={f}>{canonicalProductUtilizationFields.includes(f)?(f==="Booking Office"?r.bookingOffice||"—":f==="Booking Office Type"?<Status v={r.bookingOfficeType||"Needs Mapping"}/>:f==="Booking Office Status"?<Status v={r.bookingOfficeStatus||"Needs Mapping"}/>:r.countryExposure||"—"):(r.data[f]===0?0:(r.data[f]||"—"))}</td>)}
+          <td>{r.sourceSystem}</td>
 
           <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=><div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}{a.scope?" • "+a.scope:""}</div>):<span className="muted-small">No direct limit mapping</span>}</td><td>{["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified?<span className="muted-small">LPG derived • {lpgProductAttribute(r,"ecosystem_lpg")} / {lpgProductAttribute(r,"segmen_lpg")} / {lpgProductAttribute(r,"region_lpg")||"Region belum diisi"}</span>:<span className="muted-small">—</span>}</td>
         </tr>)}</tbody>
