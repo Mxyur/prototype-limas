@@ -890,30 +890,44 @@ function masterFieldValue(type,section,field,base,row,index){
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="CCL"){
+    const p=productContributionMap("CCL",row.key),total=recordExposure("CCL",row.key||row);
+    const bankLoan=(p.CASHLOAN||0)+(p["NON CASH LOAN"]||0),contractUtil=row.contractual?total/row.contractual:0;
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
       "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
-      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":row.ccl,"Limit Contractual":row.contractual};
+      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":row.ccl,"Limit Contractual":row.contractual,
+      "Outstanding":total,"Limit":row.ccl,"Total":total,"Bank Loan":bankLoan,
+      "Commercial Line":p["CREDIT LINE|Commercial"]||0,"Treasury Line":p["CREDIT LINE|Treasury"]||0,
+      "Utilisasi CCL":row.ccl?total/row.ccl:0,"Utilisasi Limit Kontraktual":contractUtil,
+      "Outstanding Maksimum":total,"Utilisasi Maksimum Limit Kontraktual":contractUtil};
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="MLK"){
+    const p=productContributionMap("MLK",row.key);
+    const clRows=(productDatabase.CASHLOAN||[]).filter(r=>String(r.data?.no_cus||"")===String(row.key));
+    const nclRows=(productDatabase["NON CASH LOAN"]||[]).filter(r=>String(r.data?.CUSTID||"")===String(row.key));
+    const clLimit=clRows.reduce((a,r)=>a+(Number(r.data?.total_limit)||0),0);
+    const nclLimit=nclRows.reduce((a,r)=>a+(Number(r.data?.AMOUNT)||0),0);
+    const treasury=p["CREDIT LINE|Treasury"]||0,totalLimit=(clLimit||0)+(nclLimit||0)+treasury,totalBade=(p.CASHLOAN||0)+(p["NON CASH LOAN"]||0)+treasury;
     const map={"Entitas":row.entity,"CIF":row.key,"Nama Debitur":row.name,"Group Usaha":row.group,"Group":row.group,
       "Tier":row.tier,"Master Limit Setting":row.masterLimit,"Master Limit":row.masterLimit,
-      "CL Bade":productContributionMap("MLK",row.key).CASHLOAN||0,"NCL Bade":productContributionMap("MLK",row.key)["NON CASH LOAN"]||0,
-      "Bade Treasury Line":productContributionMap("MLK",row.key)["CREDIT LINE|Treasury"]||0};
+      "CL Bade":p.CASHLOAN||0,"CL Limit":clLimit||base,"NCL Bade":p["NON CASH LOAN"]||0,"NCL Limit":nclLimit||base,
+      "Treasury Line":treasury,"Bade Treasury Line":treasury,"Total Limit Existing":totalLimit,"Total Bade Existing":totalBade};
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="CIL"){
-    const map={"No":index+1,"Perusahaan Asuransi":row.name,
-      "Jenis Perusahaan (Asuransi/Penjaminan)":row.type,
-      "Insurance Capacity (IC) (Rp Juta)":row.ic,
-      "Multiplier Terpakai (%)":(row.multiplier*100).toFixed(2)+"%",
+    const rows=productApplicationsFor("CIL",row.key),byEntity={};
+    rows.forEach(a=>{const e=a.entity||"Entity";byEntity[e]=(byEntity[e]||0)+(Number(a.amount)||0)});
+    const total=recordExposure("CIL",row),projection=cilProjection(row.key);
+    const map={"No":index+1,"Perusahaan Asuransi":row.name,"Jenis Perusahaan (Asuransi/Penjaminan)":row.type,
+      "Insurance Capacity (IC) (Rp Juta)":row.ic,"Multiplier Terpakai (%)":(row.multiplier*100).toFixed(2)+"%",
       "Consolidated Insurance Threshold (CIT) (Rp Juta)":row.cit,
-      "EIL BMRI":row.eils?.BMRI||0,
-      "EIL Mandiri Taspen":row.eils?.["Mandiri Taspen"]||0,
-      "EIL MTF":row.eils?.MTF||0,
-      "EIL MUF":row.eils?.MUF||0,
-      "Consolidated Insurance Limit (CIL) (Rp Juta)":row.cil};
+      "EIL BMRI":row.eils?.BMRI||0,"EIL Mandiri Taspen":row.eils?.["Mandiri Taspen"]||0,"EIL MTF":row.eils?.MTF||0,"EIL MUF":row.eils?.MUF||0,
+      "Nominal Pertanggungan BMRI 2025":byEntity.BMRI||0,"Nominal Pertanggungan Mandiri Taspen 2025":byEntity["Mandiri Taspen"]||0,
+      "Nominal Pertanggungan MTF 2025":byEntity.MTF||0,"Nominal Pertanggungan MUF 2025":byEntity.MUF||0,
+      "Consolidated Insurance Limit (CIL) (Rp Juta)":row.cil,"Total Nominal Pertanggungan All Entitas 2025 (Rp Juta)":total,
+      "Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":projection,
+      "Utilisasi CIL (%)":row.cil?total/row.cil:0,"Klasifikasi EWS (PCP)":recordStatus("CIL",row)};
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="LPG"){
