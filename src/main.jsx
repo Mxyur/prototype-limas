@@ -728,7 +728,7 @@ function Products({nav}){
         <div className="body">
           {view==="CREDIT LINE"
             ? <CreditLineFieldTable/>
-            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}/>}
+            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
           }
           <ProductUsage view={view}/>
         </div>
