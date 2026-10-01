@@ -415,14 +415,30 @@ const mdFieldDescription={
   },
   CCL:{},
   MLK:{},
-  CIL:{},
+  CIL:{  CIL:{
+    "Insurance Profile||No":"various Source",
+    "Insurance Profile||Perusahaan Asuransi":"various Source",
+    "Insurance Profile||Jenis Perusahaan (Asuransi/Penjaminan)":"list OJK/iCAPS",
+    "Insurance Profile||Jenis Produk Asuransi":"list OJK/iCAPS",
+    "Capacity & Threshold||Insurance Capacity (IC) (Rp Juta)":"feed by user (final calc)",
+    "Capacity & Threshold||Multiplier Terpakai (%)":"—",
+    "Capacity & Threshold||Consolidated Insurance Threshold (CIT) (Rp Juta)":"feed by user (final calc)",
+    "Entity Limit (EIL)||EIL BMRI":"CPR",
+    "Entity Limit (EIL)||EIL Mandiri Taspen":"CPR",
+    "Entity Limit (EIL)||EIL MTF":"CPR",
+    "Entity Limit (EIL)||EIL MUF":"CPR",
+    "Consolidated Limit||Consolidated Insurance Limit (CIL) (Rp Juta)":"CIL = sum EIL"
+  },
   LPG:{}
 };
 const defaultFieldSource=(type,section)=>{
   if(type==="MLK"||type==="CIL"||type==="LPG") return "Belum dicantumkan pada MD";
   const map={
-    Country:{"Identitas":"MD Country","Checklist Product":"MD Country","Exposure Product":"MD Country","Limit & Gap":"MD Country"},
-    CCL:{"Bank Profile":"MD CCL","Risk & Capacity":"MD CCL","Limit":"MD CCL","BMRI Exposure":"MD CCL","Perusahaan Anak":"MD CCL"}
+    Country:{"Identitas":"MD Country","Limit & Gap":"MD Country"},
+    CCL:{"Bank Profile":"MD CCL","Risk & Capacity":"MD CCL","Limit":"MD CCL"},
+    MLK:{"Profil Debitur":"MLK_Master","Risk & Regulatory":"MLK_Master","Master Limit":"MLK_Master"},
+    CIL:{"Insurance Profile":"CIL_Master","Capacity & Threshold":"CIL_Master","Entity Limit (EIL)":"CIL_Master","Consolidated Limit":"CIL_Master"},
+    LPG:{"Identitas":"LPG_Loanportfolio","Bankwide Limit":"LPG_Loanportfolio","Regional Limit":"LPG_Loanportfolio"}
   };
   return map[type]?.[section]||"Belum dicantumkan pada MD";
 };
@@ -443,6 +459,11 @@ const defaultFieldNote=(type,section,field)=>{
     "CIL|Capacity & Threshold|Consolidated Insurance Threshold (CIT) (Rp Juta)":"Threshold monitoring consolidated insurance.",
     "LPG|Identitas|Ecosystem LPG (Sektor)":"Sektor LPG yang menjadi objek monitoring portfolio.",
     "LPG|Identitas|Segmen LPG":"Segmen portfolio yang digunakan dalam pembentukan key monitoring."
+    ,"CIL|Entity Limit (EIL)|EIL BMRI":"Approved EIL BMRI yang menjadi bagian dari CIL master."
+    ,"CIL|Entity Limit (EIL)|EIL Mandiri Taspen":"Approved EIL Mandiri Taspen yang menjadi bagian dari CIL master."
+    ,"CIL|Entity Limit (EIL)|EIL MTF":"Approved EIL MTF yang menjadi bagian dari CIL master."
+    ,"CIL|Entity Limit (EIL)|EIL MUF":"Approved EIL MUF yang menjadi bagian dari CIL master."
+    ,"CIL|Consolidated Limit|Consolidated Insurance Limit (CIL) (Rp Juta)":"Approved Consolidated Insurance Limit, hasil konsolidasi EIL."
   };
   return specific[`${type}|${section}|${field}`]||`Field ${field} digunakan sebagai ${section.toLowerCase()} untuk monitoring ${type}.`;
 };
@@ -521,7 +542,7 @@ function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code'
 const productMasterCatalog=[
   {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",target:"Country / MLK / LPG",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Workbook juga mencatat kebutuhan konversi IDR."},
   {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",target:"Country / CCL / MLK / LPG",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta country judgment berdasarkan counterparty."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL / MLK (Treasury Line scope)",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
   {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",target:"CCL",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur produk/fasilitas yang belum termapping; workbook memberi kebutuhan frekuensi Monthly pada sample."},
   {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",target:"Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country limit hit pada issuer selain Indonesia; limit dapat kembali setelah Maturity Date."},
   {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",target:"Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; balance masih kurs asli dan perlu konversi kurs tengah NTR."},
@@ -656,7 +677,7 @@ function CreditLineFieldTable(){
   };
   return <div className="product-field-block">
     <div className="product-field-toolbar">
-      <div><b>Credit Line • Source Fields Lengkap</b><span>Satu tabel dari source sheet Credit Line (CommLine and TL). Nilai yang sudah ada dipisahkan ke Commercial Line atau Treasury Line tanpa menulis ulang field Treasury Line.</span></div>
+      <div><b>Credit Line • Source Fields Lengkap</b><span>Satu tabel dari source sheet Credit Line (CommLine and TL). Field asli dipertahankan; value diklasifikasikan ke Common / Commercial / Treasury.</span></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <div className="table-wrap product-field-wrap">
@@ -746,7 +767,7 @@ function ProductUsage({view}){
   if(view==="NOSTRO") usage.push(["Country","SwiftCode / Bank Country","Balance"]);
   if(view==="Nominal Pertanggungan") usage.push(["CIL","Perusahaan Asuransi + Entitas","Nominal Pertanggungan 2025 / Proyeksi 2026"]);
   return <div className="product-mapping-grid">
-    <div><div className="section-title">Dipakai oleh Limit</div>{usage.map(([d,target,exposure])=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {target} • Exposure: {exposure}</div></div>)}</div>
+    <div><div className="section-title">Target Integration</div>{usage.map(([d,target,exposure])=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {target} • Exposure: {exposure}</div></div>)}</div>
     <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div>
   </div>;
 }
@@ -758,7 +779,7 @@ function Products({nav}){
   ];
   const info=productMasterCatalog.find(x=>x.id===view);
   return <Layout screen="products" onNav={nav}>
-    <Header title="Product Source & Mapping" subtitle="Master data produk + source field + mapping + traceability berdasarkan workbook master_dataproduk dan monitoring CIL"/>
+    <Header title="Product Universe & Integration" subtitle="Universe product + source schema + integration mapping. Tidak menyimpan master limit maupun current utilization."/>
     <div className="page">
       <section className="card">
         <div className="body">
