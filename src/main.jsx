@@ -394,7 +394,7 @@ function countryMaxUtilization(row){
 }
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
-  return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.amount)||0),0);
+  return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
 }
 function recordLimit(type,row){
   if(type==="Country")return Number(row.capacityLimit)||0;
@@ -1429,6 +1429,76 @@ const productDatabase={
   })
 };
 
+
+const DOMAIN_CANONICAL_UNITS={
+  Country:"Rp Juta",
+  CCL:"Rp Miliar",
+  MLK:"Rp Juta",
+  CIL:"Rp Juta",
+  LPG:"Rp Juta"
+};
+const productCanonicalTransform=(domain,productId,row)=>{
+  if(domain==="CCL"&&["NON CASH LOAN","CREDIT LINE","CASHLOAN","BONDS"].includes(productId)){
+    return {sourceUnit:"Rp Juta",targetUnit:"Rp Miliar",factor:0.001,description:"Normalize source exposure from Rp Juta to CCL canonical Rp Miliar."};
+  }
+  if(productId==="NON CASH LOAN"&&String(row?.sourceSystem||"").startsWith("DWH")&&row?.data?.CCY==="IDR"){
+    return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use BALANCE as DWH IDR outstanding."};
+  }
+  if(productId==="NON CASH LOAN"){
+    return {sourceUnit:"Rp",targetUnit:"Rp Juta",factor:0.000001,description:"Normalize EQVIDR from Rp to Rp Juta."};
+  }
+  if(productId==="BONDS")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Use Amount Eq. IDR Juta as canonical exposure."};
+  if(productId==="NOSTRO")return {sourceUnit:"Source Currency",targetUnit:"Rp Juta",factor:1,description:"Demo balance retained; FX normalization reference remains required before production consolidation."};
+  if(productId==="CREDIT LINE")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Credit Line source is already canonical component currency/unit for demo."};
+  if(productId==="CASHLOAN")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Use Total BADE as canonical exposure."};
+  if(productId==="Nominal Pertanggungan")return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use Nominal Pertanggungan as canonical exposure."};
+  return {sourceUnit:DOMAIN_CANONICAL_UNITS[domain]||"Source Unit",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Source Unit",factor:1,description:"Direct / source unit."};
+};
+function normalizeAppliedAmount(domain,productId,raw,row){
+  const value=Number(raw)||0;
+  const t=productCanonicalTransform(domain,productId,row);
+  return {amount:value*t.factor,sourceUnit:t.sourceUnit,targetUnit:t.targetUnit,factor:t.factor,transform:t.description};
+}
+function normalizeLpgSegment(value){
+  const raw=String(value??"").trim();
+  if(/^sme$/i.test(raw))return "SME";
+  if(/^small\\s*medium/i.test(raw))return "SME";
+  if(/^micro$/i.test(raw))return "Micro";
+  return raw;
+}
+function canonicalizeProductBusinessValues(r){
+  const data=r?.data||{};
+  if(data.code!==undefined)data.code=String(data.code||"").trim().toUpperCase();
+  if(data["Country Code"]!==undefined)data["Country Code"]=String(data["Country Code"]||"").trim().toUpperCase();
+  if(data["Issuer Country"]!==undefined)data["Issuer Country"]=String(data["Issuer Country"]||"").trim().toUpperCase();
+  if(data["Bank Country"]!==undefined)data["Bank Country"]=String(data["Bank Country"]||"").trim().toUpperCase();
+  if(data.CCY!==undefined)data.CCY=String(data.CCY||"").trim().toUpperCase();
+  if(data.ecosystem_lpg!==undefined)data.ecosystem_lpg=String(data.ecosystem_lpg||"").trim();
+  if(data.segmen_lpg!==undefined)data.segmen_lpg=normalizeLpgSegment(data.segmen_lpg);
+  if(data.region_lpg!==undefined)data.region_lpg=String(data.region_lpg||"").trim();
+  r.countryExposure=String(r.countryExposure||"").trim().toUpperCase()||"—";
+}
+function cleanseMasterData(){
+  (limasDemoData.Country||[]).forEach(r=>{
+    delete r.masterLimit;
+    r.capacityLimit=Number(Number(r.capacityLimit||0).toFixed(2));
+    r.statusMaster=r.statusMaster||"Exist";
+  });
+  (limasDemoData.MLK||[]).forEach(r=>{
+    const clLimit=mlkNum(r.clLimit),nclLimit=mlkNum(r.nclLimit),treasuryLimit=mlkNum(r.treasuryLine);
+    const clBade=mlkNum(r.clBade),nclBade=mlkNum(r.nclBade),treasuryBade=mlkNum(r.badeTreasuryLine);
+    if(clLimit!==null&&nclLimit!==null&&treasuryLimit!==null)r.totalLimitExisting=clLimit+nclLimit+treasuryLimit;
+    if(clBade!==null&&nclBade!==null&&treasuryBade!==null)r.totalBadeExisting=clBade+nclBade+treasuryBade;
+    if(r.masterLimitSetting===null||r.masterLimitSetting===undefined||r.masterLimitSetting==="")r.masterLimit=r.totalLimitExisting??r.masterLimit;
+  });
+  (limasDemoData.CIL||[]).forEach(r=>{
+    const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
+    if(sumEil>0)r.cil=Number(sumEil.toFixed(2));
+    if(Number(r.ic)>0&&Number(r.multiplier)>0)r.cit=Number((r.ic*r.multiplier).toFixed(2));
+  });
+  Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
+}
+
 function productApplicationsFor(type,key){
   if(type==="LPG")return lpgProductApplicationsForKey(key);
   const out=[];
@@ -1446,30 +1516,36 @@ function productApplicationsFor(type,key){
     return getProductMeta(productId)?.exposure||"—";
   };
   const transform=(productId,scope,row)=>{
-    if(productId==="NON CASH LOAN")return "EQVIDR dikonversi ke Rp Juta (/1.000.000)";
+    if(productId==="NON CASH LOAN")return "EQVIDR/BALANCE normalized to domain canonical unit";
     if(productId==="CREDIT LINE"){
       const treasuryExposureOnly=row.data?.["Bade Treasury Line"]!==undefined &&
         row.data?.["Treasury Line Total"]===undefined &&
         row.data?.["Credit Line Total"]===undefined;
       return treasuryExposureOnly
         ?"MLK Treasury exposure memakai Bade Treasury Line; bukan approved limit"
-        :"DN/LN source-native; total Commercial + Treasury membentuk Credit Line Total";
+        :"DN/LN source-native; Commercial + Treasury hierarchy forms Credit Line Total";
     }
-    return "Direct / source unit";
+    return "Direct / canonical source unit";
   };
   Object.values(productDatabase).forEach(rows=>rows.forEach(r=>(r.applied||[]).forEach(a=>{
-    if(a.limitType===type&&String(a.key)===String(key))out.push({
-      ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
-      exposureField:exposureField(r.productId,a.scope,r),transform:transform(r.productId,a.scope,r),
-      masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)),
-      bookingOffice:r.bookingOffice||"—",
-      bookingOfficeType:r.bookingOfficeType||"Needs Mapping",
-      bookingOfficeStatus:r.bookingOfficeStatus||"Needs Mapping",
-      countryExposure:r.countryExposure||a.key
-    });
+    if(a.limitType===type&&String(a.key)===String(key)){
+      const normalized=normalizeAppliedAmount(type,r.productId,a.amount,r);
+      out.push({
+        ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
+        exposureField:exposureField(r.productId,a.scope,r),transform:transform(r.productId,a.scope,r),
+        sourceUnit:normalized.sourceUnit,targetUnit:normalized.targetUnit,normalizationFactor:normalized.factor,
+        normalizedAmount:normalized.amount,
+        masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)),
+        bookingOffice:r.bookingOffice||"—",
+        bookingOfficeType:r.bookingOfficeType||"Needs Mapping",
+        bookingOfficeStatus:r.bookingOfficeStatus||"Needs Mapping",
+        countryExposure:r.countryExposure||a.key
+      });
+    }
   })));
   return out;
 }
+
 function reconciliationIssues(){
   const issues=[];
   const push=(issue)=>issues.push(issue);
@@ -1521,10 +1597,11 @@ function productContributionMap(type,key){
   const apps=type==="LPG"&&row?.segment==="TOTAL SEKTOR"
     ? lpgLeafRows().filter(x=>x.sector===row.sector).flatMap(x=>productApplicationsFor("LPG",x.key))
     : productApplicationsFor(type,key);
-  apps.forEach(a=>{const k=a.productId==='CREDIT LINE'?'CREDIT LINE|'+(a.scope||'Common'):a.productId;map[k]=(map[k]||0)+(Number(a.amount)||0);});
+  apps.forEach(a=>{const k=a.productId==='CREDIT LINE'?'CREDIT LINE|'+(a.scope||'Common'):a.productId;map[k]=(map[k]||0)+(Number(a.normalizedAmount??a.amount)||0);});
   return map;
 }
 function productContributionDetail(type,key){return Object.entries(productContributionMap(type,key)).map(([product,amount])=>({product,amount})).filter(x=>x.amount!==0);}
+cleanseMasterData();
 reportDummy=buildReportDummy(limasDemoData);
 
 
