@@ -482,7 +482,187 @@ function Detail({nav,type="Country"}){
 
 function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
-function Products({nav}){const [p,setP]=useState('CASHLOAN');const fields=productFields[p]||[];const sample=productSample[p]||{};return <Layout screen="products" onNav={nav}><Header title="Product Source & Mapping" subtitle="Seluruh source field dari workbook master_dataproduk dan mapping ke setiap limit"/><div className="page"><section className="card"><div className="head"><div><h2>{p}</h2><p>Field source lengkap • contoh data • target limit mapping</p></div></div><div className="body"><div className="tabs">{Object.keys(productFields).map(x=><button className={`tab ${x===p?'active':''}`} key={x} onClick={()=>setP(x)}>{x}</button>)}</div><div className="grid2"><div><div className="section-title">Source Fields Lengkap</div><div className="rowgrid">{fields.map(f=><React.Fragment key={f}><div>{f}</div><div>{sample[f]||'—'}</div><div style={{color:'var(--muted)'}}>Source column</div></React.Fragment>)}</div></div><div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>domains[d].products.includes(p)).map(d=><div className="mini" key={d} style={{marginBottom:8}}><b>{d}</b><div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Target: {mapTargets[d]?.[p]||'—'} • Exposure: {sourceExposure[p]||'—'}</div></div>)}<div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div></div></div></section></div></Layout>}
+const productMasterCatalog=[
+  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",target:"Country / MLK / LPG",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country diambil melalui Project Location / Country Code. Workbook mencatat kebutuhan Convert IDR."},
+  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",target:"Country / CCL / MLK / LPG",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta kebutuhan CCL berdasarkan country counterparty."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Satu tab menggabungkan Commercial Line dan Treasury Line karena berasal dari source sheet yang sama."},
+  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",target:"CCL",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Workbook menandai Investment Line sebagai pooling untuk eksposur produk/fasilitas yang belum termapping."},
+  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",target:"Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Workbook mencatat limit balik ketika Maturity Date terpenuhi."},
+  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",target:"Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; Balance masih dalam kurs asli dan perlu konversi kurs tengah NTR."}
+];
+
+const creditLineGroups={
+  "Commercial Line":productFields["COMMERCIAL LINE (CRDT)"]||[],
+  "Treasury Line":productFields["TREASURY LINE (CRDT)"]||[]
+};
+const creditLineSamples={
+  "Commercial Line":productSample["COMMERCIAL LINE (CRDT)"]||{},
+  "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
+};
+const productTabSource={
+  "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
+  "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO"
+};
+const productTabFields={
+  "CASHLOAN":productFields["CASHLOAN"]||[],
+  "NON CASH LOAN":productFields["NON CASH LOAN"]||[],
+  "Investment Line":productFields["Investment Line"]||[],
+  "BONDS":productFields["BONDS"]||[],
+  "NOSTRO":productFields["NOSTRO"]||[]
+};
+const productFieldNotes={
+  "CASHLOAN":{
+    project_location:"Country mapping berdasarkan lokasi proyek.",
+    code:"Country Code sebagai key mapping.",
+    total_limit:"Total limit rekening/fasilitas.",
+    total_bade:"Total outstanding/BADE yang digunakan sebagai exposure."
+  },
+  "NON CASH LOAN":{
+    "Swift Code":"Identifier counterparty bank.",
+    "CUSTID":"Identifier CIF/customer.",
+    "CPNM":"Nama counterparty yang digunakan untuk country judgment.",
+    "Country Code":"Country Code hasil mapping counterparty.",
+    "EQVIDR":"Nilai ekuivalen IDR untuk exposure.",
+    "BALANCE":"Saldo/transaksi outstanding yang menjadi referensi exposure."
+  },
+  "Investment Line":{
+    "Jenis Invesment Line":"Jenis fasilitas investment line.",
+    "Amount Invesment Line":"Nominal investment line.",
+    "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa":"Catatan pooling untuk fasilitas yang belum termapping."
+  },
+  "BONDS":{
+    "Issuer Country":"Negara issuer untuk country limit.",
+    "Amount Eq. IDR Juta":"Exposure ekuivalen IDR.",
+    "Maturity Date":"Tanggal maturity; workbook mencatat limit dapat kembali setelah maturity."
+  },
+  "NOSTRO":{
+    "Bank Country":"Country hasil trim Swift Code.",
+    "Balance":"Balance dalam kurs asli; workbook mencatat kebutuhan konversi menggunakan kurs tengah NTR."
+  }
+};
+
+function productMetaKey(tab,group,field){return `limas_product_field_meta_v1_${tab}||${group||"Default"}||${field}`;}
+function loadProductFieldMeta(tab,group,field,sample){
+  const key=productMetaKey(tab,group,field);
+  try{
+    const saved=window.localStorage.getItem(key);
+    if(saved)return JSON.parse(saved);
+  }catch(e){}
+  const sheet=productTabSource[tab]||tab;
+  const note=productFieldNotes[tab]?.[field]||(
+    tab==="CREDIT LINE"
+      ? `${group} field dari source sheet Credit Line (CommLine and TL).`
+      : `Field ${field} digunakan sebagai source data ${tab}.`
+  );
+  return {source:`master_dataproduk.xlsx • ${sheet}`,note};
+}
+function saveProductFieldMeta(tab,group,field,meta){
+  try{window.localStorage.setItem(productMetaKey(tab,group,field),JSON.stringify(meta));}catch(e){}
+}
+function loadProductCatalogMeta(item){
+  const key=`limas_product_catalog_v1_${item.id}`;
+  try{
+    const saved=window.localStorage.getItem(key);
+    if(saved)return JSON.parse(saved);
+  }catch(e){}
+  return {source:item.source,note:item.note};
+}
+function saveProductCatalogMeta(item,meta){
+  try{window.localStorage.setItem(`limas_product_catalog_v1_${item.id}`,JSON.stringify(meta));}catch(e){}
+}
+
+function ProductFieldTable({tab,group,fields,sample,editing}){
+  const [metas,setMetas]=useState(()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta(tab,group,f,sample[f])])));
+  const update=(f,key,value)=>setMetas(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
+  const save=()=>fields.forEach(f=>saveProductFieldMeta(tab,group,f,metas[f]));
+  React.useEffect(()=>{if(!editing)save();},[editing]);
+  return <div className="table-wrap product-field-wrap">
+    <table className="table field-table product-field-table">
+      <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+      <tbody>{fields.map(f=>{
+        const m=metas[f]||loadProductFieldMeta(tab,group,f,sample[f]);
+        return <tr key={f}>
+          <td><b>{f}</b></td>
+          <td>{sample[f]===0?0:(sample[f]||"—")}</td>
+          <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+          <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+        </tr>
+      })}</tbody>
+    </table>
+  </div>;
+}
+
+function ProductCatalog({editing,setEditing}){
+  const [items,setItems]=useState(()=>Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));
+  const update=(id,key,value)=>setItems(m=>({...m,[id]:{...(m[id]||{}),[key]:value}}));
+  const save=()=>productMasterCatalog.forEach(item=>saveProductCatalogMeta(item,items[item.id]||{}));
+  React.useEffect(()=>{if(!editing)save();},[editing]);
+  return <section className="card">
+    <div className="head">
+      <div><h2>Master Data Produk</h2><p>Master katalog product source, key, target limit, exposure field, source data dan keterangan.</p></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={()=>setEditing(false)}>Batal</button><button className="btn primary" onClick={()=>{save();setEditing(false)}}>Simpan Perubahan</button></div>}
+    </div>
+    <div className="body">
+      <div className="table-wrap">
+        <table className="table product-master-table">
+          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Dipakai oleh Limit</th><th>Exposure Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+          <tbody>{productMasterCatalog.map(item=>{
+            const m=items[item.id]||{};
+            return <tr key={item.id}>
+              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{item.target}</td><td>{item.exposure}</td>
+              <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+              <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+            </tr>
+          })}</tbody>
+        </table>
+      </div>
+      <div className="field-help">Source dan Keterangan pada katalog dapat disesuaikan tanpa mengubah struktur source field workbook.</div>
+    </div>
+  </section>;
+}
+
+function Products({nav}){
+  const [view,setView]=useState("catalog");
+  const [editing,setEditing]=useState(false);
+  const limitTabs=[
+    ["CASHLOAN","Cash Loan"],["NON CASH LOAN","Non Cash Loan"],["CREDIT LINE","Credit Line"],["Investment Line","Investment Line"],["BONDS","Bonds"],["NOSTRO","Nostro"]
+  ];
+  const activeCatalog=view==="catalog";
+  const info=productMasterCatalog.find(x=>x.id===view)||productMasterCatalog[0];
+  return <Layout screen="products" onNav={nav}>
+    <Header title="Product Source & Mapping" subtitle="Master data produk + source field + mapping + traceability berdasarkan workbook master_dataproduk"/>
+    <div className="page">
+      <ProductCatalog editing={editing} setEditing={setEditing}/>
+      {!activeCatalog&&<section className="card">
+        <div className="head">
+          <div><h2>{info.label}</h2><p>Source field lengkap • sample value • Source Data • Keterangan • mapping ke limit</p></div>
+          <div className="toolbar">
+            {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<button className="btn ghost" onClick={()=>setEditing(false)}>Selesai Edit</button>}
+          </div>
+        </div>
+        <div className="body">
+          <div className="tabs product-tabs">
+            {limitTabs.map(([id,label])=><button className={`tab ${view===id?'active':''}`} key={id} onClick={()=>{setView(id);setEditing(false)}}>{label}</button>)}
+          </div>
+          {view==="CREDIT LINE" ? <div className="credit-line-groups">
+            {Object.entries(creditLineGroups).map(([group,fields])=><section className="product-group" key={group}>
+              <div className="section-title">{group}</div>
+              <ProductFieldTable tab="CREDIT LINE" group={group} fields={fields} sample={creditLineSamples[group]} editing={editing}/>
+            </section>)}
+          </div> : <ProductFieldTable tab={view} group="" fields={productTabFields[view]||[]} sample={productSample[view]||{}} editing={editing}/>}
+          <div className="product-mapping-grid">
+            <div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>{
+              const pKey=view==="CREDIT LINE" ? "COMMERCIAL LINE (CRDT)" : view;
+              return domains[d].products.includes(pKey)||domains[d].products.includes("TREASURY LINE (CRDT)")&&view==="CREDIT LINE";
+            }).map(d=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {view==="CREDIT LINE"?(mapTargets[d]?.["COMMERCIAL LINE (CRDT)"]||mapTargets[d]?.["TREASURY LINE (CRDT)"]||"—"):mapTargets[d]?.[view]||"—"} • Exposure: {view==="CREDIT LINE"?"Commercial Line Utilisasi + Treasury Line Utilisasi":sourceExposure[view]||"—"}</div></div>)}</div>
+            <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div>
+          </div>
+        </div>
+      </section>}
+      {activeCatalog&&<section className="card"><div className="head"><div><h2>Master Data Produk</h2><p>Pilih salah satu product di katalog untuk melihat field-level source mapping yang editable.</p></div></div><div className="body"><div className="product-master-hint">Klik nama product pada katalog melalui tab di bawah untuk membuka detail.</div><div className="tabs product-tabs">{limitTabs.map(([id,label])=><button className="tab" key={id} onClick={()=>setView(id)}>{label}</button>)}</div></div></section>}
+    </div>
+  </Layout>;
+}
 
 class AppErrorBoundary extends React.Component{
   constructor(props){super(props);this.state={error:null}}
