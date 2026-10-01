@@ -371,6 +371,27 @@ function countryBookingCoverage(row){
   const apps=productApplicationsFor("Country",row.key);
   return {total:apps.reduce((a,x)=>a+(Number(x.amount)||0),0),mapped:apps.filter(x=>x.bookingOfficeType!=="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0),unmapped:apps.filter(x=>x.bookingOfficeType==="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0)};
 }
+function countryProductMonitoring(row){
+  const allocation=countryAllocationMetrics(row);
+  const apps=productApplicationsFor("Country",row.key);
+  return allocation.items.map(item=>{
+    const productApps=apps.filter(a=>a.productId===item.product);
+    const domestic=productApps.filter(a=>a.bookingOfficeType==="Domestic").reduce((s,a)=>s+(Number(a.amount)||0),0);
+    const overseas=productApps.filter(a=>a.bookingOfficeType==="Overseas").reduce((s,a)=>s+(Number(a.amount)||0),0);
+    const exposure=domestic+overseas;
+    return {
+      ...item,domesticExposure:domestic,overseasExposure:overseas,exposure,
+      domesticUtil:item.domestic?domestic/item.domestic:null,
+      overseasUtil:item.overseas?overseas/item.overseas:null,
+      productUtil:item.total?exposure/item.total:null
+    };
+  });
+}
+function countryMaxUtilization(row){
+  const metrics=countryProductMonitoring(row);
+  const countryUtil=recordLimit("Country",row)?recordExposure("Country",row)/recordLimit("Country",row):0;
+  return Math.max(countryUtil,...metrics.flatMap(x=>[x.productUtil||0,x.domesticUtil||0,x.overseasUtil||0]));
+}
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.amount)||0),0);
@@ -387,11 +408,14 @@ function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposu
 function recordStatus(type,row){
   if(String(row.dataQuality||"Normal").startsWith("Missing"))return "Data Issue";
   if(type==="Country"){
-    const coverage=countryBookingCoverage(row);
+    const coverage=countryBookingCoverage(row),a=countryAllocationMetrics(row);
     if(coverage.unmapped>0)return "Data Issue";
+    if(a.capacityDistributionGap!==null&&Math.abs(a.capacityDistributionGap)>0.01)return "Data Issue";
+    if(a.distributionGapDomestic!==null&&Math.abs(a.distributionGapDomestic)>0.01)return "Data Issue";
+    if(a.distributionGapOverseas!==null&&Math.abs(a.distributionGapOverseas)>0.01)return "Data Issue";
   }
   const u=recordUtil(type,row);
-  let maxUtil=u;
+  let maxUtil=type==="Country"?countryMaxUtilization(row):u;
   if(type==="CIL"){
     const apps=productApplicationsFor("CIL",row.key);
     const entityTotals={};
@@ -749,7 +773,11 @@ function Monitor({type,nav}){
           }</tr></thead>
           <tbody>{rows.map((r,i)=>{
             const lim=recordLimit(type,r),exp=recordExposure(type,r),u=recordUtil(type,r),st=recordStatus(type,r);
-            if(type==="Country") {const coverage=countryBookingCoverage(r),a=countryAllocationMetrics(r);return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>Capacity Domestic: {fmtReport(a.domesticCapacity)} • Overseas: {fmtReport(a.overseasCapacity)} • Product Allocated: {fmtReport(a.allocated)} • Exposure Domestic: {coverage.total?countryBookingExposure(r,"Domestic").toLocaleString("id-ID",{maximumFractionDigits:2}):"—"} • Exposure Overseas: {coverage.total?countryBookingExposure(r,"Overseas").toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td></tr>;}
+            if(type==="Country") {
+  const coverage=countryBookingCoverage(r),a=countryAllocationMetrics(r),pm=countryProductMonitoring(r);
+  const productText=pm.map(x=>`${integrationLabel(x.product)}: D ${fmtReport(x.domesticExposure)}/${fmtReport(x.domestic)} (${x.domesticUtil===null?"—":pct(x.domesticUtil)}), O ${fmtReport(x.overseasExposure)}/${fmtReport(x.overseas)} (${x.overseasUtil===null?"—":pct(x.overseasUtil)})`).join(" • ");
+  return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>Capacity D/O: {fmtReport(a.domesticCapacity)} / {fmtReport(a.overseasCapacity)} • {productText}</td></tr>;
+}
             if(type==="CCL") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(r.contractual||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
             if(type==="MLK") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{r.group}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
             if(type==="CIL") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
@@ -1215,8 +1243,8 @@ const productTabFields={
 
 const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
   p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
-  p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[])]:
-  (productFields[p.id]||[])
+  p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[]),...canonicalProductUtilizationFields]:
+  (productTabFields[p.id]||productFields[p.id]||[])
 )]]));
 
 function deriveBookingAttributes(productId,data,meta={}){
