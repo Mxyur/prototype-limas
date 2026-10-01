@@ -110,3 +110,37 @@
 @media(max-width:520px){
   .metric-grid{grid-template-columns:1fr}
 }
+
+/* Product Source & Mapping */
+.product-tabs{display:flex;gap:4px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+.product-tabs .tab{white-space:nowrap}
+.product-field-block{margin-top:4px}
+.product-field-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 10px}
+.product-field-toolbar>b,.product-field-toolbar>div>b{font-size:12px;color:var(--text)}
+.product-field-toolbar span{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+.product-field-wrap,.product-master-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+.product-field-table,.product-master-table{min-width:980px}
+.product-field-table th,.product-field-table td,.product-master-table th,.product-master-table td{vertical-align:top}
+.product-field-table td:first-child{min-width:210px}
+.product-field-table td:nth-child(2){min-width:230px;max-width:360px;overflow-wrap:anywhere}
+.product-field-table td:nth-child(3){min-width:240px}
+.product-field-table td:nth-child(4){min-width:320px}
+.product-master-table{min-width:1200px}
+.product-master-table td:first-child{min-width:150px}
+.product-master-table td:nth-child(2){min-width:180px}
+.product-master-table td:nth-child(3){min-width:220px}
+.product-master-table td:nth-child(4){min-width:180px}
+.product-master-table td:nth-child(5){min-width:190px}
+.product-master-table td:nth-child(6){min-width:250px}
+.product-master-table td:nth-child(7){min-width:360px}
+.credit-line-groups{display:flex;flex-direction:column;gap:18px}
+.product-group{padding-top:2px}
+.product-mapping-grid{display:grid;grid-template-columns:1.5fr .75fr;gap:15px;margin-top:18px}
+.field-input{min-width:220px;width:100%;height:auto;min-height:38px}
+.compact-area{min-width:260px;width:100%;min-height:72px}
+.source-text,.note-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.product-master-hint{font-size:11px;color:var(--muted);margin-bottom:12px}
+@media(max-width:900px){
+  .product-field-toolbar{align-items:flex-start;flex-direction:column}
+  .product-mapping-grid{grid-template-columns:1fr}
+}
