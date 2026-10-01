@@ -332,54 +332,70 @@ function Warning({nav}){
 }
 
 function Monitor({type,nav}){
-  const cfg={
-    Country:{title:"Country Limit Monitoring",subtitle:"Monitoring exposure per negara dengan product breakdown",total:"35,941",exp:"29,820",util:"82.9%",unit:"Rp Miliar", rows:[
-      ["CN","China","2,000","1,420","71%","Normal","CL 550 • NCL 210 • COM 70 • TRS 100 • BOND 50 • NOS 30"],
-      ["SG","Singapore","1,650","1,410","85%","Warning","CL 980 • NCL 210 • COM 80 • TRS 100 • BOND 20 • NOS 20"],
-      ["AE","UAE","500","512","102%","Breach","CL 220 • NCL 80 • COM 110 • TRS 90 • BOND 0 • NOS 12"],
-      ["AU","Australia","900","710","79%","Normal","CL 260 • NCL 120 • COM 70 • TRS 190 • BOND 50 • NOS 20"]
-    ]},
-    CCL:{title:"Counterparty / CCL Monitoring",subtitle:"Monitoring bank counterpart, CCL vs contractual limit, BMRI vs PA",total:"18,500",exp:"11,285",util:"61.0%",unit:"Rp Miliar", rows:[
-      ["ANZBAU3M","ANZ Bank","500","810","355","71%","Normal"],
-      ["CTBAAU2S","Commonwealth Bank","400","400","372","93%","Warning"],
-      ["NATAAU33","National Australia Bank","300","300","318","106%","Breach"],
-      ["FABAAE","First Abu Dhabi Bank","350","450","245","70%","Normal"]
-    ]},
-    MLK:{title:"Debtor / MLK Monitoring",subtitle:"Monitoring CIF dan Group Usaha dengan roll-up exposure",total:"76,420",exp:"62,840",util:"82.2%",unit:"Rp Miliar",rows:[
-      ["4000264485","DJARUM","DJARUM GROUP","5,818","4,021","69%","Normal"],
-      ["1000145694","ANEKA TAMBANG","ANTAM GROUP","13,280","11,580","87%","Warning"],
-      ["4000027711","MANDIRI GROUP SAMPLE","MANDIRI GROUP","9,000","9,630","107%","Breach"],
-      ["2000198372","SAMPLE DEBTOR","GROUP B","7,500","4,650","62%","Normal"]
-    ]},
-    CIL:{title:"Insurance / CIL Monitoring",subtitle:"Monitoring EIL, CIL, CIT dan nominal pertanggungan per entity",total:"107,814",exp:"84,520",util:"78.4%",unit:"Rp Juta",rows:[
-      ["INS-001","Tugu Pratama","60,093","58,300","97%","Warning","BMRI 58,300 • MTF 10,129"],
-      ["INS-002","Perisai Listrik Nasional","24,000","17,500","73%","Normal","BMRI 5,980 • PA 11,520"],
-      ["INS-003","Insurance ABC","18,000","19,450","108%","Breach","BMRI 19,450"]
-    ]},
-    LPG:{title:"Portfolio / LPG Monitoring",subtitle:"Monitoring konsentrasi Sektor × Segmen × Wilayah",total:"315,000",exp:"246,300",util:"78.2%",unit:"Rp Miliar",rows:[
-      ["BATUBARA","Corporate","Region I","65,140","37,919","58%","Normal"],
-      ["BATUBARA","Commercial","Region I","35,949","30,350","84%","Warning"],
-      ["NIKEL","Corporate","Region II","42,000","44,500","106%","Breach"],
-      ["SAWIT","Corporate","Region III","50,000","33,600","67%","Normal"]
-    ]}
-  }[type];
-  const [period,setPeriod]=useState("Agustus 2026");
-  return <Layout screen={type} onNav={nav}><Header title={cfg.title} subtitle={cfg.subtitle}/><div className="page">
-    <div className="metric-grid"><DomainKpi label="Total Limit" value={cfg.total} sub={cfg.unit}/><DomainKpi label="Total Exposure" value={cfg.exp} sub="Aggregated product"/><DomainKpi label="Utilisasi" value={cfg.util} sub="Current period" accent={parseFloat(cfg.util)>100?"red":parseFloat(cfg.util)>=80?"yellow":""}/><DomainKpi label="Early Warning" value={type==="MLK"?"9":type==="Country"?"8":"6"} sub="Objek perlu monitoring" accent="yellow"/><DomainKpi label="Breach" value={type==="MLK"?"3":type==="Country"?"2":"1"} sub="Objek melewati limit" accent="red"/></div>
-    <section className="card"><div className="head"><div><h2>Monitoring Controls</h2><p>Threshold dan period dapat difilter tanpa mengubah master limit</p></div></div><div className="body"><div className="toolbar"><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>Agustus 2026</option><option>Juli 2026</option><option>Juni 2026</option></select><select className="select"><option>All Status</option><option>Normal</option><option>Warning</option><option>Breach</option></select><select className="select"><option>All Entity</option><option>BMRI</option><option>Perusahaan Anak</option></select><button className="btn secondary">Export Excel</button></div></div></section>
-    <div className="dash-grid">
-      <section className="card"><div className="head"><div><h2>Utilisasi Overview</h2><p>Limit vs exposure</p></div></div><div className="body"><div className="detail-summary"><div className="detail-box"><div className="small">Limit</div><div className="big">{cfg.total}</div></div><div className="detail-box"><div className="small">Exposure</div><div className="big">{cfg.exp}</div></div><div className="detail-box"><div className="small">Utilisasi</div><div className="big">{cfg.util}</div></div><div className="detail-box"><div className="small">Status</div><div className="big"><Status v={parseFloat(cfg.util)>=100?"Breach":parseFloat(cfg.util)>=80?"Warning":"Normal"}/></div></div></div><div style={{marginTop:14}}><div className="progress"><span style={{width:Math.min(parseFloat(cfg.util),100)+"%"}}/></div></div></div></section>
-      <section className="card"><div className="head"><div><h2>Utilisasi Trend</h2><p>6 periode terakhir</p></div></div><div className="body"><div className="spark">{[48,55,58,66,72,79].map((v,i)=><span key={i} className={i>3?"active":""} style={{height:v*0.75}}/>)}</div></div></section>
+  const rows=limasDemoData[type]||[];
+  const totalLimit=rows.reduce((a,r)=>a+recordLimit(type,r),0);
+  const totalExposure=rows.reduce((a,r)=>a+recordExposure(type,r),0);
+  const overallUtil=totalLimit?totalExposure/totalLimit:0;
+  const statusCounts={Normal:rows.filter(r=>recordStatus(type,r)==="Normal").length,Warning:rows.filter(r=>recordStatus(type,r)==="Warning").length,Breach:rows.filter(r=>recordStatus(type,r)==="Breach").length,"Data Issue":rows.filter(r=>recordStatus(type,r)==="Data Issue").length};
+  const titleMap={Country:"Country Limit Monitoring",CCL:"Counterparty / CCL Monitoring",MLK:"Debtor / MLK Monitoring",CIL:"Insurance / CIL Monitoring",LPG:"Portfolio / LPG Monitoring"};
+  const subtitleMap={Country:"Master Country Limit + integrated product utilization.",CCL:"Master CCL / Contractual Limit + integrated counterparty product utilization.",MLK:"Master Limit per CIF/group + integrated CL, NCL and Treasury Line exposure.",CIL:"Master IC/CIT/EIL/CIL + integrated Nominal Pertanggungan.",LPG:"Master limit Sector × Segment × Region + integrated CL/NCL outstanding."};
+  const unitMap={Country:"Rp Juta",CCL:"Rp Miliar",MLK:"Rp Juta",CIL:"Rp Juta",LPG:"Rp Juta"};
+  const pct=v=>(v*100).toFixed(2)+"%";
+  const productsText=r=>{
+    if(type==="CIL") return Object.entries(r.entities||{}).map(([e,v])=>e+" "+Number(v.nominal||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ");
+    return Object.entries(r.products||{}).map(([p,v])=>demoProductLabel(p)+": "+Number(v||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ")||"Tidak ada exposure";
+  };
+  return <Layout screen={type} onNav={nav}>
+    <Header title={titleMap[type]} subtitle={subtitleMap[type]}/>
+    <div className="page">
+      <div className="metric-grid">
+        <DomainKpi label="Total Master Limit" value={totalLimit.toLocaleString("id-ID",{maximumFractionDigits:2})} sub={unitMap[type]}/>
+        <DomainKpi label="Integrated Exposure" value={totalExposure.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Product utilization"/>
+        <DomainKpi label="Utilisasi" value={pct(overallUtil)} sub="Exposure / Master Limit" accent={overallUtil>=1?"red":overallUtil>=0.8?"yellow":""}/>
+        <DomainKpi label="Early Warning" value={statusCounts.Warning} sub="80%–<100%" accent="yellow"/>
+        <DomainKpi label="Breach" value={statusCounts.Breach} sub="≥100%" accent="red"/>
+      </div>
+      <section className="card">
+        <div className="head"><div><h2>Data Lineage</h2><p>Angka monitoring berasal dari master limit dan product utilization yang sama dengan report.</p></div><span className="chip blue">Master → Integration → Monitoring</span></div>
+        <div className="body"><div className="integration-chip-grid">
+          <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">{domainDataContract[type].masterDescription}</div></div>
+          <div className="mini integration-chip"><b>2. Product Universe</b><div className="muted-small">{(domainIntegrationProducts[type]||[]).map(integrationLabel).join(" • ")}</div></div>
+          <div className="mini integration-chip"><b>3. Utilization Inbound</b><div className="muted-small">Source record → target key → aggregation → exposure</div></div>
+          <div className="mini integration-chip"><b>4. Monitoring Output</b><div className="muted-small">Utilization + remaining + threshold + EWS/Breach</div></div>
+        </div></div>
+      </section>
+      <section className="card">
+        <div className="head"><div><h2>Monitoring Detail</h2><p>Limit, exposure dan product contribution berasal dari canonical demo data.</p></div></div>
+        <div className="body"><div className="table-wrap"><table className="table">
+          <thead><tr>{
+            type==="Country"?<><th>Country Code</th><th>Country</th><th>Master Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="CCL"?<><th>Swift</th><th>Bank</th><th>CCL</th><th>Contractual</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="MLK"?<><th>CIF</th><th>Debitur</th><th>Group</th><th>Master Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="CIL"?<><th>Insurance</th><th>Nama</th><th>CIL</th><th>Nominal Pertanggungan</th><th>Utilisasi CIL</th><th>Status</th><th>Entity Contribution</th></>:
+            <><th>Sektor</th><th>Segmen</th><th>Region</th><th>Master Limit</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>
+          }</tr></thead>
+          <tbody>{rows.map((r,i)=>{
+            const lim=recordLimit(type,r),exp=recordExposure(type,r),u=recordUtil(type,r),st=recordStatus(type,r);
+            if(type==="Country") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            if(type==="CCL") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(r.contractual||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            if(type==="MLK") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{r.group}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            if(type==="CIL") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            return <tr key={i}><td>{r.sector}</td><td>{r.segment}</td><td>{r.region}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+          })}</tbody>
+        </table></div></div>
+      </section>
+      <section className="card">
+        <div className="head"><div><h2>Reconciliation</h2><p>Exposure harus sama dengan penjumlahan contribution source yang terhubung.</p></div></div>
+        <div className="body"><div className="metric-grid">
+          <DomainKpi label="Records" value={rows.length} sub="Master objects"/>
+          <DomainKpi label="Normal" value={statusCounts.Normal} sub="Within threshold"/>
+          <DomainKpi label="Warning" value={statusCounts.Warning} sub="Needs monitoring" accent="yellow"/>
+          <DomainKpi label="Breach" value={statusCounts.Breach} sub="Above master limit" accent="red"/>
+          <DomainKpi label="Data Issue" value={statusCounts["Data Issue"]} sub="Mapping / master quality"/>
+        </div></div>
+      </section>
     </div>
-    <section className="card"><div className="head"><div><h2>{type==="Country"?"Country":type==="CCL"?"Counterparty":type==="MLK"?"Debtor / Group":type==="CIL"?"Insurance / Entity":"Sector / Segment / Region"} Detail</h2><p>Drill-down tersedia dari key ke product/exposure detail</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead>{type==="Country"?<tr><th>Country Code</th><th>Country</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Exposure</th><th>Detail</th></tr>:type==="CCL"?<tr><th>Swift</th><th>Bank</th><th>CCL</th><th>Contractual</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr>:type==="MLK"?<tr><th>CIF</th><th>Debitur</th><th>Group</th><th>MLK</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr>:type==="CIL"?<tr><th>Insurance</th><th>Nama</th><th>EIL/CIL</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Entity / Product</th><th>Detail</th></tr>:<tr><th>Sektor</th><th>Segmen</th><th>Region</th><th>Limit</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr>}</thead><tbody>
-      {cfg.rows.map((r,i)=> type==="Country"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><Status v={r[5]}/></td><td style={{fontSize:10}}>{r[6]}</td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      : type==="CCL"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td><Status v={r[6]}/></td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      : type==="MLK"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td><Status v={r[6]}/></td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      : type==="CIL"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><Status v={r[5]}/></td><td>{r[6]}</td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      :<tr key={i}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td><Status v={r[6]}/></td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:`${r[0]}|${r[1]}|${r[2]}`})}>Detail</button></td></tr>)}
-      </tbody></table></div></div></section>
-    <section className="card"><div className="head"><div><h2>Product Contribution</h2><p>Kontribusi exposure terhadap utilization {type}</p></div><button className="btn secondary" onClick={()=>nav("products")}>Buka Product Mapping</button></div><div className="body"><div className="heatmap">{(type==="Country"?["Cash Loan","NCL","Commercial","Treasury","Bond","Nostro"]:type==="CCL"?["Bank Loan","NCL","Commercial","Treasury"]:type==="MLK"?["Cash Loan","NCL","Treasury Line"]:type==="CIL"?["Nominal Pertanggungan"]:["Cash Loan","Non Cash Loan"]).map((p,i)=><div className={`heat ${i===2?"warn":i===3?"mid":"low"}`} key={p}><div>{p}</div><div style={{fontSize:18,marginTop:8}}>{[34,18,14,20,7,7][i]||52}%</div></div>)}</div></div></section>
-  </div></Layout>
+  </Layout>;
 }
 
 function Setup({nav,setSel}){
