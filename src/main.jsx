@@ -22,7 +22,7 @@ const integrationTargets={
   Country:{
     "CASHLOAN":"Country Exposure = code; Booking Office = nm_cab; Domestic/Overseas = derived from booking-office reference",
     "NON CASH LOAN":"Country Exposure = Country Code; Booking Office source is not present in current schema; Domestic/Overseas requires reference/source",
-    "CREDIT LINE":"Country Exposure = Code / Negara; Booking Office source is not present in current schema; Domestic/Overseas requires reference/source",
+    "CREDIT LINE":"Country Exposure = Code / Negara; Domestic = Commercial DN + Treasury DN; Overseas = Commercial LN + Treasury LN; no Booking Office enrichment required",
     "BONDS":"Country Exposure = Issuer Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference",
     "NOSTRO":"Country Exposure = Bank Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference"
 },
@@ -1213,7 +1213,7 @@ function sourceExposure(p){return getProductMeta(p)?.exposure||"—"}
 const productMasterCatalog=[
   {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country Exposure memakai field code/Country Code pada source. Booking Office memakai nm_cab; Domestic/Overseas adalah derived classification dari kantor pembukuan, bukan source field baru."},
   {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Country Exposure memakai Country Code. Untuk kebutuhan Domestic/Overseas, LIMAS menambahkan Business Enrichment Booking Office + Booking Office Type sebagai reference layer karena source NCL belum menyediakan kantor pembukuan. Nilai tidak boleh diinfer dari Country Code."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring. Country mapping memakai Code/Negara. Untuk kebutuhan Domestic/Overseas, LIMAS menambahkan Business Enrichment Booking Office + Booking Office Type sebagai reference layer karena source Credit Line belum menyediakan kantor pembukuan."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Credit Line Total Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Credit Line adalah agregasi Commercial Line + Treasury Line. Source sudah memisahkan Domestic (DN) dan Overseas (LN) pada masing-masing komponen, sehingga Domestic/Overseas tidak memerlukan Business Enrichment Booking Office. Credit Line Total = Commercial Line + Treasury Line; Domestic = Commercial DN + Treasury DN; Overseas = Commercial LN + Treasury LN."},
   {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur yang belum termapping. Tidak termasuk linked product Country saat ini; source field tetap mengikuti Investment Line."},
   {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country Exposure memakai Issuer Country. Jika Domestic/Overseas diperlukan, Branch adalah source field kantor pembukuan; Branch tidak boleh diganti dengan Issuer Country dan tidak perlu dibuat field Booking Office baru."},
   {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country Exposure memakai Bank Country. Jika Domestic/Overseas diperlukan, Branch adalah source field kantor pembukuan; tidak membuat field Booking Office baru. Balance masih kurs asli dan perlu konversi kurs tengah NTR."},
@@ -1223,7 +1223,7 @@ const productMasterCatalog=[
 const productBusinessMapping={
   "CASHLOAN":{countryExposureField:"code",countryExposureLabel:"Country Code",bookingOfficeField:"nm_cab",bookingOfficeLabel:"nm_cab",exposureField:"total_bade",exposureLabel:"Total BADE",limitSource:"Country master: Product Distribution / CASHLOAN / Domestic + Overseas Limit"},
   "NON CASH LOAN":{countryExposureField:"Country Code",countryExposureLabel:"Country Code",bookingOfficeField:"Booking Office",bookingOfficeLabel:"Business enrichment / reference",exposureField:"EQVIDR / BALANCE",exposureLabel:"EQVIDR / BALANCE",limitSource:"Country master: Product Distribution / NON CASH LOAN / Domestic + Overseas Limit"},
-  "CREDIT LINE":{countryExposureField:"Code",countryExposureLabel:"Code / Negara",bookingOfficeField:"Booking Office",bookingOfficeLabel:"Business enrichment / reference",exposureField:"Comm Line Total Utilisasi / Bade Treasury Line",exposureLabel:"Commercial / Treasury utilization",limitSource:"Country master: Product Distribution / CREDIT LINE / Domestic + Overseas Limit"},
+  "CREDIT LINE":{countryExposureField:"Code",countryExposureLabel:"Code / Negara",bookingOfficeField:null,bookingOfficeLabel:"Tidak diperlukan untuk klasifikasi Domestic/Overseas",exposureField:"Credit Line Total Utilisasi",exposureLabel:"Commercial Line + Treasury Line",limitSource:"Country master: Product Distribution / CREDIT LINE / Domestic + Overseas Limit"},
   "BONDS":{countryExposureField:"Issuer Country",countryExposureLabel:"Issuer Country",bookingOfficeField:"Branch",bookingOfficeLabel:"Branch",exposureField:"Amount Eq. IDR Juta",exposureLabel:"Amount Eq. IDR Juta",limitSource:"Country master: Product Distribution / BONDS / Domestic + Overseas Limit"},
   "NOSTRO":{countryExposureField:"Bank Country",countryExposureLabel:"Bank Country",bookingOfficeField:"Branch",bookingOfficeLabel:"Branch",exposureField:"Balance",exposureLabel:"Balance",limitSource:"Country master: Product Distribution / NOSTRO / Domestic + Overseas Limit"},
   "Investment Line":{countryExposureField:null,countryExposureLabel:"Tidak menjadi Country-linked product saat ini",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia / tidak digunakan",exposureField:"Amount Invesment Line",exposureLabel:"Amount Invesment Line",limitSource:"Investment Line source / scoped; tidak menjadi Country master allocation"},
@@ -1231,11 +1231,9 @@ const productBusinessMapping={
 };
 const productBusinessEnrichment={
   "NON CASH LOAN":["Booking Office","Booking Office Type"],
-  "CREDIT LINE":["Booking Office","Booking Office Type"]
 };
 const productBusinessEnrichmentNote={
   "NON CASH LOAN":"Field enrichment LIMAS karena source NCL belum menyediakan kantor pembukuan. Nilai wajib diisi dari reference/mapping yang disepakati; tidak diinfer dari Country Code, Country Name, Swift Code, atau counterparty.",
-  "CREDIT LINE":"Field enrichment LIMAS karena source Credit Line belum menyediakan kantor pembukuan. Nilai wajib diisi dari reference/mapping yang disepakati; tidak diinfer dari Code, Negara, Swift Code, atau nama bank."
 };
 const productBusinessMappingLabel=(productId,kind)=>{
   // Display labels use the canonical LIMAS business vocabulary; source field names are never renamed.
@@ -1271,7 +1269,7 @@ const productTabFields={
 
 const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
   p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
-  p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[])]:
+  p.id==='CREDIT LINE'?creditLineCanonicalFields.map(x=>x.key):
   (productTabFields[p.id]||productFields[p.id]||[])
 )]]));
 
@@ -1480,7 +1478,51 @@ const creditLineFields=[...new Set(creditLineGroups["Commercial Line"])];
 const creditLineCanonicalFields=[];
 const creditLineTreasuryOnly=new Set(["Treasury DN","Treasury DN Utilisasi","Treasury LN","Treasury LN Utilisasi","Treasury Line Total","Treasury Line Total Utilisasi","TDN","TDN Utilisasi","TLN","TLN Utilisasi","Treasury Line","Total Utilisasi","CDN","CDN Utilisasi","CLN","CLN Utilisasi"]);
 const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN","Comm LN Utilisasi","Comm Line Total","Comm Line Total Utilisasi"]);
-const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
+const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card"]);
+const creditLineCanonicalFields=[
+  {key:"No",label:"No",source:"No",group:"Common"},
+  {key:"Nama",label:"Nama",source:"Nama",group:"Common"},
+  {key:"Swift Code",label:"Swift Code",source:"Swift Code",group:"Common"},
+  {key:"Swift Code Vlookup",label:"Swift Code Vlookup",source:"Swift Code Vlookup",group:"Common"},
+  {key:"Code",label:"Code",source:"Code",group:"Common"},
+  {key:"Aging Schedule RM",label:"Aging Schedule RM",source:"Aging Schedule RM",group:"Common"},
+  {key:"Negara",label:"Negara",source:"Negara",group:"Common"},
+  {key:"Bank",label:"Bank",source:"Bank",group:"Common"},
+  {key:"RM",label:"RM",source:"RM",group:"Common"},
+  {key:"Dept.",label:"Dept.",source:"Dept.",group:"Common"},
+  {key:"BMFIR",label:"BMFIR",source:"BMFIR",group:"Common"},
+  {key:"Fitch",label:"Fitch",source:"Fitch",group:"Common"},
+  {key:"Moody's",label:"Moody's",source:"Moody's",group:"Common"},
+  {key:"S&P",label:"S&P",source:"S&P",group:"Common"},
+  {key:"Commercial Line Domestic Limit",label:"Commercial Line • Domestic Limit",source:"Comm DN",group:"Commercial Line"},
+  {key:"Commercial Line Domestic Utilization",label:"Commercial Line • Domestic Utilization",source:"Comm DN Utilisasi",group:"Commercial Line"},
+  {key:"Commercial Line Overseas Limit",label:"Commercial Line • Overseas Limit",source:"Comm LN",group:"Commercial Line"},
+  {key:"Commercial Line Overseas Utilization",label:"Commercial Line • Overseas Utilization",source:"Comm LN Utilisasi",group:"Commercial Line"},
+  {key:"Commercial Line Total Limit",label:"Commercial Line • Total Limit",source:"Comm Line Total",group:"Commercial Line"},
+  {key:"Commercial Line Total Utilization",label:"Commercial Line • Total Utilization",source:"Comm Line Total Utilisasi",group:"Commercial Line"},
+  {key:"Treasury Line Domestic Limit",label:"Treasury Line • Domestic Limit",source:"Treasury DN",group:"Treasury Line"},
+  {key:"Treasury Line Domestic Utilization",label:"Treasury Line • Domestic Utilization",source:"Treasury DN Utilisasi",group:"Treasury Line"},
+  {key:"Treasury Line Overseas Limit",label:"Treasury Line • Overseas Limit",source:"Treasury LN",group:"Treasury Line"},
+  {key:"Treasury Line Overseas Utilization",label:"Treasury Line • Overseas Utilization",source:"Treasury LN Utilisasi",group:"Treasury Line"},
+  {key:"Treasury Line Total Limit",label:"Treasury Line • Total Limit",source:"Treasury Line Total",group:"Treasury Line"},
+  {key:"Treasury Line Total Utilization",label:"Treasury Line • Total Utilization",source:"Treasury Line Total Utilisasi",group:"Treasury Line"},
+  {key:"Credit Line Total Limit",label:"Credit Line • Total Limit",source:"Credit Line Total",group:"Credit Line"},
+  {key:"Credit Line Total Utilization",label:"Credit Line • Total Utilization",source:"Credit Line Total Utilisasi",group:"Credit Line"}
+];
+const creditLineCanonicalBySource=Object.fromEntries(creditLineCanonicalFields.map(x=>[x.source,x]));
+const creditLineCanonicalValue=(data,key)=>{
+  const map={
+    "Commercial Line Domestic Limit":"Comm DN","Commercial Line Domestic Utilization":"Comm DN Utilisasi",
+    "Commercial Line Overseas Limit":"Comm LN","Commercial Line Overseas Utilization":"Comm LN Utilisasi",
+    "Commercial Line Total Limit":"Comm Line Total","Commercial Line Total Utilization":"Comm Line Total Utilisasi",
+    "Treasury Line Domestic Limit":"Treasury DN","Treasury Line Domestic Utilization":"Treasury DN Utilisasi",
+    "Treasury Line Overseas Limit":"Treasury LN","Treasury Line Overseas Utilization":"Treasury LN Utilisasi",
+    "Treasury Line Total Limit":"Treasury Line Total","Treasury Line Total Utilization":"Treasury Line Total Utilisasi",
+    "Credit Line Total Limit":"Credit Line Total","Credit Line Total Utilization":"Credit Line Total Utilisasi"
+  };
+  const source=map[key]||key;
+  return data?.[source]===0?0:(data?.[source]||"—");
+};
 
 
 // Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
@@ -1595,39 +1637,33 @@ function ProductDictionaryBusinessMapping({tab}){
 }
 
 function CreditLineFieldTable(){
-  const fields=creditLineFields;
+  const fields=creditLineCanonicalFields;
   const [editing,setEditing]=useState(false);
-  const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta("CREDIT LINE","Combined",f)]));
+  const buildDraft=()=>Object.fromEntries(fields.map(f=>[f.key,loadProductFieldMeta("CREDIT LINE",f.group,f.key)]));
   const [draft,setDraft]=useState(buildDraft);
   React.useEffect(()=>{setEditing(false);setDraft(buildDraft())},[]);
   const update=(f,key,value)=>setDraft(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
-  const save=()=>{fields.forEach(f=>saveProductFieldMeta("CREDIT LINE","Combined",f,draft[f]||{}));setEditing(false)};
+  const save=()=>{fields.forEach(f=>saveProductFieldMeta("CREDIT LINE",f.group,f.key,draft[f.key]||{}));setEditing(false)};
   const cancel=()=>{setDraft(buildDraft());setEditing(false)};
-  const sample=(f,side)=>{
-    const source=creditLineSamples["Commercial Line"]||{};
-    const value=source[f];
-    if(creditLineTreasuryOnly.has(f)) return side==="treasury" ? (value===0?0:(value||"—")) : "—";
-    if(creditLineCommercialOnly.has(f)) return side==="commercial" ? (value===0?0:(value||"—")) : "—";
-    if(creditLineCommonOnly.has(f)) return side==="commercial" ? (value===0?0:(value||"—")) : "—";
-    if(side==="commercial") return value===0?0:(value||"—");
-    return "—";
+  const sample=(f)=>{
+    const source=productSample["COMMERCIAL LINE (CRDT)"]||{};
+    return creditLineCanonicalValue(source,f.key);
   };
   return <div className="product-field-block">
     <div className="product-field-toolbar">
-      <div><b>Data Dictionary — Credit Line</b><span>Source fields dipertahankan apa adanya. Standard business mapping ditampilkan terpisah dari source schema.</span></div>
+      <div><b>Data Dictionary — Credit Line</b><span>Credit Line = Commercial Line + Treasury Line. Domestic/Overseas sudah tersedia dari DN/LN pada source; tidak dibuat mapping Booking Office tambahan.</span></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <ProductDictionaryBusinessMapping tab="CREDIT LINE"/>
     <div className="table-wrap product-field-wrap">
       <table className="table field-table product-credit-table">
-        <thead><tr><th>Field</th><th>Commercial Line</th><th>Treasury Line</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+        <thead><tr><th>Business Field</th><th>Sample Value</th><th>Source Field</th><th>Keterangan</th></tr></thead>
         <tbody>{fields.map(f=>{
           const m=draft[f]||{};
           return <tr key={f}>
-            <td><b>{f}</b></td>
-            <td>{sample(f,"commercial")}</td>
-            <td>{sample(f,"treasury")}</td>
-            <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+            <td><b>{f.label}</b></td>
+            <td>{sample(f)}</td>
+            <td>{f.source}</td>
             <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
           </tr>
         })}</tbody>
@@ -1729,6 +1765,12 @@ function productExposureAmount(productId,r){
 function productBookingSplit(view,rows){
   const split={Domestic:0,Overseas:0,"Needs Mapping":0};
   rows.forEach(r=>{
+    if(view==="CREDIT LINE"){
+      const n=v=>Number(String(v??"").replace(/,/g,""))||0;
+      split.Domestic += n(r.data?.["Comm DN Utilisasi"]) + n(r.data?.["Treasury DN Utilisasi"]);
+      split.Overseas += n(r.data?.["Comm LN Utilisasi"]) + n(r.data?.["Treasury LN Utilisasi"]);
+      return;
+    }
     const amount=productExposureAmount(view,r);
     const type=["Domestic","Overseas"].includes(r.bookingOfficeType)?r.bookingOfficeType:"Needs Mapping";
     split[type]+=amount;
@@ -1767,25 +1809,34 @@ function ProductBookingClassification({view,rows}){
           <tbody>{rows.map(r=>{
             const amount=productExposureAmount(view,r);
             const type=r.bookingOfficeType==="Domestic"||r.bookingOfficeType==="Overseas"?r.bookingOfficeType:"Needs Mapping";
+            const creditSplit=view==="CREDIT LINE"?{
+              domestic:(Number(String(r.data?.["Comm DN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(r.data?.["Treasury DN Utilisasi"]??"").replace(/,/g,""))||0),
+              overseas:(Number(String(r.data?.["Comm LN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(r.data?.["Treasury LN Utilisasi"]??"").replace(/,/g,""))||0)
+            }:null;
             return <tr key={"booking-"+r.recordId}>
               <td className="key">{r.recordId}</td>
               <td>{r.countryExposure||"—"}</td>
               <td>{r.bookingOffice||"—"}</td>
               <td><Status v={type}/></td>
-              <td>{type==="Domestic"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td>
-              <td>{type==="Overseas"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td>
-              <td>{type==="Needs Mapping"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td>
+              <td>{view==="CREDIT LINE"?(creditSplit.domestic||0).toLocaleString("id-ID",{maximumFractionDigits:2}):(type==="Domestic"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
+              <td>{view==="CREDIT LINE"?(creditSplit.overseas||0).toLocaleString("id-ID",{maximumFractionDigits:2}):(type==="Overseas"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
+              <td>{view==="CREDIT LINE"?"—":(type==="Needs Mapping"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
             </tr>;
           })}</tbody>
         </table>
       </div>
       <div className="field-help">
-        Exposure basis: <b>{exposureField}</b>. Untuk Non Cash Loan dan Credit Line, Booking Office/Type adalah <b>Business Enrichment demo</b> karena source asli belum menyediakan kantor pembukuan. Untuk Bonds/Nostro, <b>Branch</b> dipakai sebagai Booking Office dan demo mapping Domestic/Overseas diberikan dari reference. Seluruh nilai kantor pada demo ini adalah data contoh untuk menunjukkan mekanisme klasifikasi.
+        Exposure basis: <b>{exposureField}</b>. Untuk Credit Line, Domestic/Overseas berasal langsung dari source: <b>DN = Domestic</b> dan <b>LN = Overseas</b>, baik pada Commercial Line maupun Treasury Line. Tidak ada Business Enrichment Booking Office untuk Credit Line. Untuk Non Cash Loan, Booking Office/Type tetap Business Enrichment karena source belum menyediakan atribut tersebut. Bonds/Nostro menggunakan source <b>Branch</b> sebagai Booking Office.
       </div>
     </div>
   </section>;
 }
 
+function productDatabaseDisplayValue(view,r,f){
+  if(view!=="CREDIT LINE") return canonicalProductUtilizationFields.includes(f)?(f==="Booking Office"?r.bookingOffice||"—":f==="Booking Office Type"?<Status v={r.bookingOfficeType||"Needs Mapping"}/>:f==="Booking Office Status"?<Status v={r.bookingOfficeStatus||"Needs Mapping"}/>:r.countryExposure||"—"):(r.data[f]===0?0:(r.data[f]||"—"));
+  const field=creditLineCanonicalFields.find(x=>x.key===f);
+  return field?creditLineCanonicalValue(r.data,f):(r.data[f]===0?0:(r.data[f]||"—"));
+}
 function ProductDatabaseTable({view}){
   const rows=productDatabase[view]||[];
   const fields=productSchemaFields[view]||[];
@@ -1802,7 +1853,7 @@ function ProductDatabaseTable({view}){
         <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
         <tbody>{rows.map(r=><tr key={r.recordId}>
           <td className="key">{r.recordId}</td>
-          {fields.map(f=><td key={f}>{canonicalProductUtilizationFields.includes(f)?(f==="Booking Office"?r.bookingOffice||"—":f==="Booking Office Type"?<Status v={r.bookingOfficeType||"Needs Mapping"}/>:f==="Booking Office Status"?<Status v={r.bookingOfficeStatus||"Needs Mapping"}/>:r.countryExposure||"—"):(r.data[f]===0?0:(r.data[f]||"—"))}</td>)}
+          {fields.map(f=><td key={f}>{productDatabaseDisplayValue(view,r,f)}</td>)}
           <td>{r.sourceSystem}</td>
 
           <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=><div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}{a.scope?" • "+a.scope:""}</div>):<span className="muted-small">No direct limit mapping</span>}</td><td>{["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified?<span className="muted-small">LPG derived • {lpgProductAttribute(r,"ecosystem_lpg")} / {lpgProductAttribute(r,"segmen_lpg")} / {lpgProductAttribute(r,"region_lpg")||"Region belum diisi"}</span>:<span className="muted-small">—</span>}</td>
