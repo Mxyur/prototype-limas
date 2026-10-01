@@ -1513,6 +1513,14 @@ function cleanseMasterData(){
     if(sumEil>0)r.cil=Number(sumEil.toFixed(2));
     if(Number(r.ic)>0&&Number(r.multiplier)>0)r.cit=Number((r.ic*r.multiplier).toFixed(2));
   });
+  (limasDemoData.LPG||[]).forEach(r=>{
+    const bankwide=Number(r.limits?.Bankwide)||0;
+    const regionValues=LPG_REGIONAL_SCOPES.map(s=>r.limits?.[s]).filter(v=>v!==undefined&&v!==null).map(Number);
+    if(r.limits&&regionValues.length===LPG_REGIONAL_SCOPES.length&&r.limits["KP + OVS"]!==undefined){
+      const regional=regionValues.reduce((a,v)=>a+(Number(v)||0),0);
+      r.limits["KP + OVS"]=Number((bankwide-regional).toFixed(2));
+    }
+  });
   Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
 }
 
@@ -1606,17 +1614,12 @@ function canonicalExceptions(){
     }
   }));
   reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>rows.push({status:"Data Issue",domain:x.limitType,key:x.key,object:x.object,limit:"—",exposure:x.amount,util:0,threshold:"—",detail:x.issueType+" • "+x.detail+" • "+x.recordId}));
-  canonicalProductQualityIssues().forEach(x=>rows.push({
-    status:"Data Issue",
-    domain:x.limitType||"Product Database",
-    key:x.key||x.recordId,
-    object:x.productId,
-    limit:"—",
-    exposure:0,
-    util:0,
-    threshold:"—",
-    detail:x.type+" • "+x.detail+" • "+x.recordId
-  }));
+  const existingExceptionKeys=new Set(rows.map(x=>[x.domain,x.key,x.detail].join("|")));
+  canonicalProductQualityIssues().forEach(x=>{
+    const item={status:"Data Issue",domain:x.limitType||"Product Database",key:x.key||x.recordId,object:x.productId,limit:"—",exposure:0,util:0,threshold:"—",detail:x.type+" • "+x.detail+" • "+x.recordId};
+    const k=[item.domain,item.key,item.detail].join("|");
+    if(!existingExceptionKeys.has(k)){rows.push(item);existingExceptionKeys.add(k);}
+  });
   return rows;
 }
 function productContributionMap(type,key){
@@ -1687,6 +1690,15 @@ function masterCanonicalQualityIssues(){
         if(Math.abs(Number(r.cil||0)-sumEil)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CIL_EIL_MISMATCH",detail:"CIL ≠ sum of EIL."});
         if(Math.abs(Number(r.cit||0)-(Number(r.ic||0)*Number(r.multiplier||0)))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CIT_FORMULA_MISMATCH",detail:"CIT ≠ IC × Multiplier."});
       }
+      if(type==="LPG"){
+        const limits=r.limits||{};
+        const hasAll=LPG_REGIONAL_SCOPES.every(scope=>limits[scope]!==undefined&&limits[scope]!==null);
+        if(hasAll&&limits["Bankwide"]!==undefined&&limits["KP + OVS"]!==undefined){
+          const regional=LPG_REGIONAL_SCOPES.reduce((a,scope)=>a+(Number(limits[scope])||0),0);
+          const total=regional+(Number(limits["KP + OVS"])||0);
+          if(Math.abs(Number(limits.Bankwide)-total)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_MISMATCH",detail:"Bankwide ≠ Regional scopes + KP + OVS."});
+        }
+      }
     });
   });
   return issues;
@@ -1694,7 +1706,9 @@ function masterCanonicalQualityIssues(){
 function canonicalPipelineControls(){
   const masterIssues=masterCanonicalQualityIssues();
   const productIssues=canonicalProductQualityIssues();
-  const reconIssues=[...reconciliationIssues().filter(x=>x.status==="Data Issue"),...canonicalProductQualityIssues()];
+  const rawRecon=[...reconciliationIssues().filter(x=>x.status==="Data Issue"),...canonicalProductQualityIssues()];
+  const reconSeen=new Set();
+  const reconIssues=rawRecon.filter(x=>{const k=[x.issueType||x.type,x.productId||"",x.recordId||"",x.limitType||x.domain||"",x.key||""].join("|");if(reconSeen.has(k))return false;reconSeen.add(k);return true;});
   return [
     {layer:"1. Master Limit",status:masterIssues.length?"Data Issue":"Normal",count:masterIssues.length,detail:masterIssues.length?masterIssues.slice(0,3).map(x=>x.type+" • "+(x.domain||"")).join(" ; "):"Master keys, capacity/product allocation and master formulas reconcile."},
     {layer:"2. Product Dictionary",status:"Normal",count:0,detail:"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
