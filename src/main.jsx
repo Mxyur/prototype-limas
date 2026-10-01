@@ -36,7 +36,12 @@ const integrationTargets={
  */
 function getMasterSections(type){
   const s=domains[type]?.sections||{};
-  if(type==="Country") return {"Identitas":s["Identitas"]||[],"Limit & Gap":s["Limit & Gap"]||[]};
+  if(type==="Country") return {
+    "Identitas":s["Identitas"]||[],
+    "Capacity":s["Capacity"]||[],
+    "Product Allocation":s["Product Allocation"]||[],
+    "Limit & Gap":s["Limit & Gap"]||[]
+  };
   if(type==="CCL") return {"Bank Profile":s["Bank Profile"]||[],"Risk & Capacity":s["Risk & Capacity"]||[],"Limit":(s["Limit"]||[]).filter(([f])=>f!=="Utilisasi Capacity")};
   if(type==="MLK") return {"Profil Debitur":s["Profil Debitur"]||[],"Risk & Regulatory":s["Risk & Regulatory"]||[],"Financial & Capacity":s["Financial & Capacity"]||[],"Product Limit & Exposure":(s["Product Limit & Exposure"]||[]).filter(([f])=>!String(f).toLowerCase().includes("bade")),"Master Limit":s["Master Limit"]||[]};
   if(type==="CIL") return {
@@ -64,7 +69,7 @@ const domainDataContract={
     masterObject:"Country",
     linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"],
     utilizationGrain:"Country Code + Periode",
-    masterDescription:"Identitas country + approved Country Limit + adjustment/final limit."
+    masterDescription:"Country capacity limit + product allocation split Domestic/Overseas + adjustment/final limit. Domestic/Overseas is determined by Booking Office Type at product utilization level."
   },
   CCL:{
     masterKey:"Kode Bank / Swift Code",
@@ -236,12 +241,12 @@ function lpgBankwideReconciliation(row){
 
 const limasDemoData={
   Country:[
-    {key:"AE",name:"United Arab Emirates",statusMaster:"Exist",masterLimit:35941.00087486457,formulasi:"New",diputus:"New",dataQuality:"Normal"},
-    {key:"AU",name:"Australia",statusMaster:"Exist",masterLimit:41718.775509510284,formulasi:510,diputus:565990,dataQuality:"Normal"},
-    {key:"AT",name:"Austria",statusMaster:"Exist",masterLimit:35259.186470317814,formulasi:300,diputus:509391,dataQuality:"Normal"},
-    {key:"BE",name:"Belgium",statusMaster:"Exist",masterLimit:43116.7740055139,formulasi:250,diputus:396193,dataQuality:"Normal"},
-    {key:"CN",name:"China",statusMaster:"Exist",masterLimit:260032.3771028455,formulasi:"New",diputus:"New",dataQuality:"Normal"},
-    {key:"HK",name:"Hong Kong",statusMaster:"Exist",masterLimit:40000,formulasi:"New",diputus:"New",dataQuality:"Normal"}
+    {key:"AE",name:"United Arab Emirates",statusMaster:"Exist",capacityLimit:35941.00087486457,masterLimit:35941.00087486457,productAllocations:{},formulasi:"New",diputus:"New",dataQuality:"Normal"},
+    {key:"AU",name:"Australia",statusMaster:"Exist",capacityLimit:41718.775509510284,masterLimit:41718.775509510284,productAllocations:{},formulasi:510,diputus:565990,dataQuality:"Normal"},
+    {key:"AT",name:"Austria",statusMaster:"Exist",capacityLimit:35259.186470317814,masterLimit:35259.186470317814,productAllocations:{},formulasi:300,diputus:509391,dataQuality:"Normal"},
+    {key:"BE",name:"Belgium",statusMaster:"Exist",capacityLimit:43116.7740055139,masterLimit:43116.7740055139,productAllocations:{},formulasi:250,diputus:396193,dataQuality:"Normal"},
+    {key:"CN",name:"China",statusMaster:"Exist",capacityLimit:260032.3771028455,masterLimit:260032.3771028455,productAllocations:{},formulasi:"New",diputus:"New",dataQuality:"Normal"},
+    {key:"HK",name:"Hong Kong",statusMaster:"Exist",capacityLimit:40000,masterLimit:40000,productAllocations:{},formulasi:"New",diputus:"New",dataQuality:"Normal"}
   ],
   CCL:[
     {key:"ANZBAU3M",name:"Australia and New Zealand Banking Group Limited",category:"Asing",country:"Australia",countryRating:"A+",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:0.9023,inhouse:68498,tier1:403594,capacity:200289.57641,adjusted:68498,globalParent:"—",top200:"—",ccl:500,contractual:500.026,dataQuality:"Normal"},
@@ -314,12 +319,21 @@ function demoProductLabel(p){
   return p;
 }
 function productTotal(products){return Object.values(products||{}).reduce((a,v)=>a+(Number(v)||0),0)}
+function countryBookingExposure(row,bookingType){
+  return productApplicationsFor("Country",row.key)
+    .filter(x=>x.bookingOfficeType===bookingType)
+    .reduce((a,x)=>a+(Number(x.amount)||0),0);
+}
+function countryBookingCoverage(row){
+  const apps=productApplicationsFor("Country",row.key);
+  return {total:apps.reduce((a,x)=>a+(Number(x.amount)||0),0),mapped:apps.filter(x=>x.bookingOfficeType!=="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0),unmapped:apps.filter(x=>x.bookingOfficeType==="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0)};
+}
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.amount)||0),0);
 }
 function recordLimit(type,row){
-  if(type==="Country")return Number(row.masterLimit)||0;
+  if(type==="Country")return Number(row.capacityLimit??row.masterLimit)||0;
   if(type==="CCL")return Number(row.ccl)||0;
   if(type==="MLK")return Number(row.masterLimit)||0;
   if(type==="CIL")return Number(row.cil)||0;
@@ -329,6 +343,10 @@ function recordLimit(type,row){
 function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposure(type,row);return limit?exp/limit:0}
 function recordStatus(type,row){
   if(String(row.dataQuality||"Normal").startsWith("Missing"))return "Data Issue";
+  if(type==="Country"){
+    const coverage=countryBookingCoverage(row);
+    if(coverage.unmapped>0)return "Data Issue";
+  }
   const u=recordUtil(type,row);
   let maxUtil=u;
   if(type==="CIL"){
@@ -1088,12 +1106,12 @@ function sourceKey(p){return getProductMeta(p)?.key||"—"}
 function sourceExposure(p){return getProductMeta(p)?.exposure||"—"}
 
 const productMasterCatalog=[
-  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Untuk LPG, klasifikasi berasal dari atribut debtor ecosystem_lpg + segmen_lpg + region_lpg; outstanding LPG diagregasi dari total_bade."},
-  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta country judgment berdasarkan counterparty. Untuk LPG, klasifikasi berasal dari atribut debtor ecosystem_lpg + segmen_lpg + region_lpg; exposure LPG memakai EQVIDR yang dinormalisasi ke Rp Juta."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
-  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur produk/fasilitas yang belum termapping; workbook memberi kebutuhan frekuensi Monthly pada sample."},
-  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country limit hit pada issuer selain Indonesia; limit dapat kembali setelah Maturity Date."},
-  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; balance masih kurs asli dan perlu konversi kurs tengah NTR."},
+  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Booking Office/Booking Office Type adalah canonical utilization attributes; untuk Country, Domestic/Overseas ditentukan dari kantor pembukuan, bukan lokasi proyek."},
+  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Country exposure mengikuti Country Code/judgment source. Booking Office/Booking Office Type adalah canonical utilization attributes; bila source belum menyediakan booking office, status tetap Needs Mapping dan tidak diinfer dari country."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring. Booking Office/Booking Office Type wajib tersedia untuk split Country Domestic/Overseas."},
+  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur yang belum termapping. Booking Office/Booking Office Type menjadi canonical utilization attributes bila produk masuk Country scope."},
+  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country exposure hit pada issuer selain Indonesia; Booking Office menentukan Domestic/Overseas bucket Country. Branch/source booking tidak diganti dengan Issuer Country."},
+  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan Bank Country; Booking Office/Branch menentukan Domestic/Overseas bucket. Balance masih kurs asli dan perlu konversi kurs tengah NTR."},
   {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
 ];
 
@@ -1101,9 +1119,10 @@ const productTabSource={
   "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
   "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
 };
+const canonicalProductUtilizationFields=["Booking Office","Booking Office Type","Booking Office Status","Country Exposure"];
 const productTabFields={
-  "CASHLOAN":productFields["CASHLOAN"]||[],
-  "NON CASH LOAN":productFields["NON CASH LOAN"]||[],
+  "CASHLOAN":[...(productFields["CASHLOAN"]||[])],
+  "NON CASH LOAN":[...(productFields["NON CASH LOAN"]||[])],
   "Investment Line":productFields["Investment Line"]||[],
   "BONDS":productFields["BONDS"]||[],
   "NOSTRO":productFields["NOSTRO"]||[],
@@ -1122,11 +1141,27 @@ const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[
   (productFields[p.id]||[])
 )]]));
 
+function deriveBookingAttributes(productId,data,meta={}){
+  const explicitOffice=meta.bookingOffice??data["Booking Office"]??data.booking_office??data["nm_cab"]??data["Branch"]??"";
+  const office=String(explicitOffice||"").trim();
+  const explicitType=meta.bookingOfficeType??data["Booking Office Type"]??data.booking_office_type;
+  let type=explicitType?String(explicitType).trim().toUpperCase():"";
+  if(!type && office){
+    const domesticHints=["HEAD OFFICE","HEAD OFFICE ","JAKARTA","INDONESIA"];
+    const overseasHints=["SHANGHAI","SINGAPORE","HONG KONG","KUALA LUMPUR","LONDON"];
+    if(overseasHints.some(x=>office.toUpperCase().includes(x))) type="OVERSEAS";
+    else if(domesticHints.some(x=>office.toUpperCase().includes(x))) type="DOMESTIC";
+  }
+  const normalizedType=type==="DOMESTIC"?"Domestic":type==="OVERSEAS"?"Overseas":"Needs Mapping";
+  const countryExposure=meta.countryExposure??data["Country Exposure"]??data.code??data["Country Code"]??data["Issuer Country"]??data["Bank Country"]??"";
+  return {bookingOffice:office||"—",bookingOfficeType:normalizedType,bookingOfficeStatus:normalizedType==="Needs Mapping"?"Needs Mapping":"Mapped",countryExposure:String(countryExposure||"—")};
+}
 function makeProductRecord(productId,overrides={},applied=[],meta={}){
   const base={};
   (productSchemaFields[productId]||[]).forEach(f=>{base[f]='';});
   Object.assign(base,productSample[productId]||{},overrides);
-  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',status:meta.status||'Normal'};
+  const booking=deriveBookingAttributes(productId,base,meta);
+  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',status:meta.status||'Normal',...booking};
 }
 
 const productDatabase={
@@ -1222,7 +1257,11 @@ function productApplicationsFor(type,key){
     if(a.limitType===type&&String(a.key)===String(key))out.push({
       ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
       exposureField:exposureField(r.productId,a.scope),transform:transform(r.productId),
-      masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key))
+      masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)),
+      bookingOffice:r.bookingOffice||"—",
+      bookingOfficeType:r.bookingOfficeType||"Needs Mapping",
+      bookingOfficeStatus:r.bookingOfficeStatus||"Needs Mapping",
+      countryExposure:r.countryExposure||a.key
     });
   })));
   return out;
