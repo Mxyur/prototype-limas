@@ -1673,6 +1673,75 @@ function ProductCatalog(){
   </section>;
 }
 
+function productExposureAmount(productId,r){
+  const n=(v)=>Number(String(v??"").replace(/,/g,""))||0;
+  if(productId==="CASHLOAN") return n(r.data?.total_bade);
+  if(productId==="NON CASH LOAN") return n(r.data?.EQVIDR)/1000000;
+  if(productId==="CREDIT LINE") return n(r.data?.["Credit Line Total Utilisasi"]);
+  if(productId==="BONDS") return n(r.data?.["Amount Eq. IDR Juta"]);
+  if(productId==="NOSTRO") return n(r.data?.Balance);
+  return 0;
+}
+function productBookingSplit(view,rows){
+  const split={Domestic:0,Overseas:0,"Needs Mapping":0};
+  rows.forEach(r=>{
+    const amount=productExposureAmount(view,r);
+    const type=["Domestic","Overseas"].includes(r.bookingOfficeType)?r.bookingOfficeType:"Needs Mapping";
+    split[type]+=amount;
+  });
+  return split;
+}
+function ProductBookingClassification({view,rows}){
+  if(!countryIntegratedProductIds.includes(view)) return null;
+  const split=productBookingSplit(view,rows);
+  const mapped=rows.filter(r=>["Domestic","Overseas"].includes(r.bookingOfficeType)).length;
+  const needs=rows.length-mapped;
+  const exposureField={
+    "NON CASH LOAN":"EQVIDR / 1.000.000",
+    "CREDIT LINE":"Credit Line Total Utilisasi",
+    "BONDS":"Amount Eq. IDR Juta",
+    "NOSTRO":"Balance",
+    "CASHLOAN":"total_bade"
+  }[view]||"Exposure";
+  return <section className="card" style={{marginTop:16}}>
+    <div className="head">
+      <div>
+        <h2>Domestic / Overseas Breakdown</h2>
+        <p>Dimensi monitoring dipisahkan berdasarkan <b>Booking Office Type</b>. Country Exposure tetap memakai source country field dan tidak menentukan Domestic/Overseas.</p>
+      </div>
+      <span className="chip blue">{mapped} mapped / {needs} needs mapping</span>
+    </div>
+    <div className="body">
+      <div className="product-db-kpis">
+        <div className="mini"><b>Domestic</b><strong>{split.Domestic.toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure</span></div>
+        <div className="mini"><b>Overseas</b><strong>{split.Overseas.toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure</span></div>
+        <div className="mini"><b>Needs Mapping</b><strong>{split["Needs Mapping"].toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure belum terklasifikasi</span></div>
+      </div>
+      <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table">
+          <thead><tr><th>Record ID</th><th>Country Exposure</th><th>Booking Office</th><th>Booking Office Type</th><th>Domestic Exposure</th><th>Overseas Exposure</th><th>Needs Mapping Exposure</th></tr></thead>
+          <tbody>{rows.map(r=>{
+            const amount=productExposureAmount(view,r);
+            const type=r.bookingOfficeType==="Domestic"||r.bookingOfficeType==="Overseas"?r.bookingOfficeType:"Needs Mapping";
+            return <tr key={"booking-"+r.recordId}>
+              <td className="key">{r.recordId}</td>
+              <td>{r.countryExposure||"—"}</td>
+              <td>{r.bookingOffice||"—"}</td>
+              <td><Status v={type}/></td>
+              <td>{type==="Domestic"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td>
+              <td>{type==="Overseas"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td>
+              <td>{type==="Needs Mapping"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—"}</td>
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>
+      <div className="field-help">
+        Exposure basis: <b>{exposureField}</b>. Untuk Non Cash Loan dan Credit Line, Booking Office/Type belum ada pada source asli sehingga status tetap <b>Needs Mapping</b> sampai reference mapping tersedia. Untuk Bonds/Nostro, <b>Branch</b> adalah source Booking Office; klasifikasi Domestic/Overseas tetap berasal dari reference, bukan inferensi nama branch.
+      </div>
+    </div>
+  </section>;
+}
+
 function ProductDatabaseTable({view}){
   const rows=productDatabase[view]||[];
   const fields=productSchemaFields[view]||[];
@@ -1685,6 +1754,7 @@ function ProductDatabaseTable({view}){
     <div className="head"><div><h2>Product Database</h2><p>{rows.length} source records • seluruh kolom source tersimpan • Applied Limit hanya untuk direct mapping; LPG dihitung dari debtor attributes.</p></div><div className="chip blue">{rows.length} records</div></div>
     <div className="body">
       <div className="product-db-kpis"><div className="mini"><b>Source Records</b><strong>{rows.length}</strong></div><div className="mini"><b>Mapped Records</b><strong>{mapped}</strong></div><div className="mini"><b>Unmapped Records</b><strong>{rows.length-mapped}</strong></div><div className="mini"><b>Direct Unmapped</b><strong>{directUnmapped}</strong></div><div className="mini"><b>LPG Classified</b><strong>{lpgClassified}</strong></div><div className="mini"><b>Mapping Issues</b><strong>{mappingIssues}</strong></div></div>
+      <ProductBookingClassification view={view} rows={rows}/>
       <div className="table-wrap product-db-wrap"><table className="table product-db-table">
         <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
         <tbody>{rows.map(r=><tr key={r.recordId}>
@@ -1711,7 +1781,9 @@ function ProductUsage({view}){
   ]);
   const bookingMapped=rows.filter(r=>r.bookingOfficeType!=="Needs Mapping").length;
   const bookingNeedsMapping=rows.filter(r=>r.bookingOfficeType==="Needs Mapping").length;
-  return <div className="product-mapping-grid">
+  return <>
+    <ProductBookingClassification view={view} rows={rows}/>
+    <div className="product-mapping-grid">
     <div>
       <div className="section-title">Integration / Runtime Lineage</div>
       {sourceDomainRows.map(([d,target,source,exposure,count])=><div className="mini" key={d}>
