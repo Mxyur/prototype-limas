@@ -56,7 +56,7 @@ const domainDataContract={
   CCL:{
     masterKey:"Kode Bank / Swift Code",
     masterObject:"Counterparty Bank",
-    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE","Investment Line"],
+    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
     utilizationGrain:"Bank / Swift Code + Periode",
     masterDescription:"Counterparty profile + risk/capacity basis + approved CCL / contractual limit."
   },
@@ -124,11 +124,11 @@ const limasDemoData={
     {key:"CN",name:"China",statusMaster:"Exist",masterLimit:260032.3771028455,formulasi:"New",diputus:"New",products:{CASHLOAN:279.85},dataQuality:"Normal"}
   ],
   CCL:[
-    {key:"ANZBAU3M",name:"ABN Amro Bank NV",country:"Netherlands",ccl:500,contractual:500.026,products:{"CREDIT LINE|Commercial":13},dataQuality:"Normal"},
-    {key:"ADCB",name:"Abu Dhabi Commercial Bank PJSC",country:"UAE",ccl:49,contractual:25.04,products:{"CREDIT LINE|Commercial":1},dataQuality:"Normal"},
-    {key:"ADIB",name:"Abu Dhabi Islamic",country:"UAE",ccl:0,contractual:0,products:{},dataQuality:"Normal"},
-    {key:"AGRICN",name:"Agricultural Bank of China Limited",country:"China",ccl:2000,contractual:1700.1335294117648,products:{"CREDIT LINE|Commercial":109},dataQuality:"Normal"},
-    {key:"AGRICD",name:"Agricultural Development Bank of China",country:"China",ccl:200,contractual:200,products:{},dataQuality:"Normal"}
+    {key:"ANZBAU3M",name:"ABN Amro Bank NV",category:"Asing",country:"Netherlands",countryRating:"AAA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:0.9023,inhouse:68498,tier1:403594,capacity:200289.57641,adjusted:68498,globalParent:"—",top200:"—",ccl:500,contractual:500.026,products:{"CREDIT LINE|Commercial":13},dataQuality:"Normal"},
+    {key:"ADCB",name:"Abu Dhabi Commercial Bank PJSC",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:269633,capacity:137398.235975,adjusted:68498,globalParent:"—",top200:"—",ccl:49,contractual:25.04,products:{"CREDIT LINE|Commercial":1},dataQuality:"Normal"},
+    {key:"ADIB",name:"Abu Dhabi Islamic",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"BBB",position:"31/12/2022",ratingIndex:0.7882,inhouse:68498,tier1:105885,capacity:45902.20635,adjusted:45902.20635,globalParent:"—",top200:"—",ccl:0,contractual:0,products:{},dataQuality:"Normal"},
+    {key:"AGRICN",name:"Agricultural Bank of China Limited",category:"Asing",country:"China",countryRating:"A+",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:6853801,capacity:3492525.644575,adjusted:68498,globalParent:"—",top200:"—",ccl:2000,contractual:1700.1335294117648,products:{"CREDIT LINE|Commercial":109},dataQuality:"Normal"},
+    {key:"AGRICD",name:"Agricultural Development Bank of China",category:"Asing",country:"China",countryRating:"A+",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:6812368,capacity:3471412.4236,adjusted:68498,globalParent:"—",top200:"—",ccl:200,contractual:200,products:{},dataQuality:"Normal"}
   ],
   MLK:[
     {key:"4000264485",name:"DJARUM",group:"DJARUM GROUP",entity:"BMRI",tier:"B",masterLimit:5818,products:{CASHLOAN:500,"NON CASH LOAN":0,"TREASURY LINE":1938},dataQuality:"Normal"},
@@ -144,11 +144,11 @@ const limasDemoData={
     {key:"AKRINDO",name:"PT Asuransi Kredit Indonesia",type:"Asuransi",ic:3086548421.052632,multiplier:0.03,cit:92596452.63157895,cil:92620921.35,projection:6409118.3525,score:60.63,entities:{BMRI:{nominal:1058528.01,eil:51624833.26},"Mandiri Taspen":{nominal:4878825.62,eil:23194627.88},MTF:{nominal:0,eil:9099026.54},MUF:{nominal:0,eil:8702433.67}},dataQuality:"Normal",action:"Monitoring as usual / no specific action"}
   ],
   LPG:[
-    {key:"BATUBARA|Bankwide",sector:"BATUBARA",segment:"TOTAL SEKTOR",region:"Bankwide",limit:105381,outstanding:65828,products:{CASHLOAN:52000,"NON CASH LOAN":13828},dataQuality:"Demo split: source total reconciled"},
-    {key:"ENERGI & AIR|Bankwide",sector:"ENERGI & AIR",segment:"TOTAL SEKTOR",region:"Bankwide",limit:158287,outstanding:90465,products:{CASHLOAN:70000,"NON CASH LOAN":20465},dataQuality:"Demo split: source total reconciled"},
-    {key:"FARMASI & KESEHATAN|Bankwide",sector:"FARMASI & KESEHATAN",segment:"TOTAL SEKTOR",region:"Bankwide",limit:31277,outstanding:16362,products:{CASHLOAN:12000,"NON CASH LOAN":4362},dataQuality:"Demo split: source total reconciled"},
-    {key:"FMCG|Bankwide",sector:"FMCG",segment:"TOTAL SEKTOR",region:"Bankwide",limit:248344,outstanding:111666,products:{CASHLOAN:85000,"NON CASH LOAN":26666},dataQuality:"Demo split: source total reconciled"},
-    {key:"FURNITUR|Bankwide",sector:"FURNITUR",segment:"TOTAL SEKTOR",region:"Bankwide",limit:4404,outstanding:1873,products:{CASHLOAN:1500,"NON CASH LOAN":373},dataQuality:"Demo split: source total reconciled"}
+    {key:"BATUBARA|Corporate|Bankwide",sector:"BATUBARA",segment:"Corporate",region:"Bankwide",limit:65140,outstanding:37919,products:{CASHLOAN:30000,"NON CASH LOAN":7919},dataQuality:"Demo split: source total reconciled"},
+    {key:"BATUBARA|Commercial|Bankwide",sector:"BATUBARA",segment:"Commercial",region:"Bankwide",limit:35949,outstanding:26856,products:{CASHLOAN:21000,"NON CASH LOAN":5856},dataQuality:"Demo split: source total reconciled"},
+    {key:"ENERGI & AIR|Corporate|Bankwide",sector:"ENERGI & AIR",segment:"Corporate",region:"Bankwide",limit:123949,outstanding:71744,products:{CASHLOAN:57000,"NON CASH LOAN":14744},dataQuality:"Demo split: source total reconciled"},
+    {key:"ENERGI & AIR|Commercial|Bankwide",sector:"ENERGI & AIR",segment:"Commercial",region:"Bankwide",limit:33854,outstanding:18415,products:{CASHLOAN:14500,"NON CASH LOAN":3915},dataQuality:"Demo split: source total reconciled"},
+    {key:"FARMASI & KESEHATAN|Corporate|Bankwide",sector:"FARMASI & KESEHATAN",segment:"Corporate",region:"Bankwide",limit:24600,outstanding:12000,products:{CASHLOAN:10000,"NON CASH LOAN":2000},dataQuality:"Demo split: source total reconciled"}
   ]
 };
 function demoProductLabel(p){
@@ -182,7 +182,7 @@ function recordStatus(type,row){
 }
 function buildReportDummy(data){
   return {
-    Country:data.Country.map((r,i)=>{const p=r.products||{},exp=recordExposure("Country",r),u=recordUtil("Country",r);return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,formulasi:r.formulasi,diputus:r.diputus,limit:r.masterLimit,pct:u,needs:0,minus:0,add:0,final:r.masterLimit,finalPct:u,status:recordStatus("Country",r)}}),
+    Country:data.Country.map((r,i)=>{const p=r.products||{},exp=recordExposure("Country",r),totalLimits=(limasDemoData.Country||[]).reduce((a,x)=>a+(Number(x.masterLimit)||0),0),u=recordUtil("Country",r),share=totalLimits?r.masterLimit/totalLimits:0;return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,formulasi:r.formulasi,diputus:r.diputus,limit:r.masterLimit,pct:share,needs:0,minus:0,add:0,final:r.masterLimit,finalPct:share,status:recordStatus("Country",r)}}),
     CCL:data.CCL.map((r,i)=>{const p=r.products||{},exp=recordExposure("CCL",r),u=recordUtil("CCL",r);return {no:i+1,bank:r.name,category:"Asing",country:r.country,countryRating:"Source reference",bobot:"—",rating:"—",position:"—",ratingIndex:"—",inhouse:r.ccl,tier1:"—",capacity:"—",adjusted:r.ccl,globalParent:"—",top200:"—",ccl:r.ccl,cclCapacity:"—",limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:r.ccl,bmriLoan:0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:1,contractualUtil:r.contractual?exp/r.contractual:0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
     MLK:data.MLK.map((r,i)=>{const p=r.products||{},exp=recordExposure("MLK",r),u=recordUtil("MLK",r);return {no:i+1,tier:r.tier,holding:r.group,subGroup:r.group,flag:"Source",unit:"Source",entity:r.entity,bmpkKonsol:"—",bmpkEntitas:"—",limitFasilitas:r.masterLimit,bade:exp,borrowing:"Reference",masterLimit:r.masterLimit,mlk:r.masterLimit,utilBade:u,utilFacilityBmpk:"—",utilMlkBmpk:"—",debtors:1,totalBmpk:"—",totalMaster:r.masterLimit,totalBorrowing:"—",variance:0,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:p}}),
     CIL:data.CIL.map((r,i)=>{const total=recordExposure("CIL",r);return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:r.entities.BMRI?.nominal||0,bmriEil:r.entities.BMRI?.eil||0,mtNominal:r.entities["Mandiri Taspen"]?.nominal||0,mtEil:r.entities["Mandiri Taspen"]?.eil||0,mtfNominal:r.entities.MTF?.nominal||0,mtfEil:r.entities.MTF?.eil||0,mufNominal:r.entities.MUF?.nominal||0,mufEil:r.entities.MUF?.eil||0,cil:r.cil,totalNominal:total,projection:r.projection,utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?r.projection/r.cit:0,cilUtil:r.cil?total/r.cil:0,status:recordStatus("CIL",r),score:r.score,action:r.action}}),
@@ -211,7 +211,7 @@ function Report({nav}){
   const generate=()=>setGenerated(true);
   const summary={total:rows.length,normal:rows.filter(r=>statusForReport(r)==="Normal").length,warning:rows.filter(r=>statusForReport(r)==="Warning").length,breach:rows.filter(r=>statusForReport(r)==="Breach").length,issue:rows.filter(r=>statusForReport(r)==="Data Issue").length};
   return <Layout screen="report" onNav={nav}><Header title="Generate Monitoring Report" subtitle="Generate report monitoring dengan struktur yang mengikuti master report masing-masing limit"/><div className="page">
-    <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Pilih domain, periode dan kondisi lalu generate report.</p></div><div className="chip blue">Dummy Data • 5 records</div></div><div className="body">
+    <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Pilih domain, periode dan kondisi lalu generate report.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
       <div className="report-controls">
         <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select></div>
         <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>Agustus 2026</option><option>Juli 2026</option><option>Juni 2026</option></select></div>
