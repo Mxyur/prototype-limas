@@ -439,36 +439,37 @@ function Monitor({type,nav}){
 }
 
 function Setup({nav,setSel}){
-  const [type,setType]=useState('Country');
-  const info=domains[type], masterSections=getMasterSections(type), linkedProducts=domainIntegrationProducts[type]||[], meta=loadMasterMeta(type);
+  const [type,setType]=useState("Country");
+  const info=domains[type], linkedProducts=domainIntegrationProducts[type]||[], rows=limasDemoData[type]||[];
   return <Layout screen="setup" onNav={nav}>
     <Header title="Master Limit Setup" subtitle="Repository master limit per domain • utilization product diintegrasikan terpisah"/>
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • master limit tersimpan di LIMAS; exposure product bukan bagian dari master.</p></div>
+          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • hanya approved master limit dan parameter yang disimpan.</p></div>
           <div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Master Limit</button></div>
         </div>
         <div className="body">
-          <div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
-          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Sections</th><th>Linked Product Integration</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
-              <tbody><tr>
-                <td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(masterSections).join(', ')}</td>
-                <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
-                <td>v{meta.version||1}</td><td><Status v={meta.status||"Active"}/></td>
-                <td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td>
-              </tr></tbody>
-            </table>
-          </div>
-          <div className="field-help">Master Limit Setup menyimpan limit dan parameter keputusan. Outstanding, Utilisasi dan EWS berasal dari Product Utilization Integration dan dipantau pada menu Monitoring.</div>
+          <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
+          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={"Cari "+info.key}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
+          <div className="table-wrap"><table className="table">
+            <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Limit</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody>{rows.map((r,i)=><tr key={String(r.key)+i}>
+              <td className="key">{r.key}</td>
+              <td>{r.name||r.sector}</td>
+              <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
+              <td>v1</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":"Active"}/></td>
+              <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
+            </tr>)}</tbody>
+          </table></div>
+          <div className="field-help">Master Limit menyimpan limit/parameter. Outstanding, utilization dan EWS berasal dari Product Utilization Integration.</div>
         </div>
       </section>
     </div>
   </Layout>
 }
+
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
 
@@ -591,8 +592,10 @@ function loadFieldMeta(type){
 }
 function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
-function Detail({nav,type="Country"}){
+function Detail({nav,type="Country",recordKey=""}){
   const safeType=domains[type]?type:"Country";
+  const selectedRecord=getDemoRecord(safeType,recordKey);
+  const selectedIndex=Math.max(0,(limasDemoData[safeType]||[]).findIndex(r=>String(r.key)===String(selectedRecord?.key)));
   const masterSections=getMasterSections(safeType);
   const [tab,setTab]=useState(()=>Object.keys(masterSections)[0]);
   const [meta,setMeta]=useState(()=>loadMasterMeta(safeType));
@@ -609,7 +612,7 @@ function Detail({nav,type="Country"}){
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{sampleName(safeType)}</h2><p>Unique Key: <span className="key">{sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p></div>
+          <div><h2>{selectedRecord?.name||selectedRecord?.sector||sampleName(safeType)}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p></div>
           <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
@@ -618,8 +621,8 @@ function Detail({nav,type="Country"}){
             <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
               <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
                 const id=`${tab}||${f}`;
-                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)};
-                return <tr key={f}><td><b>{f}</b></td><td>{v}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
+                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)}; const displayValue=masterFieldValue(safeType,tab,f,v,selectedRecord,selectedIndex);
+                return <tr key={f}><td><b>{f}</b></td><td>{displayValue}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
               })}</tbody>
             </table>
           </div>
@@ -937,7 +940,7 @@ function App(){
   if(!login) return <Login go={()=>setLogin(true)}/>;
   if(screen==="dashboard") return <Dashboard nav={nav}/>;
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;
-  if(screen==="detail") return <Detail nav={nav} type={sel} key={sel+":"+selKey} />;
+  if(screen==="detail") return <Detail nav={nav} type={sel} recordKey={selKey} key={sel+":"+selKey} />;
   if(screen==="products") return <Products nav={nav}/>;
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
