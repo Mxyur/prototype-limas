@@ -20,11 +20,11 @@ const integrationRuntimeSource={
 
 const integrationTargets={
   Country:{
-    "CASHLOAN":"Country Exposure: Project Location / Country Code; Booking Office + Booking Office Type for Domestic/Overseas",
-    "NON CASH LOAN":"Country Exposure: Country Code; Booking Office + Booking Office Type for Domestic/Overseas",
-    "CREDIT LINE":"Country Exposure: Code / Bank Country; Booking Office + Booking Office Type for Domestic/Overseas",
-    "BONDS":"Country Exposure: Issuer Country; Booking Office + Booking Office Type for Domestic/Overseas",
-    "NOSTRO":"Country Exposure: Bank Country; Booking Office / Branch + Booking Office Type for Domestic/Overseas"
+    "CASHLOAN":"Country Exposure = code; Booking Office = nm_cab; Domestic/Overseas = derived from booking-office reference",
+    "NON CASH LOAN":"Country Exposure = Country Code; Booking Office source is not present in current schema; Domestic/Overseas requires reference/source",
+    "CREDIT LINE":"Country Exposure = Code / Negara; Booking Office source is not present in current schema; Domestic/Overseas requires reference/source",
+    "BONDS":"Country Exposure = Issuer Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference",
+    "NOSTRO":"Country Exposure = Bank Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference"
 },
   CCL:{"CASHLOAN":"Bank / Counterparty mapping","NON CASH LOAN":"Swift Code / Counterparty","CREDIT LINE":"Swift Code","Investment Line":"Swift Code / Entity"},
   MLK:{"CASHLOAN":"CIF","NON CASH LOAN":"CUSTID / CIF","CREDIT LINE":"CIF / Debtor mapping (Treasury scope)"},
@@ -1126,12 +1126,12 @@ function UtilizationTrace({type,key}){
     <div className="body">
       {apps.length===0?<div className="mini">Belum ada product utilization yang ter-mapping ke key ini.</div>:
       <div className="table-wrap"><table className="table">
-        <thead><tr><th>Product</th><th>Source Record</th><th>Exposure Field</th><th>Country Exposure</th><th>Booking Office</th><th>Booking Type</th><th>Source Value</th><th>Applied Amount</th><th>Runtime Source</th><th>Mapping</th></tr></thead>
+        <thead><tr><th>Product</th><th>Source Record</th><th>Exposure Source Field</th><th>Country Source Field</th><th>Booking Office Source Field</th><th>Booking Type</th><th>Source Value</th><th>Applied Amount</th><th>Runtime Source</th><th>Mapping</th></tr></thead>
         <tbody>{apps.map((a,i)=>{
           const raw=a.sourceData?.[a.exposureField]??"—";
           const label=a.productId==="CREDIT LINE"?(a.scope?"Credit Line • "+a.scope:"Credit Line"):demoProductLabel(a.productId);
           return <tr key={a.recordId+"-"+i}>
-            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{a.countryExposure||"—"}</td><td>{a.bookingOffice||"—"}</td><td><Status v={a.bookingOfficeType||"Needs Mapping"}/></td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
+            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{productBusinessMappingLabel(a.productId,"country")}</td><td>{productBusinessMappingLabel(a.productId,"booking")}<div className="muted-small">{a.bookingOffice||"—"}</div></td><td><Status v={a.bookingOfficeType||"Needs Mapping"}/></td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
           </tr>;
         })}</tbody>
       </table></div>}
@@ -1220,6 +1220,24 @@ const productMasterCatalog=[
   {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
 ];
 
+const productBusinessMapping={
+  "CASHLOAN":{countryExposureField:"code",countryExposureLabel:"Country Code",bookingOfficeField:"nm_cab",bookingOfficeLabel:"nm_cab",exposureField:"total_bade",exposureLabel:"Total BADE",limitSource:"Country master: Product Distribution / CASHLOAN / Domestic + Overseas Limit"},
+  "NON CASH LOAN":{countryExposureField:"Country Code",countryExposureLabel:"Country Code",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia pada source schema",exposureField:"EQVIDR / BALANCE",exposureLabel:"EQVIDR / BALANCE",limitSource:"Country master: Product Distribution / NON CASH LOAN / Domestic + Overseas Limit"},
+  "CREDIT LINE":{countryExposureField:"Code",countryExposureLabel:"Code / Negara",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia pada source schema",exposureField:"Comm Line Total Utilisasi / Bade Treasury Line",exposureLabel:"Commercial / Treasury utilization",limitSource:"Country master: Product Distribution / CREDIT LINE / Domestic + Overseas Limit"},
+  "BONDS":{countryExposureField:"Issuer Country",countryExposureLabel:"Issuer Country",bookingOfficeField:"Branch",bookingOfficeLabel:"Branch",exposureField:"Amount Eq. IDR Juta",exposureLabel:"Amount Eq. IDR Juta",limitSource:"Country master: Product Distribution / BONDS / Domestic + Overseas Limit"},
+  "NOSTRO":{countryExposureField:"Bank Country",countryExposureLabel:"Bank Country",bookingOfficeField:"Branch",bookingOfficeLabel:"Branch",exposureField:"Balance",exposureLabel:"Balance",limitSource:"Country master: Product Distribution / NOSTRO / Domestic + Overseas Limit"},
+  "Investment Line":{countryExposureField:null,countryExposureLabel:"Tidak menjadi Country-linked product saat ini",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia / tidak digunakan",exposureField:"Amount Invesment Line",exposureLabel:"Amount Invesment Line",limitSource:"Investment Line source / scoped; tidak menjadi Country master allocation"},
+  "Nominal Pertanggungan":{countryExposureField:null,countryExposureLabel:"Tidak relevan",bookingOfficeField:null,bookingOfficeLabel:"Tidak relevan",exposureField:"Nominal Pertanggungan 2025 (Rp Juta)",exposureLabel:"Nominal Pertanggungan 2025",limitSource:"CIL master: EIL / Consolidated Insurance Limit"}
+};
+const productBusinessMappingLabel=(productId,kind)=>{
+  const m=productBusinessMapping[productId]||{};
+  if(kind==="country") return m.countryExposureField?m.countryExposureField+" → "+m.countryExposureLabel:m.countryExposureLabel||"—";
+  if(kind==="booking") return m.bookingOfficeField?m.bookingOfficeField+" → "+m.bookingOfficeLabel:m.bookingOfficeLabel||"—";
+  if(kind==="exposure") return m.exposureField||"—";
+  if(kind==="limit") return m.limitSource||"—";
+  return "—";
+};
+
 const productTabSource={
   "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
   "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
@@ -1248,18 +1266,16 @@ const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[
 )]]));
 
 function deriveBookingAttributes(productId,data,meta={}){
-  const explicitOffice=meta.bookingOffice??data["Booking Office"]??data.booking_office??data["nm_cab"]??data["Branch"]??"";
+  const mapping=productBusinessMapping[productId]||{};
+  const officeField=mapping.bookingOfficeField;
+  const explicitOffice=meta.bookingOffice??(officeField?data?.[officeField]:"")??"";
   const office=String(explicitOffice||"").trim();
-  const explicitType=meta.bookingOfficeType??data["Booking Office Type"]??data.booking_office_type;
-  let type=explicitType?String(explicitType).trim().toUpperCase():"";
-  if(!type && office){
-    const domesticHints=["HEAD OFFICE","HEAD OFFICE ","JAKARTA","INDONESIA"];
-    const overseasHints=["SHANGHAI","SINGAPORE","HONG KONG","KUALA LUMPUR","LONDON"];
-    if(overseasHints.some(x=>office.toUpperCase().includes(x))) type="OVERSEAS";
-    else if(domesticHints.some(x=>office.toUpperCase().includes(x))) type="DOMESTIC";
-  }
-  const normalizedType=type==="DOMESTIC"?"Domestic":type==="OVERSEAS"?"Overseas":"Needs Mapping";
-  const countryExposure=meta.countryExposure??data["Country Exposure"]??data.code??data["Country Code"]??data["Issuer Country"]??data["Bank Country"]??"";
+  // Booking Office Type is a reference/derived classification; never infer it from text.
+  const explicitType=meta.bookingOfficeType??"";
+  const normalizedRaw=String(explicitType||"").trim().toUpperCase();
+  const normalizedType=normalizedRaw==="DOMESTIC"?"Domestic":normalizedRaw==="OVERSEAS"?"Overseas":"Needs Mapping";
+  const countryField=mapping.countryExposureField;
+  const countryExposure=meta.countryExposure??(countryField?data?.[countryField]:"")??"";
   return {bookingOffice:office||"—",bookingOfficeType:normalizedType,bookingOfficeStatus:normalizedType==="Needs Mapping"?"Needs Mapping":"Mapped",countryExposure:String(countryExposure||"—")};
 }
 function makeProductRecord(productId,overrides={},applied=[],meta={}){
@@ -1623,6 +1639,27 @@ function ProductCatalog(){
           })}</tbody>
         </table>
       </div>
+      <section className="card" style={{marginTop:16}}>
+        <div className="head"><div><h2>Crosscheck Source Field → Business Requirement</h2><p>Audit seluruh product menu. Field asli dipertahankan; kebutuhan bisnis dipetakan melalui metadata dan runtime/reference layer.</p></div><span className="chip blue">Source-native</span></div>
+        <div className="body">
+          <div className="table-wrap">
+            <table className="table product-master-table">
+              <thead><tr><th>Product</th><th>Country Exposure Source</th><th>Booking Office Source</th><th>Exposure Source</th><th>Limit Source</th><th>Crosscheck</th></tr></thead>
+              <tbody>{productMasterCatalog.map(item=>{
+                const m=productBusinessMapping[item.id]||{};
+                const bookingRequired=countryIntegratedProductIds.includes(item.id);
+                const bookingAvailable=!!m.bookingOfficeField;
+                const gap=bookingRequired&&!bookingAvailable;
+                return <tr key={"audit-"+item.id}>
+                  <td><b>{item.label}</b></td><td>{productBusinessMappingLabel(item.id,"country")}</td><td>{productBusinessMappingLabel(item.id,"booking")}</td><td>{productBusinessMappingLabel(item.id,"exposure")}</td><td>{productBusinessMappingLabel(item.id,"limit")}</td>
+                  <td><Status v={gap?"Warning":"Normal"}/><div className="muted-small">{gap?"Source gap — reference required":"No duplicate source field"}</div></td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          <div className="field-help">Non Cash Loan dan Credit Line belum memiliki source Booking Office pada schema yang tersedia. Audit tidak mengisi atau menginfer field tersebut dari Country Code, Negara, project location, Swift, atau nama bank. Domestic/Overseas hanya boleh berasal dari source/reference mapping yang disepakati.</div>
+        </div>
+      </section>
       <div className="field-help">Product Universe menjadi registry source/integration. Product Database menyimpan source records per produk. LPG tidak menjadi direct Applied Limit: klasifikasi LPG berasal dari debtor attributes Cash Loan/Non Cash Loan lalu diagregasi menjadi monitoring LPG. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; Investment Line masih Future / Scoped.</div>
     </div>
   </section>;
@@ -1681,7 +1718,7 @@ function ProductUsage({view}){
     <div>
       <div className="section-title">Data Quality</div>
       <div className="mini">Product Records <span className="chip blue">{rows.length}</span></div>
-      <div className="mini" style={{marginTop:8}}>Booking Office Mapping <span className="chip blue">{bookingMapped}</span> <span className="muted-small">mapped / {bookingNeedsMapping} needs mapping</span></div>
+      <div className="mini" style={{marginTop:8}}><b>Booking Office Source</b><div className="muted-small">{productBusinessMappingLabel(view,"booking")}</div><div className="muted-small">Classification: {bookingMapped} mapped / {bookingNeedsMapping} needs mapping</div></div>
       <div className="mini" style={{marginTop:8}}>Unique Key <Status v="Normal"/></div>
       <div className="mini" style={{marginTop:8}}>Integration Coverage <Status v={(() => {
         if(view==="CASHLOAN"||view==="NON CASH LOAN"){
