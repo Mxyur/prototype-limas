@@ -1,10 +1,9 @@
 // @ts-nocheck
 import * as React from 'react';
-import { useState } from 'react';
 import type { ILimasProps } from './ILimasProps';
 
 const LIMAS_CSS = `
-.limas-spfx-root{--bg:#061126;font-family:Inter,Segoe UI,Arial,sans-serif;--panel:#fff;--text:#182238;--muted:#7f8ba0;--line:#e7ebf1;--blue:#1b73e8;--green:#1e9d68;--yellow:#d39a14;--red:#dc4a4a}*{box-sizing:border-box}button,input,select{font:inherit}.limas-spfx-root *{box-sizing:border-box}.app{min-height:100vh;background:radial-gradient(circle at 90% 0,rgba(41,145,255,.32),transparent 28%),linear-gradient(150deg,#07162e,#020a15 78%);position:relative;overflow:hidden}.app:before,.app:after{content:"";position:absolute;border:1px solid rgba(42,145,255,.22);border-radius:50%;pointer-events:none;transform:rotate(-25deg)}.app:before{width:90vw;height:72vh;right:-17vw;top:-24vh}.app:after{width:110vw;height:90vh;right:-24vw;top:-33vh;border-color:rgba(42,145,255,.10)}.shell{display:flex;min-height:100vh;position:relative;z-index:1}.side{width:260px;background:rgba(17,21,29,.97);padding:18px 14px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column}.brand{height:88px;border-radius:16px;background:linear-gradient(135deg,#12396e,#0d6ac0);display:grid;place-items:center;text-align:center;margin-bottom:14px}.brand b{font-size:23px}.brand small{font-size:10px;display:block;opacity:.75;margin-top:3px}.nav{display:flex;flex-direction:column;gap:5px}.nav button{border:0;background:none;color:#9aa5b7;text-align:left;padding:11px 13px;border-radius:10px;display:flex;align-items:center;gap:10px;font-weight:700}.nav button:hover,.nav button.active{background:#2b3037;color:#fff}.section{font-size:10px;letter-spacing:1px;color:#667187;margin:12px 8px 4px;text-transform:uppercase}.collapse{margin-top:auto;color:#919db0;border-top:1px solid rgba(255,255,255,.07);padding:12px 10px}.main{flex:1;padding:26px 30px 35px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.title h1{margin:0;font-size:24px}.title p{margin:4px 0;color:#98a5b9}.usr{display:flex;gap:9px;align-items:center;font-size:12px}.avatar{width:34px;height:34px;border-radius:50%;background:#fff;color:#1d5fa8;display:grid;place-items:center;font-weight:900}.page{display:flex;flex-direction:column;gap:16px}.card{background:rgba(255,255,255,.98);color:var(--text);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22)}.head{padding:18px 21px 11px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.head h2{margin:0;font-size:18px}.head p{margin:5px 0 0;color:var(--muted);font-size:12px}.body{padding:18px 21px 21px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi{background:#fff;border:1px solid #eef1f4;border-radius:15px;padding:16px}.kpi .l{font-size:11px;color:#7e899b}.kpi .v{font-size:26px;font-weight:800;margin-top:7px}.kpi .m{font-size:10px;margin-top:4px}.btn{height:39px;border-radius:9px;padding:0 13px;border:0;font-weight:800}.primary{background:var(--blue);color:#fff}.secondary{background:#edf4fd;color:#1b5fae}.ghost{background:#fff;color:#40506b;border:1px solid #dde4ec}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.input,.select{height:40px;border:1px solid #dce3eb;border-radius:9px;padding:0 11px;min-width:170px;background:#fff;color:#2a3550}.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow:auto}.tab{border:0;background:none;color:#738096;padding:10px 12px;font-weight:800;border-bottom:2px solid transparent;white-space:nowrap}.tab.active{color:#1d63b0;border-color:var(--blue)}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:12px}.table th{background:#f5f7fa;color:#718096;text-align:left;padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}.table td{padding:11px;border-bottom:1px solid #edf0f3;vertical-align:top}.table tr:hover td{background:#fbfcfe}.badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800}.normal{background:#ddf5e9;color:#136b4a}.warning{background:#fff1ca;color:#8a640d}.breach{background:#ffe1e1;color:#a52d2d}.key{font-family:ui-monospace,Menlo,monospace;background:#f3f5f8;border:1px solid #e1e6ed;border-radius:6px;padding:4px 6px;font-size:10px}.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:15px}.rowgrid{display:grid;grid-template-columns:1.1fr 1fr 1fr;border:1px solid var(--line);border-radius:11px;overflow:hidden}.rowgrid>div{padding:9px 10px;border-bottom:1px solid var(--line);font-size:11px}.rowgrid>div:nth-child(3n+1),.rowgrid>div:nth-child(3n+2),.rowgrid>div:nth-child(3n+3){}.rowgrid .h{background:#f6f8fb;font-weight:800}.section-title{font-size:12px;font-weight:900;color:#5c6980;margin:13px 0 8px}.mini{background:#f6f8fb;border:1px solid #e8ecf1;border-radius:11px;padding:11px;font-size:11px}.login{min-height:100vh;display:grid;place-items:center;position:relative;z-index:2;padding:24px}.login-card{width:min(480px,94vw);background:#fff;color:var(--text);border-radius:20px;padding:30px;box-shadow:0 25px 70px rgba(0,0,0,.35)}.login-logo{width:70px;height:70px;border-radius:18px;background:linear-gradient(135deg,#0d4c9d,#2c9cff);display:grid;place-items:center;color:#fff;font-size:18px;font-weight:900;margin-bottom:20px}.login-card h1{margin:0;font-size:28px}.login-card p{margin:5px 0 20px;color:#7e899a}.login-card input{height:47px;width:100%;border:1px solid #dbe2ea;border-radius:10px;padding:0 12px;margin-bottom:10px}.login-card .btn{width:100%;height:47px}.foot{font-size:10px;color:#98a2b1;text-align:center;margin-top:15px}@media(max-width:1050px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}@media(max-width:760px){.side{display:none}.main{padding:16px}}
+.limas-spfx-root{--bg:#061126;--panel:#fff;--text:#182238;--muted:#7f8ba0;--line:#e7ebf1;--blue:#1b73e8;--green:#1e9d68;--yellow:#d39a14;--red:#dc4a4a}*{box-sizing:border-box}button,input,select{font:inherit}.limas-spfx-root *{box-sizing:border-box}.app{min-height:100vh;background:radial-gradient(circle at 90% 0,rgba(41,145,255,.32),transparent 28%),linear-gradient(150deg,#07162e,#020a15 78%);position:relative;overflow:hidden}.app:before,.app:after{content:"";position:absolute;border:1px solid rgba(42,145,255,.22);border-radius:50%;pointer-events:none;transform:rotate(-25deg)}.app:before{width:90vw;height:72vh;right:-17vw;top:-24vh}.app:after{width:110vw;height:90vh;right:-24vw;top:-33vh;border-color:rgba(42,145,255,.10)}.shell{display:flex;min-height:100vh;position:relative;z-index:1}.side{width:260px;background:rgba(17,21,29,.97);padding:18px 14px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column}.brand{height:88px;border-radius:16px;background:linear-gradient(135deg,#12396e,#0d6ac0);display:grid;place-items:center;text-align:center;margin-bottom:14px}.brand b{font-size:23px}.brand small{font-size:10px;display:block;opacity:.75;margin-top:3px}.nav{display:flex;flex-direction:column;gap:5px}.nav button{border:0;background:none;color:#9aa5b7;text-align:left;padding:11px 13px;border-radius:10px;display:flex;align-items:center;gap:10px;font-weight:700}.nav button:hover,.nav button.active{background:#2b3037;color:#fff}.section{font-size:10px;letter-spacing:1px;color:#667187;margin:12px 8px 4px;text-transform:uppercase}.collapse{margin-top:auto;color:#919db0;border-top:1px solid rgba(255,255,255,.07);padding:12px 10px}.main{flex:1;padding:26px 30px 35px;min-width:0}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.title h1{margin:0;font-size:24px}.title p{margin:4px 0;color:#98a5b9}.usr{display:flex;gap:9px;align-items:center;font-size:12px}.avatar{width:34px;height:34px;border-radius:50%;background:#fff;color:#1d5fa8;display:grid;place-items:center;font-weight:900}.page{display:flex;flex-direction:column;gap:16px}.card{background:rgba(255,255,255,.98);color:var(--text);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22)}.head{padding:18px 21px 11px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.head h2{margin:0;font-size:18px}.head p{margin:5px 0 0;color:var(--muted);font-size:12px}.body{padding:18px 21px 21px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.kpi{background:#fff;border:1px solid #eef1f4;border-radius:15px;padding:16px}.kpi .l{font-size:11px;color:#7e899b}.kpi .v{font-size:26px;font-weight:800;margin-top:7px}.kpi .m{font-size:10px;margin-top:4px}.btn{height:39px;border-radius:9px;padding:0 13px;border:0;font-weight:800}.primary{background:var(--blue);color:#fff}.secondary{background:#edf4fd;color:#1b5fae}.ghost{background:#fff;color:#40506b;border:1px solid #dde4ec}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.input,.select{height:40px;border:1px solid #dce3eb;border-radius:9px;padding:0 11px;min-width:170px;background:#fff;color:#2a3550}.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow:auto}.tab{border:0;background:none;color:#738096;padding:10px 12px;font-weight:800;border-bottom:2px solid transparent;white-space:nowrap}.tab.active{color:#1d63b0;border-color:var(--blue)}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:12px}.table th{background:#f5f7fa;color:#718096;text-align:left;padding:11px;border-bottom:1px solid var(--line);white-space:nowrap}.table td{padding:11px;border-bottom:1px solid #edf0f3;vertical-align:top}.table tr:hover td{background:#fbfcfe}.badge{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800}.normal{background:#ddf5e9;color:#136b4a}.warning{background:#fff1ca;color:#8a640d}.breach{background:#ffe1e1;color:#a52d2d}.key{font-family:ui-monospace,Menlo,monospace;background:#f3f5f8;border:1px solid #e1e6ed;border-radius:6px;padding:4px 6px;font-size:10px}.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:15px}.rowgrid{display:grid;grid-template-columns:1.1fr 1fr 1fr;border:1px solid var(--line);border-radius:11px;overflow:hidden}.rowgrid>div{padding:9px 10px;border-bottom:1px solid var(--line);font-size:11px}.rowgrid>div:nth-child(3n+1),.rowgrid>div:nth-child(3n+2),.rowgrid>div:nth-child(3n+3){}.rowgrid .h{background:#f6f8fb;font-weight:800}.section-title{font-size:12px;font-weight:900;color:#5c6980;margin:13px 0 8px}.mini{background:#f6f8fb;border:1px solid #e8ecf1;border-radius:11px;padding:11px;font-size:11px}.login{min-height:100vh;display:grid;place-items:center;position:relative;z-index:2;padding:24px}.login-card{width:min(480px,94vw);background:#fff;color:var(--text);border-radius:20px;padding:30px;box-shadow:0 25px 70px rgba(0,0,0,.35)}.login-logo{width:70px;height:70px;border-radius:18px;background:linear-gradient(135deg,#0d4c9d,#2c9cff);display:grid;place-items:center;color:#fff;font-size:18px;font-weight:900;margin-bottom:20px}.login-card h1{margin:0;font-size:28px}.login-card p{margin:5px 0 20px;color:#7e899a}.login-card input{height:47px;width:100%;border:1px solid #dbe2ea;border-radius:10px;padding:0 12px;margin-bottom:10px}.login-card .btn{width:100%;height:47px}.foot{font-size:10px;color:#98a2b1;text-align:center;margin-top:15px}@media(max-width:1050px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}@media(max-width:760px){.side{display:none}.main{padding:16px}}
 
 .metric-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 .metric{background:#fff;border:1px solid #eef1f4;border-radius:14px;padding:15px}
@@ -115,12 +114,41 @@ const LIMAS_CSS = `
 @media(max-width:520px){
   .metric-grid{grid-template-columns:1fr}
 }
+
+/* Product Source & Mapping */
+.product-tabs{display:flex;gap:4px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+.product-tabs .tab{white-space:nowrap}
+.product-field-block{margin-top:4px}
+.product-field-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 10px}
+.product-field-toolbar>b,.product-field-toolbar>div>b{font-size:12px;color:var(--text)}
+.product-field-toolbar span{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+.product-field-wrap,.product-master-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+.product-field-table,.product-master-table{min-width:980px}
+.product-field-table th,.product-field-table td,.product-master-table th,.product-master-table td{vertical-align:top}
+.product-field-table td:first-child{min-width:210px}
+.product-field-table td:nth-child(2){min-width:230px;max-width:360px;overflow-wrap:anywhere}
+.product-field-table td:nth-child(3){min-width:240px}
+.product-field-table td:nth-child(4){min-width:320px}
+.product-master-table{min-width:1200px}
+.product-master-table td:first-child{min-width:150px}
+.product-master-table td:nth-child(2){min-width:180px}
+.product-master-table td:nth-child(3){min-width:220px}
+.product-master-table td:nth-child(4){min-width:180px}
+.product-master-table td:nth-child(5){min-width:190px}
+.product-master-table td:nth-child(6){min-width:250px}
+.product-master-table td:nth-child(7){min-width:360px}
+.credit-line-groups{display:flex;flex-direction:column;gap:18px}
+.product-group{padding-top:2px}
+.product-mapping-grid{display:grid;grid-template-columns:1.5fr .75fr;gap:15px;margin-top:18px}
+.field-input{min-width:220px;width:100%;height:auto;min-height:38px}
+.compact-area{min-width:260px;width:100%;min-height:72px}
+.source-text,.note-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.product-master-hint{font-size:11px;color:var(--muted);margin-bottom:12px}
+@media(max-width:900px){
+  .product-field-toolbar{align-items:flex-start;flex-direction:column}
+  .product-mapping-grid{grid-template-columns:1fr}
+}
 `;
-
-
-import * as React from 'react';
-import { useState } from 'react';
-
 
 const domains={"Country": {"sheet": "COUNTRY_MONITORING", "key": "Country Code", "name": "Negara", "products": ["CASHLOAN", "NON CASH LOAN", "COMMERCIAL LINE (CRDT)", "TREASURY LINE (CRDT)", "BONDS", "NOSTRO"], "sections": {"Identitas": [["No", "1", "Data/master/reference"], ["Negara", "United Arab Emirates", "Data/master/reference"], ["Code", "AE", "Data/master/reference"], ["Status", "Exist", "Data/master/reference"]], "Checklist Product": [["CL", "-", "Data/master/reference"], ["NCL", "-", "Data/master/reference"], ["COM", "-", "Data/master/reference"], ["TRS", "-", "Data/master/reference"], ["BOND", "-", "Data/master/reference"], ["NOS", "v", "Data/master/reference"]], "Exposure Product": [["CL", "-", "Data/master/reference"], ["NCL", "-", "Data/master/reference"], ["COM", "-", "Data/master/reference"], ["TRS", "-", "Data/master/reference"], ["BOND", "-", "Data/master/reference"], ["NOS", "v", "Data/master/reference"], ["TOTAL", "26.64", "Data/master/reference"]], "Limit & Gap": [["Limit FIB / Formulasi", "New", "Data/master/reference"], ["Limit FIB / Diputus", "New", "Data/master/reference"], ["Country Limit / Country Limit", "35,941", "Data/master/reference"], ["Country Limit / %Country Limit", "5.72%", "Data/master/reference"], ["Gap Analysis / Needs", "0", "Data/master/reference"], ["Gap Analysis / Minus", "0", "Data/master/reference"], ["Gap Analysis / Add", "0", "Data/master/reference"], ["Final Limit / Final Limit", "35,941", "Data/master/reference"], ["Final Limit / %Final Limit", "5.72%", "Data/master/reference"]]}}, "CCL": {"sheet": "CCL_MONITORING", "key": "Kode Bank / Swift Code", "name": "Nama bank", "products": ["CASHLOAN", "NON CASH LOAN", "COMMERCIAL LINE (CRDT)", "TREASURY LINE (CRDT)"], "sections": {"Bank Profile": [["Nama bank", "ABN Amro Bank NV", "Data/master/reference"], ["CIF/Swift", "-", "Data/master/reference"], ["Kategori Bank", "Asing", "Data/master/reference"], ["Negara", "Netherlands", "Data/master/reference"], ["Global Parent Bank", "—", "Data/master/reference"], ["Apakah Bank termasuk Top 200 Bank Besar Dunia berdasarkan total aset menurut Banker's Almanac", "—", "Data/master/reference"]], "Risk & Capacity": [["Country Rating", "AAA", "Data/master/reference"], ["Bobot", "0.55", "Data/master/reference"], ["Rating", "AA-", "Data/master/reference"], ["Posisi Rating", "31/12/2023", "Data/master/reference"], ["Rating Index", "90.23%", "Data/master/reference"], ["Limit Inhouse (Rp Miliar)", "68,498", "Data/master/reference"], ["Tier 1 Capital (Rp Miliar)", "403,594", "Data/master/reference"], ["Capacity", "200,290", "Data/master/reference"], ["Capacity Limit Adjusted", "68,498", "Data/master/reference"]], "Limit": [["CCL", "500", "Data/master/reference"], ["Utilisasi Capacity", "0.73%", "Data/master/reference"], ["Limit Contractual", "500", "Data/master/reference"]], "BMRI Exposure": [["Outstanding", "13", "Data/master/reference"], ["Jenis Limit", "Direct", "Data/master/reference"], ["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Outstanding Maksimum", "13", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]], "Perusahaan Anak": [["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]]}}, "MLK": {"sheet": "MLK_Master", "key": "CIF", "name": "Nama Debitur", "products": ["CASHLOAN", "NON CASH LOAN", "TREASURY LINE (CRDT)"], "sections": {"Profil Debitur": [["Entitas", "BMRI", "Data/master/reference"], ["CIF", "4000264485", "Data/master/reference"], ["Nama Debitur", "DJARUM", "Data/master/reference"], ["Group Usaha", "DJARUM GROUP", "Data/master/reference"], ["Unit Kerja Pengelola", "CB6", "Data/master/reference"], ["Group", "DJARUM GROUP", "Data/master/reference"], ["BUMN/Swasta Flag", "Swasta", "Data/master/reference"], ["Tier", "B", "Data/master/reference"]], "Risk & Regulatory": [["BMPK Konsol", "67,204", "Data/master/reference"], ["Inhouse Limit Konsol", "60,484", "Data/master/reference"], ["BMPK/BMPP/BMPD Entitas", "55,993", "Data/master/reference"], ["Inhouse Limit Entitas", "50,394", "Data/master/reference"], ["Sektor DC", "INDUSTRI ROKOK", "Data/master/reference"], ["DC Sectoral", "3", "Data/master/reference"], ["Rating", "A+", "Data/master/reference"], ["Rating Multiplier", "2.67", "Data/master/reference"], ["Watchlist", "HIJAU", "Data/master/reference"], ["Discount Factor", "1", "Data/master/reference"]], "Financial & Capacity": [["EBITDA/Pengganti EBITDA", "1,938", "Data/master/reference"], ["Kredit Bank Lain", "12,010", "Data/master/reference"], ["Total Debt", "-", "Data/master/reference"], ["Borrowing Capacity", "15,523.38", "Data/master/reference"], ["Available BC", "(2,183.62)", "Data/master/reference"], ["Status Perhitungan", "-", "Data/master/reference"]], "Product Limit & Exposure": [["CL Bade", "500", "Data/master/reference"], ["CL Limit", "587", "Data/master/reference"], ["NCL Bade", "-", "Data/master/reference"], ["NCL Limit", "121", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Bade Treasury Line", "-", "Data/master/reference"], ["Total Limit Existing", "-", "Data/master/reference"], ["Total Bade Existing", "-", "Data/master/reference"]], "Master Limit": [["Master Limit Setting", "5,110", "Data/master/reference"], ["Master Limit", "5,818", "Data/master/reference"]]}}, "CIL": {"sheet": "CIL_Master", "key": "Insurance Company ID / Entity", "name": "Perusahaan Asuransi", "products": ["Nominal Pertanggungan"], "sections": {"Insurance Profile": [["No", "1", "Data/master/reference"], ["Perusahaan Asuransi", "PT Asuransi Tugu Pratama Indonesia Tbk", "Data/master/reference"], ["Jenis Perusahaan (Asuransi/Penjaminan)", "Asuransi", "Data/master/reference"], ["Jenis Produk Asuransi", "Asuransi Kredit", "Data/master/reference"]], "Capacity & Threshold": [["Insurance Capacity (IC) (Rp Juta)", "3,605,020,000", "Data/master/reference"], ["Multiplier Terpakai (%)", "3.00%", "Data/master/reference"], ["Consolidated Insurance Threshold (CIT) (Rp Juta)", "108,150,600", "Parameter monitoring"]], "BMRI": [["Nominal Pertanggungan BMRI 2025", "11,573,402.55", "Data/master/reference"], ["EIL BMRI", "60,093,270.28", "Data/master/reference"]], "Mandiri Taspen": [["Nominal Pertanggungan Mandiri Taspen 2025", "BUKAN REKANAN", "Data/master/reference"], ["EIL Mandiri Taspen", "26,999,429.42", "Data/master/reference"]], "MTF": [["Nominal Pertanggungan MTF 2025", "285,708.13", "Data/master/reference"], ["EIL MTF", "10,591,613.12", "Data/master/reference"]], "MUF": [["Nominal Pertanggungan MUF 2025", "21,313", "Data/master/reference"], ["EIL MUF", "10,129,963.92", "Data/master/reference"]], "Consolidated": [["Consolidated Insurance Limit (CIL) (Rp Juta)", "107,814,276.74", "Data/master/reference"], ["Total Nominal Pertanggungan All Entitas 2025 (Rp Juta)", "11,880,423.68", "Data/master/reference"], ["Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)", "13,060,790.52", "Data/master/reference"], ["Skor Akreditasi (PCP)", "79.38", "Data/master/reference"], ["Klasifikasi EWS (PCP)", "Monitoring", "Data/master/reference"]]}}, "LPG": {"sheet": "LPG_Loanportfolio", "key": "Sector + Segment + Region", "name": "Ecosystem LPG", "products": ["CASHLOAN", "NON CASH LOAN"], "sections": {"Identitas": [["No", "1", "Data/master/reference"], ["Ecosystem LPG (Sektor)", "BATUBARA", "Data/master/reference"], ["Segmen LPG", "Corporate", "Data/master/reference"]], "Bankwide": [["Bankwide / Limit", "65,140", "Data/master/reference"], ["Bankwide / Outstanding", "37,919", "Data/master/reference"], ["Bankwide / %Utilisasi", "58.20%", "Data/master/reference"]], "Region Monitoring": [["Region I / Limit", "—", "Data/master/reference"], ["Region I / Outstanding", "—", "Data/master/reference"], ["Region I / %Utilisasi", "—", "Data/master/reference"], ["Region II / Limit", "—", "Data/master/reference"], ["Region II / Outstanding", "—", "Data/master/reference"], ["Region II / %Utilisasi", "—", "Data/master/reference"], ["Region III / Limit", "—", "Data/master/reference"], ["Region III / Outstanding", "—", "Data/master/reference"], ["Region III / %Utilisasi", "—", "Data/master/reference"], ["Region IV / Limit", "—", "Data/master/reference"], ["Region IV / Outstanding", "—", "Data/master/reference"], ["Region IV / %Utilisasi", "—", "Data/master/reference"], ["Region V / Limit", "—", "Data/master/reference"], ["Region V / Outstanding", "—", "Data/master/reference"], ["Region V / %Utilisasi", "—", "Data/master/reference"], ["Region VI / Limit", "—", "Data/master/reference"], ["Region VI / Outstanding", "—", "Data/master/reference"], ["Region VI / %Utilisasi", "—", "Data/master/reference"], ["Region VII / Limit", "—", "Data/master/reference"], ["Region VII / Outstanding", "—", "Data/master/reference"], ["Region VII / %Utilisasi", "—", "Data/master/reference"], ["Region VIII / Limit", "—", "Data/master/reference"], ["Region VIII / Outstanding", "—", "Data/master/reference"], ["Region VIII / %Utilisasi", "—", "Data/master/reference"], ["Region IX / Limit", "—", "Data/master/reference"], ["Region IX / Outstanding", "—", "Data/master/reference"], ["Region IX / %Utilisasi", "—", "Data/master/reference"], ["Region X / Limit", "—", "Data/master/reference"], ["Region X / Outstanding", "—", "Data/master/reference"], ["Region X / %Utilisasi", "—", "Data/master/reference"], ["Region XI / Limit", "—", "Data/master/reference"], ["Region XI / Outstanding", "—", "Data/master/reference"], ["Region XI / %Utilisasi", "—", "Data/master/reference"], ["Region XII / Limit", "—", "Data/master/reference"], ["Region XII / Outstanding", "—", "Data/master/reference"], ["Region XII / %Utilisasi", "—", "Data/master/reference"]], "Validation": [["Status Crosscheck", "—", "Data/master/reference"], ["Data Quality", "—", "Data/master/reference"]]}}};
 const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_rek", "gas_reporting", "buc_reporting", "jns_krd", "src", "j_guna", "revolv", "bilokj", "total_limit", "total_bade", "project_location", "code", "MatDate/Jatem", "MatDate/Jatem"], "NON CASH LOAN": ["NO", "MODULE", "Swift Code", "REPORTTYPE", "TRXREF", "RELREF", "CUSTID", "CUSTNM", "CPNM", "CPCNTY", "CPBK", "BKCNTRY", "Country Code", "Country Name", "Type of Judgment", "TRXTYPE", "CCY", "AMOUNT", "BALANCE", "EXCHANGERT", "EQVIDR", "FINTYPE", "TRXDATE", "DUEDATE", "SERVCODE", "SERVNM", "PCCD", "PCNM", "BUCD", "SOF", "INTRT"], "COMMERCIAL LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "Treasury DN", "Treasury DN Utilisasi", "Treasury LN", "Treasury LN Utilisasi", "Treasury Line Total", "Treasury Line Total Utilisasi", "Comm DN", "Comm DN Utilisasi", "Comm LN", "Comm LN Utilisasi", "Comm Line Total", "Comm Line Total Utilisasi", "Corporate Card", "Credit Line Total", "Credit Line Total Utilisasi"], "Investment Line": ["No", "Nama Bank", "Nama Entity (Scope Entity : AKK)", "Switftcode", "Jenis Invesment Line", "Amount Invesment Line", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"], "BONDS": ["Date", "Branch", "Securities Type", "Securities Name", "Issuer Name", "Issuer Country", "Issuer Type", "Portfolio", "CCY", "Amount", "Amount Eq. IDR Juta", "Maturity Date", "Coupon", "Potential P/L (Eq. IDR Juta)"], "NOSTRO": ["Year", "Branch", "SwfitCode", "Bank Name", "Bank Country", "Balance"], "TREASURY LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "TDN", "TDN Utilisasi", "TLN", "TLN Utilisasi", "Treasury Line", "Total Utilisasi", "CDN", "CDN Utilisasi", "CLN", "CLN Utilisasi", "Comm Line", "Comm Line Utilisasi", "Corporate Card", "Credit Line", "Credit Line Utilisasi", "Maturity"]};
@@ -602,7 +630,203 @@ function Detail({nav,type="Country"}){
 
 function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
-function Products({nav}){const [p,setP]=useState('CASHLOAN');const fields=productFields[p]||[];const sample=productSample[p]||{};return <Layout screen="products" onNav={nav}><Header title="Product Source & Mapping" subtitle="Seluruh source field dari workbook master_dataproduk dan mapping ke setiap limit"/><div className="page"><section className="card"><div className="head"><div><h2>{p}</h2><p>Field source lengkap • contoh data • target limit mapping</p></div></div><div className="body"><div className="tabs">{Object.keys(productFields).map(x=><button className={`tab ${x===p?'active':''}`} key={x} onClick={()=>setP(x)}>{x}</button>)}</div><div className="grid2"><div><div className="section-title">Source Fields Lengkap</div><div className="rowgrid">{fields.map(f=><React.Fragment key={f}><div>{f}</div><div>{sample[f]||'—'}</div><div style={{color:'var(--muted)'}}>Source column</div></React.Fragment>)}</div></div><div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>domains[d].products.includes(p)).map(d=><div className="mini" key={d} style={{marginBottom:8}}><b>{d}</b><div style={{fontSize:11,color:'var(--muted)',marginTop:4}}>Target: {mapTargets[d]?.[p]||'—'} • Exposure: {sourceExposure[p]||'—'}</div></div>)}<div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div></div></div></section></div></Layout>}
+const productMasterCatalog=[
+  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",target:"Country / MLK / LPG",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Workbook juga mencatat kebutuhan konversi IDR."},
+  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",target:"Country / CCL / MLK / LPG",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta country judgment berdasarkan counterparty."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
+  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",target:"CCL",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur produk/fasilitas yang belum termapping; workbook memberi kebutuhan frekuensi Monthly pada sample."},
+  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",target:"Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country limit hit pada issuer selain Indonesia; limit dapat kembali setelah Maturity Date."},
+  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",target:"Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; balance masih kurs asli dan perlu konversi kurs tengah NTR."}
+];
+
+const creditLineGroups={
+  "Commercial Line":productFields["COMMERCIAL LINE (CRDT)"]||[],
+  "Treasury Line":productFields["TREASURY LINE (CRDT)"]||[]
+};
+const creditLineSamples={
+  "Commercial Line":productSample["COMMERCIAL LINE (CRDT)"]||{},
+  "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
+};
+const productTabSource={
+  "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
+  "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO"
+};
+const productTabFields={
+  "CASHLOAN":productFields["CASHLOAN"]||[],
+  "NON CASH LOAN":productFields["NON CASH LOAN"]||[],
+  "Investment Line":productFields["Investment Line"]||[],
+  "BONDS":productFields["BONDS"]||[],
+  "NOSTRO":productFields["NOSTRO"]||[]
+};
+const productFieldNotes={
+  "CASHLOAN":{
+    project_location:"Country mapping berdasarkan lokasi proyek.",
+    code:"Country Code sebagai key mapping.",
+    total_limit:"Total limit rekening/fasilitas.",
+    total_bade:"Total outstanding/BADE yang digunakan sebagai exposure."
+  },
+  "NON CASH LOAN":{
+    "Swift Code":"Identifier counterparty bank.",
+    "CUSTID":"Identifier CIF/customer.",
+    "CPNM":"Nama counterparty yang digunakan untuk country judgment.",
+    "Country Code":"Country Code hasil mapping counterparty.",
+    "EQVIDR":"Nilai ekuivalen IDR untuk exposure.",
+    "BALANCE":"Saldo/transaksi outstanding yang menjadi referensi exposure."
+  },
+  "Investment Line":{
+    "Jenis Invesment Line":"Jenis fasilitas investment line.",
+    "Amount Invesment Line":"Nominal investment line.",
+    "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa":"Catatan pooling untuk fasilitas yang belum termapping."
+  },
+  "BONDS":{
+    "Issuer Country":"Negara issuer untuk country limit.",
+    "Amount Eq. IDR Juta":"Exposure ekuivalen IDR.",
+    "Maturity Date":"Tanggal maturity; workbook mencatat limit dapat kembali setelah maturity."
+  },
+  "NOSTRO":{
+    "Bank Country":"Country hasil trim Swift Code.",
+    "Balance":"Balance dalam kurs asli; workbook mencatat kebutuhan konversi menggunakan kurs tengah NTR."
+  }
+};
+
+function productMetaKey(tab,group,field){return `limas_product_field_meta_v2_${tab}||${group||"Default"}||${field}`;}
+function loadProductFieldMeta(tab,group,field){
+  const key=productMetaKey(tab,group,field);
+  try{
+    const saved=window.localStorage.getItem(key);
+    if(saved)return JSON.parse(saved);
+  }catch(e){}
+  const sheet=productTabSource[tab]||tab;
+  const note=productFieldNotes[tab]?.[field]||(
+    tab==="CREDIT LINE"
+      ? `${group} field dari source sheet Credit Line (CommLine and TL).`
+      : `Field ${field} digunakan sebagai source data ${tab}.`
+  );
+  return {source:`master_dataproduk.xlsx • ${sheet}`,note};
+}
+function saveProductFieldMeta(tab,group,field,meta){
+  try{window.localStorage.setItem(productMetaKey(tab,group,field),JSON.stringify(meta));}catch(e){}
+}
+function catalogMetaKey(id){return `limas_product_catalog_v2_${id}`;}
+function loadProductCatalogMeta(item){
+  try{
+    const saved=window.localStorage.getItem(catalogMetaKey(item.id));
+    if(saved)return JSON.parse(saved);
+  }catch(e){}
+  return {source:item.source,note:item.note};
+}
+function saveProductCatalogMeta(item,meta){
+  try{window.localStorage.setItem(catalogMetaKey(item.id),JSON.stringify(meta));}catch(e){}
+}
+
+function ProductFieldTable({tab,group="",fields,sample}){
+  const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta(tab,group,f)]));
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState(buildDraft);
+  React.useEffect(()=>{setEditing(false);setDraft(buildDraft())},[tab,group,fields.join("|")]);
+  const update=(f,key,value)=>setDraft(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
+  const save=()=>{fields.forEach(f=>saveProductFieldMeta(tab,group,f,draft[f]||{}));setEditing(false)};
+  const cancel=()=>{setDraft(buildDraft());setEditing(false)};
+  return <div className="product-field-block">
+    <div className="product-field-toolbar">
+      <div><b>Source Fields Lengkap</b><span>Field + Sample Value + Source Data + Keterangan</span></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
+    </div>
+    <div className="table-wrap product-field-wrap">
+      <table className="table field-table product-field-table">
+        <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+        <tbody>{fields.map(f=>{
+          const m=draft[f]||{};
+          return <tr key={f}>
+            <td><b>{f}</b></td><td>{sample[f]===0?0:(sample[f]||"—")}</td>
+            <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+            <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+          </tr>
+        })}</tbody>
+      </table>
+    </div>
+  </div>;
+}
+
+function ProductCatalog(){
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState(()=>Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));
+  const update=(id,key,value)=>setDraft(m=>({...m,[id]:{...(m[id]||{}),[key]:value}}));
+  const save=()=>{productMasterCatalog.forEach(item=>saveProductCatalogMeta(item,draft[item.id]||{}));setEditing(false)};
+  const cancel=()=>{setDraft(Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));setEditing(false)};
+  return <section className="card">
+    <div className="head">
+      <div><h2>Master Data Produk</h2><p>Master katalog product, source sheet, key, target limit, exposure field, Source Data dan Keterangan.</p></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
+    </div>
+    <div className="body">
+      <div className="table-wrap product-master-wrap">
+        <table className="table product-master-table">
+          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Dipakai oleh Limit</th><th>Exposure Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+          <tbody>{productMasterCatalog.map(item=>{
+            const m=draft[item.id]||{};
+            return <tr key={item.id}>
+              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{item.target}</td><td>{item.exposure}</td>
+              <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+              <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+            </tr>
+          })}</tbody>
+        </table>
+      </div>
+      <div className="field-help">Master Data Produk menjadi referensi utama sebelum detail field-level. Edit metadata tidak mengubah nama kolom source pada workbook.</div>
+    </div>
+  </section>;
+}
+
+function ProductUsage({view}){
+  const usage=[];
+  if(view==="CASHLOAN") usage.push(["Country","Country Code / Project Location","total_bade"],["MLK","CIF","total_bade"],["LPG","CIF → Sector / Segment / Region","total_bade"]);
+  if(view==="NON CASH LOAN") usage.push(["Country","Country Code","EQVIDR / BALANCE"],["CCL","Swift Code / Counterparty","EQVIDR / BALANCE"],["MLK","CUSTID / CIF","EQVIDR / BALANCE"],["LPG","CUSTID/CIF → Sector / Segment / Region","EQVIDR / BALANCE"]);
+  if(view==="CREDIT LINE") usage.push(["Country","Country Code / Bank Country","Comm Line Utilisasi + Treasury Line Utilisasi"],["CCL","Swift Code","Comm Line Utilisasi + Treasury Line Utilisasi"]);
+  if(view==="Investment Line") usage.push(["CCL","Swift Code / Bank mapping","Amount Invesment Line"]);
+  if(view==="BONDS") usage.push(["Country","Issuer Country","Amount Eq. IDR Juta"]);
+  if(view==="NOSTRO") usage.push(["Country","SwiftCode / Bank Country","Balance"]);
+  return <div className="product-mapping-grid">
+    <div><div className="section-title">Dipakai oleh Limit</div>{usage.map(([d,target,exposure])=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {target} • Exposure: {exposure}</div></div>)}</div>
+    <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div>
+  </div>;
+}
+
+function Products({nav}){
+  const [view,setView]=useState("catalog");
+  const limitTabs=[
+    ["catalog","Master Data Produk"],["CASHLOAN","Cash Loan"],["NON CASH LOAN","Non Cash Loan"],["CREDIT LINE","Credit Line"],["Investment Line","Investment Line"],["BONDS","Bonds"],["NOSTRO","Nostro"]
+  ];
+  const info=productMasterCatalog.find(x=>x.id===view);
+  return <Layout screen="products" onNav={nav}>
+    <Header title="Product Source & Mapping" subtitle="Master data produk + source field + mapping + traceability berdasarkan workbook master_dataproduk"/>
+    <div className="page">
+      <section className="card">
+        <div className="body">
+          <div className="tabs product-tabs">{limitTabs.map(([id,label])=><button className={`tab ${view===id?'active':''}`} key={id} onClick={()=>setView(id)}>{label}</button>)}</div>
+        </div>
+      </section>
+
+      {view==="catalog"&&<ProductCatalog/>}
+
+      {info&&<section className="card">
+        <div className="head">
+          <div><h2>{info.label}</h2><p>Source sheet: <b>{info.sheet}</b> • Primary Key: <span className="key">{info.key}</span></p></div>
+        </div>
+        <div className="body">
+          {view==="CREDIT LINE"
+            ? <div className="credit-line-groups">{Object.entries(creditLineGroups).map(([group,fields])=><section className="product-group" key={group}>
+                <div className="section-title">{group}</div>
+                <ProductFieldTable key={`${view}-${group}`} tab="CREDIT LINE" group={group} fields={fields} sample={creditLineSamples[group]}/>
+              </section>)}</div>
+            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
+          }
+          <ProductUsage view={view}/>
+        </div>
+      </section>}
+    </div>
+  </Layout>;
+}
 
 class AppErrorBoundary extends React.Component{
   constructor(props){super(props);this.state={error:null}}
@@ -638,9 +862,7 @@ export default function Limas(props: ILimasProps): React.ReactElement {
   return (
     <div className="limas-spfx-root">
       <style>{LIMAS_CSS}</style>
-      <AppErrorBoundary>
-        <App />
-      </AppErrorBoundary>
+      <AppErrorBoundary><App /></AppErrorBoundary>
     </div>
   );
 }
