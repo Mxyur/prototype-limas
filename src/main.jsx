@@ -821,7 +821,11 @@ const productMasterCatalog=[
   {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
 ];
 
-const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):(productFields[p.id]||[]))]]));
+const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
+  p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
+  p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[])]:
+  (productFields[p.id]||[])
+)]]));
 
 function makeProductRecord(productId,overrides={},applied=[],meta={}){
   const base={};
@@ -1080,11 +1084,11 @@ function ProductCatalog(){
     <div className="body">
       <div className="table-wrap product-master-wrap">
         <table className="table product-master-table">
-          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Integrated to Domain</th><th>Utilization Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Integrated to Domain</th><th>Utilization Field</th><th>Database Records</th><th>Source Data</th><th>Keterangan</th></tr></thead>
           <tbody>{productMasterCatalog.map(item=>{
             const m=draft[item.id]||{};
             return <tr key={item.id}>
-              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{productIntegratedDomains(item.id).join(" / ")|| (item.id==="Investment Line"?"Future / Scoped":"—")}</td><td>{item.exposure}</td>
+              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{productIntegratedDomains(item.id).join(" / ")|| (item.id==="Investment Line"?"Future / Scoped":"—")}</td><td>{item.exposure}</td><td><span className="chip blue">{(productDatabase[item.id]||[]).length}</span></td>
               <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
               <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
             </tr>
