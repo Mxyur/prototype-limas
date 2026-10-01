@@ -1442,7 +1442,7 @@ function productApplicationsFor(type,key){
     if(productId==="Nominal Pertanggungan")return "Nominal Pertanggungan 2025 (Rp Juta)";
     return getProductMeta(productId)?.exposure||"—";
   };
-  const transform=(productId)=>productId==="NON CASH LOAN"?"EQVIDR dikonversi ke Rp Juta (/1.000.000)":productId==="CREDIT LINE"?"Treasury exposure memakai Bade Treasury Line; Treasury Line adalah approved facility limit":"Direct / source unit";
+  const transform=(productId)=>productId==="NON CASH LOAN"?"EQVIDR dikonversi ke Rp Juta (/1.000.000)":productId==="CREDIT LINE"?"MLK Treasury mapping memakai Bade Treasury Line sebagai exposure; field ini bukan approved limit dan hanya berlaku untuk integration-only MLK Treasury rows":"Direct / source unit";
   Object.values(productDatabase).forEach(rows=>rows.forEach(r=>(r.applied||[]).forEach(a=>{
     if(a.limitType===type&&String(a.key)===String(key))out.push({
       ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
@@ -1776,12 +1776,12 @@ function ProductUniverseAudit(){
           <thead><tr><th>Credit Line Record</th><th>Reconciliation</th><th>Issue</th></tr></thead>
           <tbody>{creditRows.map(x=><tr key={"credit-audit-"+x.recordId}>
             <td className="key">{x.recordId}</td>
-            <td><Status v={x.status==="Normal"?"Normal":"Data Issue"}/></td>
+            <td><Status v={x.status==="Normal"?"Normal":x.status}/></td>
             <td>{x.issues.length?x.issues.join(" • "):"Commercial / Treasury / Credit Line hierarchy reconciles within tolerance"}</td>
           </tr>)}</tbody>
         </table>
       </div>
-      <div className="field-help">Reconciliation tolerance untuk total/utilization demo memakai ±0.05 untuk mengakomodasi rounding. Source values tidak diubah otomatis.</div>
+      <div className="field-help">Reconciliation tolerance untuk total/utilization demo memakai ±0.05 untuk mengakomodasi rounding. Record MLK dengan <b>Bade Treasury Line</b> adalah integration-only exposure row sehingga tidak dibandingkan dengan hierarchy limit Credit Line. Source values tidak diubah otomatis.</div>
     </div>
   </section>;
 }
@@ -1833,7 +1833,7 @@ function ProductCatalog(){
           <div className="field-help">Business Enrichment <b>Booking Office</b> + <b>Booking Office Type</b> hanya digunakan untuk Non Cash Loan karena source NCL belum menyediakan atribut kantor pembukuan. Credit Line tidak menggunakan enrichment tersebut; Domestic/Overseas langsung berasal dari DN/LN pada Commercial Line dan Treasury Line.</div>
         </div>
       </section>
-      <div className="field-help">Product Universe menjadi registry source/integration. Product Database menyimpan source records per produk. LPG tidak menjadi direct Applied Limit: klasifikasi LPG berasal dari debtor attributes Cash Loan/Non Cash Loan lalu diagregasi menjadi monitoring LPG. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; Investment Line masih Future / Scoped.</div>
+      <div className="field-help">Product Universe menjadi registry source/integration. Product Database menyimpan source records per produk. Commercial Line dan Treasury Line adalah component di bawah Credit Line, bukan dua universe product terpisah. LPG tidak menjadi direct Applied Limit: klasifikasi LPG berasal dari debtor attributes Cash Loan/Non Cash Loan lalu diagregasi menjadi monitoring LPG. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; Investment Line masih Future / Scoped.</div>
     </div>
   </section>;
 }
@@ -1843,6 +1843,13 @@ function creditLineAuditRows(rows){
   const near=(a,b,t=.05)=>Math.abs(n(a)-n(b))<=t;
   return rows.map(r=>{
     const d=r.data||{};
+    // MLK Treasury records are integration-only exposure rows, not full Credit Line source rows.
+    const treasuryExposureOnly=d["Bade Treasury Line"]!==undefined &&
+      d["Treasury Line Total"]===undefined &&
+      d["Credit Line Total"]===undefined;
+    if(treasuryExposureOnly){
+      return {recordId:r.recordId,status:"Not Applicable",issues:["Integration-only MLK Treasury exposure row; line limit reconciliation is not applicable"]};
+    }
     const commercialTotal=n(d["Comm DN"])+n(d["Comm LN"]);
     const treasuryTotal=n(d["Treasury DN"])+n(d["Treasury LN"]);
     const creditTotal=n(d["Comm Line Total"])+n(d["Treasury Line Total"]);
