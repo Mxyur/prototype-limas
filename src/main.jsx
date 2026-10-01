@@ -330,13 +330,17 @@ function hydrateCountryPrototypeAllocations(){
       domesticLimit:Number(domesticCapacity.toFixed(2)),
       overseasLimit:Number(overseasCapacity.toFixed(2))
     };
-    row.productAllocations=Object.fromEntries(COUNTRY_PROTO_POLICY.products.map(([product,share])=>{
-      const total=capacity*share;
-      return [product,{
-        domesticLimit:Number((total*COUNTRY_PROTO_POLICY.domesticShare).toFixed(2)),
-        overseasLimit:Number((total*COUNTRY_PROTO_POLICY.overseasShare).toFixed(2))
-      }];
-    }));
+    const allocations={};
+    let allocatedDomestic=0,allocatedOverseas=0;
+    COUNTRY_PROTO_POLICY.products.forEach(([product,share],index)=>{
+      const isLast=index===COUNTRY_PROTO_POLICY.products.length-1;
+      const total=isLast?Number((capacity-Object.values(allocations).reduce((s,x)=>s+x.total,0)).toFixed(2)):Number((capacity*share).toFixed(2));
+      const domestic=isLast?Number((domesticCapacity-allocatedDomestic).toFixed(2)):Number((total*COUNTRY_PROTO_POLICY.domesticShare).toFixed(2));
+      const overseas=isLast?Number((overseasCapacity-allocatedOverseas).toFixed(2)):Number((total-domestic).toFixed(2));
+      allocations[product]={domesticLimit:domestic,overseasLimit:overseas,total};
+      allocatedDomestic+=domestic; allocatedOverseas+=overseas;
+    });
+    row.productAllocations=allocations;
   });
 }
 hydrateCountryPrototypeAllocations();
