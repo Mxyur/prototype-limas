@@ -8,6 +8,50 @@ const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT
 const mapTargets={"Country": {"CASHLOAN": "Country Code / Project Location", "NON CASH LOAN": "Country Code", "COMMERCIAL LINE (CRDT)": "Country Code / Bank Country", "TREASURY LINE (CRDT)": "Country Code / Bank Country", "BONDS": "Issuer Country", "NOSTRO": "Bank Country"}, "CCL": {"CASHLOAN": "Bank / Counterparty mapping", "NON CASH LOAN": "Swift Code / Counterparty", "COMMERCIAL LINE (CRDT)": "Swift Code", "TREASURY LINE (CRDT)": "Swift Code"}, "MLK": {"CASHLOAN": "CIF", "NON CASH LOAN": "CUSTID / CIF", "TREASURY LINE (CRDT)": "Debtor / CIF mapping"}, "CIL": {"Nominal Pertanggungan": "Insurance ID + Entity"}, "LPG": {"CASHLOAN": "CIF → Sector / Segment / Region", "NON CASH LOAN": "CUSTID/CIF → Sector / Segment / Region"}};
 const sourceExposure={"CASHLOAN": "total_bade", "NON CASH LOAN": "EQVIDR / BALANCE", "COMMERCIAL LINE (CRDT)": "Line Utilisasi", "TREASURY LINE (CRDT)": "Treasury Line Utilisasi", "BONDS": "Amount Eq. IDR Juta", "NOSTRO": "Balance", "Nominal Pertanggungan": "Nominal Pertanggungan"};
 
+
+/*
+ * LIMAS DATA ARCHITECTURE
+ * 1) Master Limit = approved/active limit master only.
+ * 2) Product Universe = source/integration registry only.
+ * 3) Product Utilization = runtime/read-model data integrated from source systems.
+ * 4) Monitoring = Master Limit + Product Utilization.
+ */
+function getMasterSections(type){
+  const s=domains[type]?.sections||{};
+  if(type==="Country") return {"Identitas":s["Identitas"]||[],"Limit & Gap":s["Limit & Gap"]||[]};
+  if(type==="CCL") return {"Bank Profile":s["Bank Profile"]||[],"Risk & Capacity":s["Risk & Capacity"]||[],"Limit":s["Limit"]||[]};
+  if(type==="MLK") return {"Profil Debitur":s["Profil Debitur"]||[],"Risk & Regulatory":s["Risk & Regulatory"]||[],"Master Limit":s["Master Limit"]||[]};
+  if(type==="CIL") return {
+    "Insurance Profile":s["Insurance Profile"]||[],
+    "Capacity & Threshold":s["Capacity & Threshold"]||[],
+    "Entity Limit (EIL)":[
+      ...(s["BMRI"]||[]).filter(([f])=>String(f).startsWith("EIL ")),
+      ...(s["Mandiri Taspen"]||[]).filter(([f])=>String(f).startsWith("EIL ")),
+      ...(s["MTF"]||[]).filter(([f])=>String(f).startsWith("EIL ")),
+      ...(s["MUF"]||[]).filter(([f])=>String(f).startsWith("EIL "))
+    ],
+    "Consolidated Limit":(s["Consolidated"]||[]).filter(([f])=>String(f).startsWith("Consolidated Insurance Limit"))
+  };
+  if(type==="LPG") return {
+    "Identitas":s["Identitas"]||[],
+    "Bankwide Limit":(s["Bankwide"]||[]).filter(([f])=>String(f).toLowerCase().endsWith(" / limit")),
+    "Regional Limit":(s["Region Monitoring"]||[]).filter(([f])=>String(f).toLowerCase().endsWith(" / limit"))
+  };
+  return s;
+}
+
+const domainIntegrationProducts={
+  Country:["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"],
+  CCL:["NON CASH LOAN","CREDIT LINE","Investment Line"],
+  MLK:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
+  CIL:["Nominal Pertanggungan"],
+  LPG:["CASHLOAN","NON CASH LOAN"]
+};
+function integrationLabel(id){
+  if(id==="CREDIT LINE") return "Credit Line (Commercial + Treasury)";
+  const item=(typeof productMasterCatalog!=="undefined" ? productMasterCatalog.find(p=>p.id===id) : null);
+  return item?.label||id;
+}
 const provenanceDefaults={
   Country:{description:"Master limit negara untuk monitoring exposure lintas produk.",source:"CPR / Risk Management",dataset:"COUNTRY_MONITORING",system:"LIMAS Working Data",period:"Agustus 2026",owner:"CPR Risk Management",sourceNote:"Approved country limit dan data exposure hasil konsolidasi source product."},
   CCL:{description:"Master CCL dan contractual limit untuk monitoring counterparty serta exposure BMRI/PA.",source:"FIB Group + SISM Group",dataset:"CCL_MONITORING",system:"LIMAS Working Data",period:"Agustus 2026",owner:"FIB / SISM",sourceNote:"BMRI data berasal dari FIB Group; data PA dikompilasi SISM sebelum monitoring."},
@@ -19,7 +63,7 @@ function loadMasterMeta(type){
   const key=`limas_master_meta_v1_${type}`;
   try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
   const d=provenanceDefaults[type]||{};
-  return {description:d.description||"",source:d.source||"",dataset:d.dataset||"",system:d.system||"",period:d.period||"",owner:d.owner||"",sourceNote:d.sourceNote||"",version:1,updatedBy:"Risk Management",lastUpdated:"Belum pernah disimpan"};
+  return {description:d.description||"",source:d.source||"",dataset:d.dataset||"",system:d.system||"",period:d.period||"",owner:d.owner||"",sourceNote:d.sourceNote||"",status:"Active",effectiveDate:d.period||"",version:1,updatedBy:"Risk Management",lastUpdated:"Belum pernah disimpan"};
 }
 function saveMasterMeta(type,meta){try{window.localStorage.setItem(`limas_master_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
 function defaultProductProvenance(type){
@@ -287,7 +331,37 @@ function Monitor({type,nav}){
   </div></Layout>
 }
 
-function Setup({nav,setSel}){const [type,setType]=useState('Country');const info=domains[type];return <Layout screen="setup" onNav={nav}><Header title="Master Limit Setup" subtitle="Setup data master lengkap per domain sesuai workbook"/><div className="page"><section className="card"><div className="head"><div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • {info.name}</p></div><div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Excel</button></div></div><div className="body"><div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div><div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Section Master</th><th>Product</th><th>Source Sheet</th><th>Detail</th></tr></thead><tbody><tr><td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(info.sections).join(', ')}</td><td>{info.products.join(', ')}</td><td>{info.sheet}</td><td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td></tr></tbody></table></div></section></div></Layout>}
+function Setup({nav,setSel}){
+  const [type,setType]=useState('Country');
+  const info=domains[type], masterSections=getMasterSections(type), linkedProducts=domainIntegrationProducts[type]||[], meta=loadMasterMeta(type);
+  return <Layout screen="setup" onNav={nav}>
+    <Header title="Master Limit Setup" subtitle="Repository master limit per domain • utilization product diintegrasikan terpisah"/>
+    <div className="page">
+      <section className="card">
+        <div className="head">
+          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • master limit tersimpan di LIMAS; exposure product bukan bagian dari master.</p></div>
+          <div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Master Limit</button></div>
+        </div>
+        <div className="body">
+          <div className="tabs">{Object.keys(domains).map(d=><button className={\`tab \${d===type?'active':''}\`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
+          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={\`Cari \${info.key}\`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Sections</th><th>Linked Product Integration</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
+              <tbody><tr>
+                <td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(masterSections).join(', ')}</td>
+                <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
+                <td>v{meta.version||1}</td><td><Status v={meta.status||"Active"}/></td>
+                <td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td>
+              </tr></tbody>
+            </table>
+          </div>
+          <div className="field-help">Master Limit Setup menyimpan limit dan parameter keputusan. Outstanding, Utilisasi dan EWS berasal dari Product Utilization Integration dan dipantau pada menu Monitoring.</div>
+        </div>
+      </section>
+    </div>
+  </Layout>
+}
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
 
@@ -376,7 +450,7 @@ function loadFieldMeta(type){
   const key=`limas_field_meta_v5_${type}`;
   try{const saved=window.localStorage.getItem(key);if(saved)return JSON.parse(saved);}catch(e){}
   const out={};
-  Object.entries(domains[type]?.sections||{}).forEach(([section,rows])=>{
+  Object.entries(getMasterSections(type)).forEach(([section,rows])=>{
     rows.forEach(([field])=>{
       const id=`${section}||${field}`;
       out[id]={
@@ -391,94 +465,56 @@ function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_m
 
 function Detail({nav,type="Country"}){
   const safeType=domains[type]?type:"Country";
-  const info=domains[safeType];
-  const [tab,setTab]=useState(()=>Object.keys(info.sections)[0]);
+  const masterSections=getMasterSections(safeType);
+  const [tab,setTab]=useState(()=>Object.keys(masterSections)[0]);
   const [meta,setMeta]=useState(()=>loadMasterMeta(safeType));
   const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(safeType));
   const [editing,setEditing]=useState(false);
   const [savedAt,setSavedAt]=useState("");
-  const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
+  const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[\`\${section}||\${field}\`]:{...(m[\`\${section}||\${field}\`]||{}),[key]:value}}));
   const startEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
   const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
-  const saveChanges=()=>{
-    saveFieldMeta(safeType,fieldMeta);
-    const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};
-    saveMasterMeta(safeType,next);
-    setMeta(next);
-    setEditing(false);
-    setSavedAt(next.lastUpdated);
-  };
+  const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};saveMasterMeta(safeType,next);setMeta(next);setEditing(false);setSavedAt(next.lastUpdated);};
+  const linkedProducts=domainIntegrationProducts[safeType]||[];
   return <Layout screen="detail" onNav={nav}>
-    <Header title={`${safeType} • Master Limit Detail`} subtitle="Master, parameter, source reference, provenance dan traceability untuk objek monitoring"/>
+    <Header title={\`\${safeType} • Master Limit Detail\`} subtitle="Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."/>
     <div className="page">
       <section className="card">
         <div className="head">
-          <div>
-            <h2>{sampleName(safeType)}</h2>
-            <p>Unique Key: <span className="key">{sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p>
-          </div>
-          <div className="toolbar">
-            {!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<>
-              <button className="btn ghost" onClick={cancelEdit}>Batal</button>
-              <button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button>
-            </>}
-            <button className="btn secondary" onClick={()=>nav('products')}>Product Source & Mapping</button>
-          </div>
+          <div><h2>{sampleName(safeType)}</h2><p>Unique Key: <span className="key">{sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p></div>
+          <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
-          <div className="tabs">{Object.keys(info.sections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
+          <div className="tabs">{Object.keys(masterSections).map(s=><button className={\`tab \${tab===s?'active':''}\`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
           <div className="field-table-wrap">
-            <table className="table field-table">
-              <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
-              <tbody>
-                {info.sections[tab].map(([f,v])=>{
-                  const fm=fieldMeta[`${tab}||${f}`]||{source:mdFieldSource[safeType]?.[`${tab}||${f}`]||defaultFieldSource(safeType,tab),note:defaultFieldNote(safeType,tab,f)};
-                  return <tr key={f}>
-                    <td><b>{f}</b></td>
-                    <td>{v}</td>
-                    <td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td>
-                    <td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td>
-                  </tr>;
-                })}
-              </tbody>
+            <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+              <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
+                const id=\`\${tab}||\${f}\`;
+                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)};
+                return <tr key={f}><td><b>{f}</b></td><td>{v}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
+              })}</tbody>
             </table>
           </div>
-          <div className="field-help">{editing?"Mode edit: Source Data mengikuti referensi MD secara default dan dapat disesuaikan bila source berubah.":"Source Data ditarik dari kolom Source pada MD master; nilai get/calc ditandai sebagai hasil pengambilan atau kalkulasi."}</div>
+          <div className="field-help">Master Limit Detail hanya menyimpan master limit/parameter. Product exposure, outstanding dan utilisasi tidak direplikasi di sini.</div>
         </div>
       </section>
-
       <section className="card">
-        <div className="head">
-          <div><h2>Product Scope & Mapping</h2><p>Source Data per product dikaitkan langsung dengan mapping dan exposure field yang membentuk monitoring.</p></div>
-          <button className="btn secondary" onClick={()=>nav('products')}>Buka Product Mapping</button>
-        </div>
-        <div className="body">
-          <div className="table-wrap">
-            <table className="table provenance-table">
-              <thead><tr><th>Product</th><th>Source Dataset</th><th>Source Key</th><th>Target Key</th><th>Exposure Field</th><th>Data Owner</th></tr></thead>
-              <tbody>{info.products.map(p=><tr key={p}>
-                <td><b>{p}</b></td><td>{sourceName(p)}</td><td>{sourceKey(p)}</td><td>{mapTargets[safeType]?.[p]||'—'}</td><td>{sourceExposure[p]||'—'}</td><td>{provenanceDefaults[safeType]?.owner||"Risk Management"}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>
-        </div>
+        <div className="head"><div><h2>Linked Product Integration</h2><p>Hanya ringkasan koneksi; detail source field dikelola pada Product Source & Mapping.</p></div><button className="btn secondary" onClick={()=>nav('products')}>Buka Product Mapping</button></div>
+        <div className="body"><div className="integration-chip-grid">{linkedProducts.map(p=><div className="mini integration-chip" key={p}><b>{integrationLabel(p)}</b><div style={{fontSize:10,color:"var(--muted)",marginTop:4}}>Product utilization terintegrasi • {p==="CREDIT LINE"?"Commercial + Treasury scope":"linked exposure"}</div></div>)}</div></div>
       </section>
-
       <section className="card">
-        <div className="head"><div><h2>Data Provenance</h2><p>Ringkasan provenance master; detail Source Data dan Keterangan tersedia per field di atas.</p></div>{savedAt&&<span className="chip blue">Tersimpan {savedAt}</span>}</div>
-        <div className="body">
-          <div className="provenance-grid">
-            <div className="provenance-box"><span>Sumber Utama</span><b>{meta.source||"—"}</b><small>{meta.dataset||"Dataset / report belum diisi"}</small></div>
-            <div className="provenance-box"><span>Source System</span><b>{meta.system||"—"}</b><small>Periode: {meta.period||"—"}</small></div>
-            <div className="provenance-box"><span>Data Owner</span><b>{meta.owner||"—"}</b><small>Updated by: {meta.updatedBy||"—"}</small></div>
-            <div className="provenance-box"><span>Last Updated</span><b>{meta.lastUpdated||"—"}</b><small>Version master: v{meta.version||1}</small></div>
-          </div>
-          <div className="source-note"><b>Konteks Source</b><div>{meta.sourceNote||"Belum ada catatan source."}</div></div>
-        </div>
+        <div className="head"><div><h2>Data Provenance</h2><p>Provenance master limit; Source Data dan Keterangan tersedia per field.</p></div>{savedAt&&<span className="chip blue">Tersimpan {savedAt}</span>}</div>
+        <div className="body"><div className="provenance-grid">
+          <div className="provenance-box"><span>Sumber Utama</span><b>{meta.source||"—"}</b><small>{meta.dataset||"Dataset / report belum diisi"}</small></div>
+          <div className="provenance-box"><span>Source System</span><b>{meta.system||"—"}</b><small>Periode: {meta.period||"—"}</small></div>
+          <div className="provenance-box"><span>Data Owner</span><b>{meta.owner||"—"}</b><small>Updated by: {meta.updatedBy||"—"}</small></div>
+          <div className="provenance-box"><span>Last Updated</span><b>{meta.lastUpdated||"—"}</b><small>Version master: v{meta.version||1}</small></div>
+        </div><div className="source-note"><b>Konteks Source</b><div>{meta.sourceNote||"Belum ada catatan source."}</div></div></div>
       </section>
     </div>
   </Layout>
 }
+
 
 function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
