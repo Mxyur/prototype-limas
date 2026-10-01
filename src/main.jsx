@@ -1131,7 +1131,7 @@ function UtilizationTrace({type,key}){
           const raw=a.sourceData?.[a.exposureField]??"—";
           const label=a.productId==="CREDIT LINE"?(a.scope?"Credit Line • "+a.scope:"Credit Line"):demoProductLabel(a.productId);
           return <tr key={a.recordId+"-"+i}>
-            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{productBusinessMappingLabel(a.productId,"country")}</td><td>{productBusinessMappingLabel(a.productId,"booking")}<div className="muted-small">{a.bookingOffice||"—"}</div></td><td><Status v={a.bookingOfficeType||"Needs Mapping"}/></td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
+            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{productBusinessMappingLabel(a.productId,"country")}</td><td>{a.productId==="CREDIT LINE"?"Not applicable — DN/LN source":productBusinessMappingLabel(a.productId,"booking")}<div className="muted-small">{a.productId==="CREDIT LINE"?"—":(a.bookingOffice||"—")}</div></td><td>{a.productId==="CREDIT LINE"?<Status v="Not Applicable"/>:<Status v={a.bookingOfficeType||"Needs Mapping"}/>}</td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
           </tr>;
         })}</tbody>
       </table></div>}
@@ -1292,7 +1292,6 @@ const creditLineCanonicalFields=[
   {key:"Credit Line Total Limit",label:"Credit Line • Total Limit",source:"Credit Line Total",group:"Credit Line"},
   {key:"Credit Line Total Utilization",label:"Credit Line • Total Utilization",source:"Credit Line Total Utilisasi",group:"Credit Line"}
 ];
-const creditLineCanonicalBySource=Object.fromEntries(creditLineCanonicalFields.map(x=>[x.source,x]));
 const creditLineCanonicalValue=(data,key)=>{
   const field=creditLineCanonicalFields.find(x=>x.key===key);
   const source=field?.source||creditLineAliasMap[key]||key;
@@ -1433,20 +1432,35 @@ const productDatabase={
 function productApplicationsFor(type,key){
   if(type==="LPG")return lpgProductApplicationsForKey(key);
   const out=[];
-  const exposureField=(productId,scope)=>{
+  const exposureField=(productId,scope,row)=>{
     if(productId==="CASHLOAN")return "total_bade";
     if(productId==="NON CASH LOAN")return "EQVIDR / BALANCE";
-    if(productId==="CREDIT LINE")return scope==="Commercial"?"Comm Line Total Utilisasi":"Bade Treasury Line";
+    if(productId==="CREDIT LINE"){
+      return scope==="Commercial"
+        ?"Comm Line Total Utilisasi"
+        :(row.data?.["Bade Treasury Line"]!==undefined?"Bade Treasury Line":"Treasury Line Total Utilisasi");
+    }
     if(productId==="BONDS")return "Amount Eq. IDR Juta";
     if(productId==="NOSTRO")return "Balance";
     if(productId==="Nominal Pertanggungan")return "Nominal Pertanggungan 2025 (Rp Juta)";
     return getProductMeta(productId)?.exposure||"—";
   };
-  const transform=(productId)=>productId==="NON CASH LOAN"?"EQVIDR dikonversi ke Rp Juta (/1.000.000)":productId==="CREDIT LINE"?"MLK Treasury mapping memakai Bade Treasury Line sebagai exposure; field ini bukan approved limit dan hanya berlaku untuk integration-only MLK Treasury rows":"Direct / source unit";
+  const transform=(productId,scope,row)=>{
+    if(productId==="NON CASH LOAN")return "EQVIDR dikonversi ke Rp Juta (/1.000.000)";
+    if(productId==="CREDIT LINE"){
+      const treasuryExposureOnly=row.data?.["Bade Treasury Line"]!==undefined &&
+        row.data?.["Treasury Line Total"]===undefined &&
+        row.data?.["Credit Line Total"]===undefined;
+      return treasuryExposureOnly
+        ?"MLK Treasury exposure memakai Bade Treasury Line; bukan approved limit"
+        :"DN/LN source-native; total Commercial + Treasury membentuk Credit Line Total";
+    }
+    return "Direct / source unit";
+  };
   Object.values(productDatabase).forEach(rows=>rows.forEach(r=>(r.applied||[]).forEach(a=>{
     if(a.limitType===type&&String(a.key)===String(key))out.push({
       ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
-      exposureField:exposureField(r.productId,a.scope),transform:transform(r.productId),
+      exposureField:exposureField(r.productId,a.scope,r),transform:transform(r.productId,a.scope,r),
       masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)),
       bookingOffice:r.bookingOffice||"—",
       bookingOfficeType:r.bookingOfficeType||"Needs Mapping",
@@ -1524,6 +1538,12 @@ const CANONICAL_BUSINESS_LABELS={
   domesticLimit:"Domestic Limit",
   overseasLimit:"Overseas Limit"
 };
+const productCanonicalCrosswalk=[
+  {concept:"Country Exposure",values:["code","Country Code","Code","Issuer Country","Bank Country","Not applicable"]},
+  {concept:"Booking Office",values:["nm_cab","Business Enrichment","Not applicable — DN/LN source","Branch","Branch","Not applicable"]},
+  {concept:"Exposure",values:["total_bade","EQVIDR (normalized)","Credit Line Total Utilisasi","Amount Eq. IDR Juta","Balance + FX normalization","Nominal Pertanggungan"]},
+  {concept:"Limit",values:["total_limit / Country allocation","Country product allocation","DN/LN component limits","Country product allocation","Country product allocation","EIL / CIL"]}
+];
 const productUniverseAudit=[
   {
     product:"CASHLOAN",
@@ -1773,6 +1793,14 @@ function ProductUniverseAudit(){
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table product-master-table">
+          <thead><tr><th>Canonical Concept</th><th>Cash Loan</th><th>Non Cash Loan</th><th>Credit Line</th><th>Bonds</th><th>Nostro</th><th>Nominal Pertanggungan</th></tr></thead>
+          <tbody>{productCanonicalCrosswalk.map((x,i)=><tr key={"crosswalk-"+i}>
+            <td><b>{x.concept}</b></td>{x.values.map((v,j)=><td key={j}>{v}</td>)}
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table product-master-table">
           <thead><tr><th>Credit Line Record</th><th>Reconciliation</th><th>Issue</th></tr></thead>
           <tbody>{creditRows.map(x=><tr key={"credit-audit-"+x.recordId}>
             <td className="key">{x.recordId}</td>
@@ -1892,6 +1920,7 @@ function productBookingSplit(view,rows){
 function ProductBookingClassification({view,rows}){
   if(!countryIntegratedProductIds.includes(view)) return null;
   const split=productBookingSplit(view,rows);
+  const isCreditLine=view==="CREDIT LINE";
   const mapped=rows.filter(r=>["Domestic","Overseas"].includes(r.bookingOfficeType)).length;
   const needs=rows.length-mapped;
   const exposureField={
@@ -1907,7 +1936,7 @@ function ProductBookingClassification({view,rows}){
         <h2>Domestic / Overseas Breakdown</h2>
         <p>Dimensi monitoring dipisahkan berdasarkan <b>Booking Office Type</b>. Country Exposure tetap memakai source country field dan tidak menentukan Domestic/Overseas.</p>
       </div>
-      <span className="chip blue">{mapped} mapped / {needs} needs mapping</span>
+      <span className="chip blue">{isCreditLine?"DN/LN source-native":`${mapped} mapped / ${needs} needs mapping`}</span>
     </div>
     <div className="body">
       <div className="product-db-kpis">
