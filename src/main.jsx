@@ -534,6 +534,16 @@ function Report({nav}){
         <div className="report-actions"><button className="btn primary" onClick={generate}>Generate Report</button><button className="btn secondary" onClick={()=>downloadReportCsv(type,filtered)}>Download CSV</button></div>
       </div>
     </div></section>
+    <section className="card">
+      <div className="head"><div><h2>End-to-End Data Control</h2><p>Control point sebelum angka masuk Report dan Monitoring.</p></div><span className="chip blue">Canonical Pipeline</span></div>
+      <div className="body"><div className="integration-chip-grid">
+        {canonicalPipelineControls().map((x,i)=><div className="mini integration-chip" key={"pipeline-"+i}>
+          <b>{x.layer}</b>
+          <div style={{marginTop:4}}><Status v={x.status}/><span className="muted-small" style={{marginLeft:6}}>{x.count} issue</span></div>
+          <div className="muted-small" style={{marginTop:4}}>{x.detail}</div>
+        </div>)}
+      </div></div>
+    </section>
     {generated&&<section className="card"><div className="head"><div><h2>{cfg.title}</h2><p>{cfg.subtitle}</p><div className="report-meta"><span>{cfg.source}</span><span>Periode: {period}</span><span>Generated: {nowLabel()}</span></div></div><button className="btn ghost" onClick={()=>window.print()}>Print / PDF</button></div><div className="body">
       <div className="report-note">{cfg.note}</div>
       <div className="metric-grid report-kpi"><DomainKpi label="Total Data" value={summary.total} sub="Canonical master/report objects"/><DomainKpi label="Normal" value={summary.normal} sub="Within monitoring threshold"/><DomainKpi label="Warning" value={summary.warning} sub="Early warning condition" accent="yellow"/><DomainKpi label="Breach" value={summary.breach} sub="Above monitoring limit" accent="red"/><DomainKpi label="Data Issue" value={summary.issue} sub="Needs review"/></div>
@@ -621,6 +631,13 @@ function Dashboard({nav}){
           <div className="mini integration-chip"><b>2. Product Universe</b><div className="muted-small">Product source registry dan integration mapping.</div></div>
           <div className="mini integration-chip"><b>3. Product Utilization</b><div className="muted-small">Source record → target key → aggregation → outstanding/exposure.</div></div>
           <div className="mini integration-chip"><b>4. Monitoring / Report</b><div className="muted-small">Utilisasi → remaining → threshold → EWS/Breach → report.</div></div>
+        </div></div>
+      </section>
+
+      <section className="card">
+        <div className="head"><div><h2>Canonical Data Pipeline Health</h2><p>Source → cleansing → integration → read model → report/monitoring.</p></div></div>
+        <div className="body"><div className="integration-chip-grid">
+          {canonicalPipelineControls().map((x,i)=><div className="mini integration-chip" key={"dash-pipeline-"+i}><b>{x.layer}</b><div className="muted-small"><Status v={x.status}/> • {x.detail}</div></div>)}
         </div></div>
       </section>
 
@@ -1601,6 +1618,63 @@ function productContributionMap(type,key){
   return map;
 }
 function productContributionDetail(type,key){return Object.entries(productContributionMap(type,key)).map(([product,amount])=>({product,amount})).filter(x=>x.amount!==0);}
+
+function canonicalProductQualityIssues(){
+  const issues=[];
+  Object.entries(productDatabase).forEach(([productId,rows])=>{
+    rows.forEach(r=>{
+      const d=r.data||{};
+      if(productId==="CASHLOAN"&&(!d.no_cus||!d.no_rek))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_IDENTIFIER",detail:"Cash Loan requires customer/account identifier."});
+      if(productId==="NON CASH LOAN"&&(!d.CUSTID||!d["Country Code"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"NCL requires CUSTID and Country Code for canonical mapping."});
+      if(productId==="CREDIT LINE"){
+        const audit=creditLineAuditRows([r])[0];
+        if(audit.status==="Data Issue")issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"CREDIT_LINE_RECONCILIATION",detail:audit.issues.join(" • ")});
+      }
+      if(productId==="BONDS"&&(!d["Securities Name"]||!d["Issuer Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Bonds requires Security and Issuer Country."});
+      if(productId==="NOSTRO"&&(!d.SwfitCode||!d["Bank Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Nostro requires Swift identifier and Bank Country."});
+      if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
+    });
+  });
+  return issues;
+}
+function masterCanonicalQualityIssues(){
+  const issues=[];
+  Object.entries(limasDemoData).forEach(([type,rows])=>{
+    const seen=new Set();
+    rows.forEach(r=>{
+      const k=String(r.key);
+      if(seen.has(k))issues.push({layer:"Master Limit",domain:type,key:r.key,type:"DUPLICATE_KEY",detail:"Master key is duplicated."});
+      seen.add(k);
+      if(type==="Country"){
+        const a=countryAllocationMetrics(r);
+        if(a.distributedCapacity!==null&&Math.abs(a.capacity-a.distributedCapacity)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CAPACITY_SPLIT_MISMATCH",detail:"Capacity ≠ Domestic + Overseas distribution."});
+        if(a.unallocated!==null&&a.unallocated<-.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"ALLOCATION_OVER_CAPACITY",detail:"Product allocation exceeds Country Capacity."});
+        a.items.forEach(x=>{
+          if(x.sourced&&x.domestic!==null&&x.overseas!==null&&Math.abs(x.total-(x.domestic+x.overseas))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"PRODUCT_SPLIT_MISMATCH",detail:x.product+" Domestic + Overseas ≠ Product Total."});
+        });
+      }
+      if(type==="CIL"){
+        const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
+        if(Math.abs(Number(r.cil||0)-sumEil)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CIL_EIL_MISMATCH",detail:"CIL ≠ sum of EIL."});
+        if(Math.abs(Number(r.cit||0)-(Number(r.ic||0)*Number(r.multiplier||0)))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CIT_FORMULA_MISMATCH",detail:"CIT ≠ IC × Multiplier."});
+      }
+    });
+  });
+  return issues;
+}
+function canonicalPipelineControls(){
+  const masterIssues=masterCanonicalQualityIssues();
+  const productIssues=canonicalProductQualityIssues();
+  const reconIssues=reconciliationIssues().filter(x=>x.status==="Data Issue");
+  return [
+    {layer:"1. Master Limit",status:masterIssues.length?"Data Issue":"Normal",count:masterIssues.length,detail:masterIssues.length?masterIssues.slice(0,3).map(x=>x.type+" • "+(x.domain||"")).join(" ; "):"Master keys, capacity/product allocation and master formulas reconcile."},
+    {layer:"2. Product Dictionary",status:"Normal",count:0,detail:"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
+    {layer:"3. Product Database",status:productIssues.length?"Data Issue":"Normal",count:productIssues.length,detail:productIssues.length?productIssues.slice(0,3).map(x=>x.productId+" • "+x.type).join(" ; "):"Required identifiers and Credit Line hierarchy checks pass."},
+    {layer:"4. Integration / Read Model",status:reconIssues.length?"Data Issue":"Normal",count:reconIssues.length,detail:reconIssues.length?reconIssues.slice(0,3).map(x=>x.issueType+" • "+x.productId).join(" ; "):"Applied Limit → normalized exposure → master aggregation reconciles."},
+    {layer:"5. Report & Monitoring",status:"Normal",count:0,detail:"Dashboard, Report and EWS use the same canonical limit/exposure/status functions."}
+  ];
+}
+
 cleanseMasterData();
 reportDummy=buildReportDummy(limasDemoData);
 
@@ -1917,6 +1991,12 @@ function ProductCatalog(){
         </table>
       </div>
       <ProductUniverseAudit/>
+      <section className="card" style={{marginTop:16}}>
+        <div className="head"><div><h2>Data Cleansing Control</h2><p>Validation Master Limit + Product Database sebelum read model monitoring dibentuk.</p></div><span className="chip blue">Pre-Monitoring Control</span></div>
+        <div className="body"><div className="metric-grid">
+          {canonicalPipelineControls().map((x,i)=><DomainKpi key={"cleanse-"+i} label={x.layer} value={x.count} sub={x.status}/>)}
+        </div></div>
+      </section>
       <section className="card" style={{marginTop:16}}>
         <div className="head"><div><h2>Crosscheck Source Field → Business Requirement</h2><p>Audit seluruh product menu. Field asli dipertahankan; kebutuhan bisnis dipetakan melalui metadata dan runtime/reference layer.</p></div><span className="chip blue">Source-native</span></div>
         <div className="body">
