@@ -651,6 +651,55 @@ const mdFieldSource={
     "Limit||CCL":"Input manual / keputusan komite","Limit||Utilisasi Capacity":"calc","Limit||Limit Contractual":"Input manual / keputusan komite",
     "BMRI Exposure||Outstanding":"Core Banking Limit System","BMRI Exposure||Jenis Limit":"Core Banking Limit System","BMRI Exposure||Limit":"Core Banking Limit System","BMRI Exposure||Total":"Core Banking Limit System","BMRI Exposure||Bank Loan":"Core Banking Limit System","BMRI Exposure||Commercial Line":"Core Banking Limit System","BMRI Exposure||Treasury Line":"Core Banking Limit System","BMRI Exposure||Utilisasi CCL":"calc","BMRI Exposure||Utilisasi Limit Kontraktual":"calc","BMRI Exposure||Outstanding Maksimum":"Core Banking Limit System","BMRI Exposure||Utilisasi Maksimum Limit Kontraktual":"calc",
     "Perusahaan Anak||Limit":"Input manual / Perusahaan Anak","Perusahaan Anak||Total":"Input manual / Perusahaan Anak","Perusahaan Anak||Bank Loan":"Input manual / Perusahaan Anak","Perusahaan Anak||Commercial Line":"Input manual / Perusahaan Anak","Perusahaan Anak||Treasury Line":"Input manual / Perusahaan Anak","Perusahaan Anak||Utilisasi CCL":"calc","Perusahaan Anak||Utilisasi Limit Kontraktual":"calc","Perusahaan Anak||Utilisasi Maksimum Limit Kontraktual":"calc"
+  },
+  MLK:{
+    "Profil Debitur||Entitas":"Entitas yang state Debitur BMRI/PA",
+    "Profil Debitur||CIF":"eMAS/BigData",
+    "Profil Debitur||Nama Debitur":"eMAS/BigData",
+    "Profil Debitur||Group Usaha":"eMAS/BigData",
+    "Profil Debitur||Unit Kerja Pengelola":"NewIPS",
+    "Profil Debitur||Group":"eMAS/BigData",
+    "Profil Debitur||BUMN/Swasta Flag":"eMAS/BigData",
+    "Profil Debitur||Tier":"Belum dicantumkan pada MD",
+    "Risk & Regulatory||BMPK Konsol":"New IPS",
+    "Risk & Regulatory||Inhouse Limit Konsol":"formula = 90%*BMPKKonsol (BMRI); PA Setup/Mapping",
+    "Risk & Regulatory||BMPK/BMPP/BMPD Entitas":"New IPS / WCO",
+    "Risk & Regulatory||Inhouse Limit Entitas":"formula = 90%*BMPKEntitas",
+    "Risk & Regulatory||Sektor DC":"LIMAST",
+    "Risk & Regulatory||DC Sectoral":"LIMAST",
+    "Risk & Regulatory||Rating":"LIMAST",
+    "Risk & Regulatory||Rating Multiplier":"LIMAST",
+    "Risk & Regulatory||Watchlist":"LIMAST",
+    "Risk & Regulatory||Discount Factor":"LIMAST",
+    "Financial & Capacity||EBITDA/Pengganti EBITDA":"LIMAST",
+    "Financial & Capacity||Kredit Bank Lain":"formula : Total Limit BMRI + Kredit Bank Lain",
+    "Financial & Capacity||Total Debt":"LIMAST",
+    "Financial & Capacity||Borrowing Capacity":"LIMAST",
+    "Financial & Capacity||Available BC":"LIMAST",
+    "Product Limit & Exposure||CL Bade":"LIMAST",
+    "Product Limit & Exposure||CL Limit":"LIMAST",
+    "Product Limit & Exposure||NCL Bade":"LIMAST",
+    "Product Limit & Exposure||NCL Limit":"LIMAST",
+    "Product Limit & Exposure||Treasury Line":"LIMAST",
+    "Product Limit & Exposure||Bade Treasury Line":"LIMAST",
+    "Product Limit & Exposure||Total Limit Existing":"formula = limit CL dan NCL + TRSLine",
+    "Product Limit & Exposure||Total Bade Existing":"formula = bade CL dan NCL + TRSLine",
+    "Master Limit||Master Limit Setting":"Master Limit Setting",
+    "Master Limit||Master Limit":"formula = if setting master limit kosong, then pilih total limit"
+  },
+  CIL:{
+    "Insurance Profile||No":"various Source",
+    "Insurance Profile||Perusahaan Asuransi":"various Source",
+    "Insurance Profile||Jenis Perusahaan (Asuransi/Penjaminan)":"list OJK/iCAPS",
+    "Insurance Profile||Jenis Produk Asuransi":"list OJK/iCAPS",
+    "Capacity & Threshold||Insurance Capacity (IC) (Rp Juta)":"feed by user (final calc)",
+    "Capacity & Threshold||Multiplier Terpakai (%)":"feed by user (final calc)",
+    "Capacity & Threshold||Consolidated Insurance Threshold (CIT) (Rp Juta)":"feed by user (final calc)",
+    "Entity Limit (EIL)||EIL BMRI":"CPR",
+    "Entity Limit (EIL)||EIL Mandiri Taspen":"CPR",
+    "Entity Limit (EIL)||EIL MTF":"CPR",
+    "Entity Limit (EIL)||EIL MUF":"CPR",
+    "Consolidated Limit||Consolidated Insurance Limit (CIL) (Rp Juta)":"CIL = sum EIL"
   }
 };
 const mdFieldDescription={
@@ -698,7 +747,16 @@ const mdFieldDescription={
     "Entity Limit (EIL)||EIL MUF":"CPR",
     "Consolidated Limit||Consolidated Insurance Limit (CIL) (Rp Juta)":"CIL = sum EIL"
   },
-  LPG:{}
+  LPG:{},
+    "MLK|Master Limit|Master Limit":"Approved Master Limit yang menjadi reference utilization.",
+    "MLK|Product Limit & Exposure|CL Bade":"Current Cash Loan exposure dari LIMAST.",
+    "MLK|Product Limit & Exposure|NCL Bade":"Current Non Cash Loan exposure dari LIMAST.",
+    "MLK|Product Limit & Exposure|Bade Treasury Line":"Current Treasury Line exposure dari LIMAST.",
+    "CIL|Entity Limit (EIL)|EIL BMRI":"Approved EIL BMRI yang menjadi bagian consolidated CIL.",
+    "CIL|Entity Limit (EIL)|EIL Mandiri Taspen":"Approved EIL Mandiri Taspen yang menjadi bagian consolidated CIL.",
+    "CIL|Entity Limit (EIL)|EIL MTF":"Approved EIL MTF yang menjadi bagian consolidated CIL.",
+    "CIL|Entity Limit (EIL)|EIL MUF":"Approved EIL MUF yang menjadi bagian consolidated CIL.",
+    "CIL|Consolidated Limit|Consolidated Insurance Limit (CIL) (Rp Juta)":"Approved CIL hasil konsolidasi EIL."
 };
 const defaultFieldSource=(type,section)=>{
   if(type==="MLK"||type==="LPG") return "Belum dicantumkan pada MD";
