@@ -1226,19 +1226,17 @@ function reconciliationIssues(){
       }
     });
     if(productId==="CREDIT LINE"){
+      const hasCclMapping=(r.applied||[]).some(a=>a.limitType==="CCL");
       const v=String(r.data?.["Swift Code Vlookup"]||"").trim();
-      const actual=String(r.data?.["Swift Code"]||"").replace(/[^A-Za-z0-9]/g,"").toUpperCase();
-      if(v){
+      if(hasCclMapping&&v){
         const master=(limasDemoData.CCL||[]).find(m=>String(m.key).toUpperCase()===v.toUpperCase());
-        if(master){
+        if(!master){
+          push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:r.recordId,limitType:"CCL",key:v,object:"—",detail:"Swift Code Vlookup untuk CCL tidak memiliki master reference.",amount:0});
+        }else{
           const sourceNameValue=String(r.data?.Nama||"").trim().toLowerCase();
           const masterName=String(master.name||"").trim().toLowerCase();
-          if(sourceNameValue && masterName && sourceNameValue!==masterName){
-            push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:r.recordId,limitType:"CCL",key:v,object:master.name,detail:"Nama product tidak sama dengan nama master untuk key Vlookup yang sama.",amount:0});
-          }
-          const vNorm=v.replace(/[^A-Za-z0-9]/g,"").toUpperCase();
-          if(actual && vNorm!==actual){
-            push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:r.recordId,limitType:"CCL",key:v,object:master.name,detail:"Swift Code aktual tidak sama dengan Swift Code Vlookup yang dipakai sebagai CCL key.",amount:0});
+          if(sourceNameValue&&masterName&&sourceNameValue!==masterName){
+            push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:r.recordId,limitType:"CCL",key:v,object:master.name,detail:"Nama product tidak sama dengan nama master untuk CCL mapping.",amount:0});
           }
         }
       }
@@ -1295,7 +1293,7 @@ const productFieldNotes={
     region_lpg:"Atribut region pada level debitur (Region I–XII atau KP + OVS). Bankwide dibentuk dari agregasi outstanding product, bukan dari record khusus Bankwide."
   },
   "NON CASH LOAN":{
-    "Swift Code":"Identifier counterparty bank.",
+    "Swift Code":"Identifier/source Swift counterparty. Untuk CCL, join ke master menggunakan Swift Code Vlookup; actual Swift tidak wajib identik dengan normalized master key.",
     "CUSTID":"Identifier CIF/customer.",
     "CPNM":"Nama counterparty yang digunakan untuk country judgment.",
     "Country Code":"Country Code hasil mapping counterparty.",
