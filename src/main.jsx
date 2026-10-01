@@ -306,6 +306,41 @@ const limasDemoData={
   ]
 };
 
+// Prototype allocation policy: until user-approved allocation data is available,
+// Country Capacity is distributed 35% Domestic / 65% Overseas.
+// Product mix is Cash Loan 35%, NCL 25%, Credit Line 20%, Bonds 12%, Nostro 8%.
+// The same policy is applied consistently to every demo Country so all screens reconcile.
+const COUNTRY_PROTO_POLICY = {
+  domesticShare: 0.35,
+  overseasShare: 0.65,
+  products: [
+    ["CASHLOAN", 0.35],
+    ["NON CASH LOAN", 0.25],
+    ["CREDIT LINE", 0.20],
+    ["BONDS", 0.12],
+    ["NOSTRO", 0.08]
+  ]
+};
+function hydrateCountryPrototypeAllocations(){
+  (limasDemoData.Country||[]).forEach(row=>{
+    const capacity=Number(row.capacityLimit)||0;
+    const domesticCapacity=capacity*COUNTRY_PROTO_POLICY.domesticShare;
+    const overseasCapacity=capacity*COUNTRY_PROTO_POLICY.overseasShare;
+    row.capacityDistribution={
+      domesticLimit:Number(domesticCapacity.toFixed(2)),
+      overseasLimit:Number(overseasCapacity.toFixed(2))
+    };
+    row.productAllocations=Object.fromEntries(COUNTRY_PROTO_POLICY.products.map(([product,share])=>{
+      const total=capacity*share;
+      return [product,{
+        domesticLimit:Number((total*COUNTRY_PROTO_POLICY.domesticShare).toFixed(2)),
+        overseasLimit:Number((total*COUNTRY_PROTO_POLICY.overseasShare).toFixed(2))
+      }];
+    }));
+  });
+}
+hydrateCountryPrototypeAllocations();
+
 function demoProductLabel(p){
   if(p==="CASHLOAN")return "Cash Loan";
   if(p==="NON CASH LOAN")return "Non Cash Loan";
@@ -1066,6 +1101,46 @@ function UtilizationTrace({type,key}){
     </div>
   </section>;
 }
+function CountryLimitPanel({record,selectedIndex,fieldMeta,editing,updateField}) {
+  const allocation=countryAllocationMetrics(record);
+  const money=v=>v===null||v===undefined?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:2});
+  const products=[
+    ["CASHLOAN","Cash Loan"],
+    ["NON CASH LOAN","Non Cash Loan"],
+    ["CREDIT LINE","Credit Line"],
+    ["BONDS","Bonds"],
+    ["NOSTRO","Nostro"]
+  ];
+  const sourceFor=(id,field)=>fieldMeta[`Limit & Gap||${field}`]||{source:mdFieldSource.Country?.[`Limit & Gap||${field}`]||"—",note:mdFieldDescription.Country?.[`Limit & Gap||${field}`]||defaultFieldNote("Country","Limit & Gap",field)};
+  const cell=(field,value)=>{
+    const fm=sourceFor(record.key,field);
+    return <td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField("Limit & Gap",field,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td>;
+  };
+  return <div className="country-limit-panel">
+    <div className="country-limit-summary">
+      <div className="mini"><span className="muted-small">Capacity Limit</span><strong>{money(record.capacityLimit)}</strong><span className="muted-small">Approved Country capacity</span></div>
+      <div className="mini"><span className="muted-small">Domestic Capacity</span><strong>{money(allocation.domesticCapacity)}</strong><span className="muted-small">{COUNTRY_PROTO_POLICY.domesticShare*100}% prototype allocation</span></div>
+      <div className="mini"><span className="muted-small">Overseas Capacity</span><strong>{money(allocation.overseasCapacity)}</strong><span className="muted-small">{COUNTRY_PROTO_POLICY.overseasShare*100}% prototype allocation</span></div>
+      <div className="mini"><span className="muted-small">Unallocated</span><strong>{money(allocation.unallocated)}</strong><span className="muted-small">Capacity − all product limits</span></div>
+    </div>
+    <div className="country-limit-note"><b>Prototype allocation policy</b><span>35% Domestic + 65% Overseas. Product mix: Cash Loan 35% • NCL 25% • Credit Line 20% • Bonds 12% • Nostro 8%. Angka ini adalah dummy prototype dan seluruh menu menggunakan angka yang sama.</span></div>
+    <div className="table-wrap country-limit-table-wrap">
+      <table className="table country-limit-table">
+        <thead><tr><th>Product</th><th>Domestic Limit</th><th>Overseas Limit</th><th>Total Product Limit</th><th>% Capacity</th></tr></thead>
+        <tbody>{products.map(([id,label])=>{
+          const item=allocation.items.find(x=>x.product===id);
+          return <tr key={id}><td><b>{label}</b></td><td>{money(item?.domestic)}</td><td>{money(item?.overseas)}</td><td><b>{money(item?.total)}</b></td><td>{record.capacityLimit?((item.total/record.capacityLimit)*100).toFixed(0)+"%":"—"}</td></tr>;
+        })}</tbody>
+        <tfoot><tr><td><b>Total</b></td><td><b>{money(allocation.allocatedDomestic)}</b></td><td><b>{money(allocation.allocatedOverseas)}</b></td><td><b>{money(allocation.allocated)}</b></td><td><b>100%</b></td></tr></tfoot>
+      </table>
+    </div>
+    <div className="country-recon-grid">
+      <div className="mini"><b>Domestic reconciliation</b><span>Capacity {money(allocation.domesticCapacity)} − Product {money(allocation.allocatedDomestic)} = <strong>{money(allocation.distributionGapDomestic)}</strong></span></div>
+      <div className="mini"><b>Overseas reconciliation</b><span>Capacity {money(allocation.overseasCapacity)} − Product {money(allocation.allocatedOverseas)} = <strong>{money(allocation.distributionGapOverseas)}</strong></span></div>
+    </div>
+  </div>;
+}
+
 function Detail({nav,type="Country",recordKey=""}){
   const safeType=domains[type]?type:"Country";
   const selectedRecord=getDemoRecord(safeType,recordKey)||getDemoRecord(safeType);
@@ -1092,16 +1167,18 @@ function Detail({nav,type="Country",recordKey=""}){
           <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
-          <div className="tabs">{Object.keys(masterSections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
-          <div className="field-table-wrap">
-            <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
-              <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
-                const id=`${tab}||${f}`;
-                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)}; const displayValue=masterFieldValue(safeType,tab,f,v,selectedRecord,selectedIndex);
-                return <tr key={f}><td><b>{f}</b></td><td>{displayValue}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
-              })}</tbody>
-            </table>
-          </div>
+          {safeType==="Country" ? <CountryLimitPanel record={selectedRecord} selectedIndex={selectedIndex} fieldMeta={fieldMeta} editing={editing} updateField={updateField}/> : <>
+            <div className="tabs">{Object.keys(masterSections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
+            <div className="field-table-wrap">
+              <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+                <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
+                  const id=`${tab}||${f}`;
+                  const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)}; const displayValue=masterFieldValue(safeType,tab,f,v,selectedRecord,selectedIndex);
+                  return <tr key={f}><td><b>{f}</b></td><td>{displayValue}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </>}
           <div className="field-help">Master Limit Detail hanya menyimpan master limit/parameter. Product exposure, outstanding dan utilisasi tidak direplikasi di sini. Untuk CIL, EIL detail ditarik langsung dari canonical CIL master; nominal pertanggungan/produk tetap ditelusuri melalui Utilization Source Trace.</div>
         </div>
       </section>
@@ -1124,6 +1201,24 @@ function Detail({nav,type="Country",recordKey=""}){
   </Layout>
 }
 
+
+const countryLimitStyles = `
+.country-limit-panel{display:flex;flex-direction:column;gap:14px}
+.country-limit-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.country-limit-summary .mini{display:flex;flex-direction:column;gap:5px;padding:14px}
+.country-limit-summary strong{font-size:20px}
+.country-limit-note{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+.country-limit-note span{color:var(--muted);font-size:11px;line-height:1.5}
+.country-limit-table-wrap{border:1px solid var(--line);border-radius:10px;overflow:auto}
+.country-limit-table th,.country-limit-table td{padding:12px 14px}
+.country-limit-table th{white-space:nowrap}
+.country-limit-table td:nth-child(n+2),.country-limit-table th:nth-child(n+2){text-align:right}
+.country-limit-table tfoot td{border-top:2px solid var(--line);background:var(--soft)}
+.country-recon-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.country-recon-grid .mini{display:flex;flex-direction:column;gap:6px;padding:12px 14px}
+@media(max-width:900px){.country-limit-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.country-recon-grid{grid-template-columns:1fr}}
+`;
+const countryStyleTag=typeof document!=="undefined"&&!document.getElementById("country-limit-styles")?(()=>{const s=document.createElement("style");s.id="country-limit-styles";s.textContent=countryLimitStyles;document.head.appendChild(s);return s})():null;
 
 function getProductMeta(productId){
   return typeof productMasterCatalog!=="undefined" ? productMasterCatalog.find(p=>p.id===productId) : null;
