@@ -327,46 +327,6 @@ function recordStatus(type,row){
   }
   return maxUtil>=1?"Breach":maxUtil>=0.8?"Warning":"Normal";
 }
-function caseLimit(type,row,scope=LPG_BANK_SCOPE){
-  if(type==="LPG")return Number(lpgScopeLimit(row,scope)||0);
-  return Number(recordLimit(type,row)||0);
-}
-function testScenarioCases(){
-  const out=[];
-  Object.entries(limasDemoData).forEach(([type,rows])=>{
-    rows.forEach(row=>{
-      const base={domain:type,masterKey:String(row.key),object:type==="LPG"?(row.sector+" / "+row.segment):(row.name||row.sector||row.key)};
-      if(type==="LPG"){
-        LPG_SCOPES.forEach(scope=>{
-          const limit=caseLimit(type,row,scope);
-          if(limit>0){
-            [["WARN","Warning",0.85,"80% threshold"],["BREACH","Breach",1.10,"100% limit"]].forEach(([code,status,util,reason])=>{
-              out.push({caseId:"TEST-"+type+"-"+String(row.key).replace(/[^A-Za-z0-9]+/g,"-")+"-"+lpgScopeKey(scope)+"-"+code,...base,scope,status,utilization:util,limit,scenarioExposure:limit*util,reason,source:"Control Test / Control Test"});
-            });
-          }
-        });
-      }else{
-        const limit=caseLimit(type,row);
-        if(limit>0){
-          [["WARN","Warning",0.85,"80% threshold"],["BREACH","Breach",1.10,"100% limit"]].forEach(([code,status,util,reason])=>{
-            out.push({caseId:"TEST-"+type+"-"+String(row.key).replace(/[^A-Za-z0-9]+/g,"-")+"-"+code,...base,scope:"Primary Limit",status,utilization:util,limit,scenarioExposure:limit*util,reason,source:"Control Test / Control Test"});
-          });
-        }
-      }
-    });
-  });
-  return out;
-}
-const testScenarioRows=testScenarioCases();
-function testScenarioCasesFor(type,key){return testScenarioRows.filter(x=>x.domain===type&&String(x.masterKey)===String(key));}
-function testScenarioCoverage(){
-  const positiveScopes=new Set();
-  testScenarioRows.forEach(x=>positiveScopes.add(x.domain+"|"+x.masterKey+"|"+x.scope));
-  const required=positiveScopes.size;
-  const withWarning=new Set(testScenarioRows.filter(x=>x.status==="Warning").map(x=>x.domain+"|"+x.masterKey+"|"+x.scope)).size;
-  const withBreach=new Set(testScenarioRows.filter(x=>x.status==="Breach").map(x=>x.domain+"|"+x.masterKey+"|"+x.scope)).size;
-  return {required,withWarning,withBreach,cases:testScenarioRows.length};
-}
 function cilProjection(key){
   return productApplicationsFor("CIL",key).reduce((a,x)=>{
     const entity=x.entity||"";
@@ -447,7 +407,6 @@ function Report({nav}){
       <div className="report-note">{cfg.note}</div>
       <div className="metric-grid report-kpi"><DomainKpi label="Total Data" value={summary.total} sub="Canonical master/report objects"/><DomainKpi label="Normal" value={summary.normal} sub="Within monitoring threshold"/><DomainKpi label="Warning" value={summary.warning} sub="Early warning condition" accent="yellow"/><DomainKpi label="Breach" value={summary.breach} sub="Above monitoring limit" accent="red"/><DomainKpi label="Data Issue" value={summary.issue} sub="Needs review"/></div>
       <div className="table-wrap report-table-wrap"><table className="table report-table"><thead><tr>{cfg.columns.map(([label])=><th key={label}>{label}</th>)}</tr></thead><tbody>{filtered.map((r,i)=><tr key={r.no||i}>{cfg.columns.map(([label,key])=><td key={key}>{key==="status"||key==="statusMaster"?<Status v={statusForReport(r)}/>:fmtReport(r[key])}</td>)}</tr>)}</tbody></table></div>
-      <section className="card" style={{marginTop:16}}><div className="head"><div><h2>Control Test Case Register</h2><p>Warning dan Breach untuk seluruh canonical limit/scope; kasus tidak mengubah current production exposure.</p></div><span className="chip blue">{testScenarioRows.filter(c=>c.domain===type).length} cases</span></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Case ID</th><th>Unique Key</th><th>Object</th><th>Scope</th><th>Status</th><th>Limit</th><th>Scenario Exposure</th><th>Utilisasi</th></tr></thead><tbody>{testScenarioRows.filter(c=>c.domain===type).map(c=><tr key={c.caseId}><td className="key">{c.caseId}</td><td className="key">{c.masterKey}</td><td>{c.object}</td><td>{c.scope}</td><td><Status v={c.status}/></td><td>{fmtReport(c.limit)}</td><td>{fmtReport(c.scenarioExposure)}</td><td>{(c.utilization*100).toFixed(2)}%</td></tr>)}</tbody></table></div></div></section>
       <div className="report-footer"><b>Reporting note:</b> Report prototype membaca dataset monitoring canonical yang sama dengan Dashboard/Monitoring. Karena itu Master Limit + Product Utilization + Status harus tetap tally. Field yang source-nya belum eksplisit ditandai sesuai MD.</div>
     </div></section>}
     {!generated&&<section className="card"><div className="head"><div><h2>Report Preview</h2><p>Report belum di-generate. Pilih parameter lalu klik Generate Report.</p></div></div><div className="body"><div className="report-preview"><div><b>{cfg.title}</b><span>{cfg.source}</span></div><div><b>{rows.length} canonical records</b><span>Master Limit + Product Utilization + EWS status</span></div><div><b>Output</b><span>Preview table + CSV + Print/PDF browser</span></div></div></div></section>}
@@ -534,16 +493,6 @@ function Dashboard({nav}){
         </div></div>
       </section>
 
-      <section className="card">
-        <div className="head"><div><h2>Control Test Coverage</h2><p>Setiap canonical limit dan setiap LPG scope yang memiliki limit positif mempunyai skenario Warning dan Breach.</p></div><span className="chip blue">{testScenarioCoverage().required} tested scopes</span></div>
-        <div className="body"><div className="metric-grid">
-          <DomainKpi label="Required Scopes" value={testScenarioCoverage().required} sub="Positive limit scopes"/>
-          <DomainKpi label="Warning Cases" value={testScenarioRows.filter(x=>x.status==="Warning").length} sub="85% scenario" accent="yellow"/>
-          <DomainKpi label="Breach Cases" value={testScenarioRows.filter(x=>x.status==="Breach").length} sub="110% scenario" accent="red"/>
-          <DomainKpi label="Coverage" value={testScenarioCoverage().withWarning===testScenarioCoverage().required&&testScenarioCoverage().withBreach===testScenarioCoverage().required?"100%":"Review"} sub="Warning + Breach"/>
-        </div></div>
-      </section>
-
       <div className="dash-grid">
         <section className="card"><div className="head"><div><h2>Early Warning & Breach</h2><p>Exception lintas domain dari canonical monitoring model.</p></div><button className="btn secondary" onClick={()=>nav("warning")}>Buka EWS Center</button></div><div className="body"><div className="alert-list">
           {canonicalRows.filter(x=>x.status==="Warning"||x.status==="Breach").slice(0,6).map((x,i)=><div className={"alert "+(x.status==="Breach"?"breach":"warning")} key={x.domain+"|"+x.key+"|"+i}><span className="bar"></span><div><b>{x.domain+" • "+x.object}</b><div className="muted-small">Utilisasi {x.util?((x.util*100).toFixed(2)+"%"):"—"}</div></div><Status v={x.status}/></div>)}
@@ -560,11 +509,9 @@ function Dashboard({nav}){
 }
 
 function Warning({nav}){
-  const [status,setStatus]=useState("All"), [domain,setDomain]=useState("All"), [viewMode,setViewMode]=useState("Production + Test");
-  const productionRows=canonicalExceptions();
-  const caseRows=testScenarioRows.map(c=>({status:c.status,domain:c.domain,key:c.masterKey,object:c.object,scope:c.scope,limit:c.limit,exposure:c.scenarioExposure,util:c.utilization,threshold:c.status==="Breach"?"100%":"80%",detail:c.source+" • "+c.reason,caseId:c.caseId,caseType:"Test"}));
-  const rows=[...productionRows.map(r=>({...r,caseType:"Production"})),...caseRows];
-  const filtered=rows.filter(r=>(viewMode==="Production + Test"||r.caseType===viewMode)&&(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain));
+  const [status,setStatus]=useState("All"), [domain,setDomain]=useState("All");
+  const rows=canonicalExceptions();
+  const filtered=rows.filter(r=>(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain));
   const breach=filtered.filter(r=>r.status==="Breach").length;
   const warning=filtered.filter(r=>r.status==="Warning").length;
   const issue=filtered.filter(r=>r.status==="Data Issue").length;
@@ -576,8 +523,8 @@ function Warning({nav}){
       <DomainKpi label="Data Issue" value={issue} sub="Master / mapping / identity"/>
       <DomainKpi label="Action Pending" value={rows.filter(r=>r.status!=="Normal").length} sub="Exception yang perlu review" accent="yellow"/>
     </div>
-    <section className="card"><div className="head"><div><h2>Filter Exception</h2><p>Semua exception berasal dari canonical monitoring dan reconciliation engine.</p></div></div><div className="body"><div className="toolbar"><select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><select className="select" value={domain} onChange={e=>setDomain(e.target.value)}><option>All</option><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select><select className="select" value={viewMode} onChange={e=>setViewMode(e.target.value)}><option>Production + Test</option><option>Production</option><option>Test</option></select><select className="select"><option>All Entity</option><option>BMRI</option><option>Perusahaan Anak</option></select><select className="select"><option>Latest Canonical Snapshot</option></select></div></div></section>
-    <section className="card"><div className="head"><div><h2>Exception Register</h2><p>Drill-down menuju master, product source dan reconciliation detail.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Type</th><th>Status</th><th>Domain</th><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Threshold</th><th>Detail</th><th>Aksi</th></tr></thead><tbody>{filtered.map((r,i)=><tr key={r.domain+"|"+r.key+"|"+i}><td><span className="chip blue">{r.caseType}</span></td><td><Status v={r.status}/></td><td><b>{r.domain}</b></td><td><span className="key">{r.key}</span></td><td>{r.object}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.exposure)}</td><td>{r.util?((r.util*100).toFixed(2)+"%"):"—"}</td><td>{r.threshold}</td><td className="muted-small">{r.detail}</td><td><button className="btn ghost" onClick={()=>domains[r.domain]?nav("detail",{type:r.domain,key:r.key}):nav("products")}>{domains[r.domain]?"Detail":"Product"}</button></td></tr>)}</tbody></table></div></div></section>
+    <section className="card"><div className="head"><div><h2>Filter Exception</h2><p>Semua exception berasal dari canonical monitoring dan reconciliation engine.</p></div></div><div className="body"><div className="toolbar"><select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><select className="select" value={domain} onChange={e=>setDomain(e.target.value)}><option>All</option><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select><select className="select"><option>All Entity</option><option>BMRI</option><option>Perusahaan Anak</option></select><select className="select"><option>Latest Canonical Snapshot</option></select></div></div></section>
+    <section className="card"><div className="head"><div><h2>Exception Register</h2><p>Drill-down menuju master, product source dan reconciliation detail.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Status</th><th>Domain</th><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Threshold</th><th>Detail</th><th>Aksi</th></tr></thead><tbody>{filtered.map((r,i)=><tr key={r.domain+"|"+r.key+"|"+i}><td><Status v={r.status}/></td><td><b>{r.domain}</b></td><td><span className="key">{r.key}</span></td><td>{r.object}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.exposure)}</td><td>{r.util?((r.util*100).toFixed(2)+"%"):"—"}</td><td>{r.threshold}</td><td className="muted-small">{r.detail}</td><td><button className="btn ghost" onClick={()=>domains[r.domain]?nav("detail",{type:r.domain,key:r.key}):nav("products")}>{domains[r.domain]?"Detail":"Product"}</button></td></tr>)}</tbody></table></div></div></section>
     <div className="dash-grid"><section className="card"><div className="head"><div><h2>Exception by Domain</h2><p>Canonical warning, breach dan reconciliation issue.</p></div></div><div className="body"><div className="heatmap">{["Country","CCL","MLK","CIL","LPG"].map(d=>{const n=rows.filter(r=>r.domain===d).length;return <div className={"heat "+(n>=3?"high":n>=1?"warn":"low")} key={d}><div>{d}</div><div style={{fontSize:18,marginTop:8}}>{n}</div></div>})}</div></div></section>
     <section className="card"><div className="head"><div><h2>Reconciliation Status</h2><p>Issues yang benar-benar ditemukan pada product-to-master mapping.</p></div></div><div className="body">{reconciliationIssues().length?reconciliationIssues().map((x,i)=><div className="mini" style={{marginBottom:8}} key={x.recordId+"|"+i}><b>{x.issueType} • {x.productId}</b><div className="muted-small">{x.recordId} → {x.limitType} / {x.key} • {x.detail}</div></div>):<div className="mini">No reconciliation issue.</div>}</div></section></div>
   </div></Layout>
@@ -1038,10 +985,6 @@ function Detail({nav,type="Country",recordKey=""}){
       </section>
       <UtilizationTrace type={safeType} key={selectedRecord?.key||recordKey}/>
 
-      <section className="card">
-        <div className="head"><div><h2>Control Test Cases</h2><p>Warning 85% dan Breach 110% untuk menguji threshold, EWS, report dan dashboard.</p></div><span className="chip blue">{testScenarioCasesFor(safeType,selectedRecord?.key).length} cases</span></div>
-        <div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Case ID</th><th>Scope</th><th>Status</th><th>Limit</th><th>Scenario Exposure</th><th>Utilisasi</th><th>Source</th></tr></thead><tbody>{testScenarioCasesFor(safeType,selectedRecord?.key).map(c=><tr key={c.caseId}><td className="key">{c.caseId}</td><td>{c.scope}</td><td><Status v={c.status}/></td><td>{Number(c.limit).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(c.scenarioExposure).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{(c.utilization*100).toFixed(2)}%</td><td className="muted-small">{c.source} • {c.reason}</td></tr>)}</tbody></table></div></div>
-      </section>
       <section className="card">
         <div className="head"><div><h2>Linked Product Integration</h2><p>Hanya ringkasan koneksi; detail source field dikelola pada Product Source & Mapping.</p></div><button className="btn secondary" onClick={()=>nav('products')}>Buka Product Mapping</button></div>
         <div className="body"><div className="integration-chip-grid">{linkedProducts.map(p=><div className="mini integration-chip" key={p}><b>{integrationLabel(p)}</b><div style={{fontSize:10,color:"var(--muted)",marginTop:4}}>Product utilization terintegrasi • {p==="CREDIT LINE"?"Commercial + Treasury scope":"linked exposure"}</div></div>)}</div></div>
