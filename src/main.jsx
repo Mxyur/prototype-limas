@@ -572,7 +572,7 @@ function LPGMonitor({nav}){
           <div className="mini integration-chip"><b>3. Aggregation</b><div className="muted-small">Bankwide = sum regional scope. Bankwide dan regional tidak dijumlahkan bersama.</div></div>
           <div className="mini integration-chip"><b>4. Control</b><div className="muted-small">Crosscheck Bankwide vs regional + source coverage sebelum EWS/report.</div></div>
         </div>
-        <div className="field-help">Regional outstanding hanya ditampilkan apabila ada debtor product record dengan region_lpg yang sesuai. Tidak ada outstanding snapshot yang ditanam ke master limit.</div>
+        <div className="field-help">Regional outstanding hanya ditampilkan apabila ada debtor product record dengan region_lpg yang sesuai. Tidak ada outstanding snapshot yang ditanam ke master limit. Bankwide adalah aggregate seluruh debtor product yang terklasifikasi, bukan record LPG tersendiri.</div>
         </div>
       </section>
       <section className="card"><div className="head"><div><h2>Sector × Segment Monitoring</h2><p>Format mengikuti contoh LPG: total sektor + Corporate / Commercial / Sme / Micro.</p></div><span className="chip blue">{leaf.length} segment rows</span></div>
@@ -584,7 +584,7 @@ function LPGMonitor({nav}){
             {LPG_SCOPES.flatMap(scope=><React.Fragment key={scope}><td>{money(lpgScopeLimit(r,scope))}</td><td>{money(lpgScopeExposure(r,scope))}</td><td>{scopeStatus(r,scope)}</td></React.Fragment>)}
             <td><Status v={recordStatus("LPG",r)}/></td>
             <td className="muted-small">{(()=>{const x=lpgCrosscheck(r);return x.status+(x.variance!==null?" • Δ "+money(x.variance):"")+(x.mode==="Reference Snapshot"?" • snapshot":"")})()}</td>
-            <td className="muted-small">{(()=>{const c=lpgSourceCoverage(r);return c.bankwideMapped?"BW feed • ":"BW snapshot • "+c.regionalMapped+"/"+c.totalRegional+" regional feed"})()}</td>
+            <td className="muted-small">{(()=>{const c=lpgSourceCoverage(r);return c.bankwideMapped?"BW product feed • ":"BW product data belum ada • "}{c.regionalMapped}/{c.totalRegional} regional product feed"})()}</td>
           </tr>)}</tbody>
         </table></div></div>
       </section>
