@@ -415,7 +415,7 @@ const mdFieldDescription={
   },
   CCL:{},
   MLK:{},
-  CIL:{  CIL:{
+  CIL:{
     "Insurance Profile||No":"various Source",
     "Insurance Profile||Perusahaan Asuransi":"various Source",
     "Insurance Profile||Jenis Perusahaan (Asuransi/Penjaminan)":"list OJK/iCAPS",
@@ -432,7 +432,7 @@ const mdFieldDescription={
   LPG:{}
 };
 const defaultFieldSource=(type,section)=>{
-  if(type==="MLK"||type==="CIL"||type==="LPG") return "Belum dicantumkan pada MD";
+  if(type==="MLK"||type==="LPG") return "Belum dicantumkan pada MD";
   const map={
     Country:{"Identitas":"MD Country","Limit & Gap":"MD Country"},
     CCL:{"Bank Profile":"MD CCL","Risk & Capacity":"MD CCL","Limit":"MD CCL"},
