@@ -1754,7 +1754,6 @@ function ProductDatabaseTable({view}){
     <div className="head"><div><h2>Product Database</h2><p>{rows.length} source records • seluruh kolom source tersimpan • Applied Limit hanya untuk direct mapping; LPG dihitung dari debtor attributes.</p></div><div className="chip blue">{rows.length} records</div></div>
     <div className="body">
       <div className="product-db-kpis"><div className="mini"><b>Source Records</b><strong>{rows.length}</strong></div><div className="mini"><b>Mapped Records</b><strong>{mapped}</strong></div><div className="mini"><b>Unmapped Records</b><strong>{rows.length-mapped}</strong></div><div className="mini"><b>Direct Unmapped</b><strong>{directUnmapped}</strong></div><div className="mini"><b>LPG Classified</b><strong>{lpgClassified}</strong></div><div className="mini"><b>Mapping Issues</b><strong>{mappingIssues}</strong></div></div>
-      <ProductBookingClassification view={view} rows={rows}/>
       <div className="table-wrap product-db-wrap"><table className="table product-db-table">
         <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
         <tbody>{rows.map(r=><tr key={r.recordId}>
