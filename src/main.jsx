@@ -671,7 +671,7 @@ function ProductUsage({view}){
 function Products({nav}){
   const [view,setView]=useState("catalog");
   const limitTabs=[
-    ["catalog","Master Data Produk"],["CASHLOAN","Cash Loan"],["NON CASH LOAN","Non Cash Loan"],["CREDIT LINE","Credit Line"],["Investment Line","Investment Line"],["BONDS","Bonds"],["NOSTRO","Nostro"],["Nominal Pertanggungan","Nominal Pertanggungan"]
+    ["catalog","Master Data Produk"],["CASHLOAN","Cash Loan"],["NON CASH LOAN","Non Cash Loan"],["CREDIT LINE","Credit Line"],["Nominal Pertanggungan","Nominal Pertanggungan (CIL)"],["Investment Line","Investment Line"],["BONDS","Bonds"],["NOSTRO","Nostro"]
   ];
   const info=productMasterCatalog.find(x=>x.id===view);
   return <Layout screen="products" onNav={nav}>
