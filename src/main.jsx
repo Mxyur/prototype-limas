@@ -19,7 +19,7 @@ const sourceExposure={"CASHLOAN": "total_bade", "NON CASH LOAN": "EQVIDR / BALAN
 function getMasterSections(type){
   const s=domains[type]?.sections||{};
   if(type==="Country") return {"Identitas":s["Identitas"]||[],"Limit & Gap":s["Limit & Gap"]||[]};
-  if(type==="CCL") return {"Bank Profile":s["Bank Profile"]||[],"Risk & Capacity":s["Risk & Capacity"]||[],"Limit":s["Limit"]||[]};
+  if(type==="CCL") return {"Bank Profile":s["Bank Profile"]||[],"Risk & Capacity":s["Risk & Capacity"]||[],"Limit":(s["Limit"]||[]).filter(([f])=>f!=="Utilisasi Capacity")};
   if(type==="MLK") return {"Profil Debitur":s["Profil Debitur"]||[],"Risk & Regulatory":s["Risk & Regulatory"]||[],"Master Limit":s["Master Limit"]||[]};
   if(type==="CIL") return {
     "Insurance Profile":s["Insurance Profile"]||[],
@@ -42,7 +42,7 @@ function getMasterSections(type){
 
 const domainIntegrationProducts={
   Country:["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"],
-  CCL:["NON CASH LOAN","CREDIT LINE","Investment Line"],
+  CCL:["CASHLOAN","NON CASH LOAN","CREDIT LINE","Investment Line"],
   MLK:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
   CIL:["Nominal Pertanggungan"],
   LPG:["CASHLOAN","NON CASH LOAN"]
@@ -537,16 +537,24 @@ function Detail({nav,type="Country"}){
 }
 
 
-function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
-function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
+function getProductMeta(productId){
+  return typeof productMasterCatalog!=="undefined" ? productMasterCatalog.find(p=>p.id===productId) : null;
+}
+function productIntegratedDomains(productId){
+  return Object.entries(domainIntegrationProducts).filter(([,products])=>products.includes(productId)).map(([domain])=>domain);
+}
+function sourceName(p){return getProductMeta(p)?.sheet||p}
+function sourceKey(p){return getProductMeta(p)?.key||"—"}
+function sourceExposure(p){return getProductMeta(p)?.exposure||"—"}
+
 const productMasterCatalog=[
-  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",target:"Country / MLK / LPG",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Workbook juga mencatat kebutuhan konversi IDR."},
+  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Workbook juga mencatat kebutuhan konversi IDR."},
   {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",target:"Country / CCL / MLK / LPG",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta country judgment berdasarkan counterparty."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL / MLK (Treasury Line scope)",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
-  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",target:"CCL",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur produk/fasilitas yang belum termapping; workbook memberi kebutuhan frekuensi Monthly pada sample."},
-  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",target:"Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country limit hit pada issuer selain Indonesia; limit dapat kembali setelah Maturity Date."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
+  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur produk/fasilitas yang belum termapping; workbook memberi kebutuhan frekuensi Monthly pada sample."},
+  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country limit hit pada issuer selain Indonesia; limit dapat kembali setelah Maturity Date."},
   {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",target:"Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; balance masih kurs asli dan perlu konversi kurs tengah NTR."},
-  {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",target:"CIL",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
+  {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
 ];
 
 const creditLineGroups={
@@ -735,24 +743,24 @@ function ProductCatalog(){
   const cancel=()=>{setDraft(Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));setEditing(false)};
   return <section className="card">
     <div className="head">
-      <div><h2>Master Data Produk</h2><p>Universe seluruh produk/source yang menjadi referensi LIMAS. Setiap domain limit menggunakan subset product yang relevan; CIL menggunakan Nominal Pertanggungan sebagai product exposure.</p></div>
+      <div><h2>Product Universe</h2><p>Registry universe produk/source untuk integration. Ini bukan repository Master Limit dan tidak menyimpan current utilization.</p></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <div className="body">
       <div className="table-wrap product-master-wrap">
         <table className="table product-master-table">
-          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Dipakai oleh Limit</th><th>Exposure Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Integrated to Domain</th><th>Utilization Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
           <tbody>{productMasterCatalog.map(item=>{
             const m=draft[item.id]||{};
             return <tr key={item.id}>
-              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{item.target}</td><td>{item.exposure}</td>
+              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{productIntegratedDomains(item.id).join(" / ")||"—"}</td><td>{item.exposure}</td>
               <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
               <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
             </tr>
           })}</tbody>
         </table>
       </div>
-      <div className="field-help">Master Data Produk menampilkan product universe. Source CIL Nominal Pertanggungan berasal dari CIL_MONITORING pada master report monitoring karena tidak terdapat sebagai sheet pada workbook master_dataproduk.</div>
+      <div className="field-help">Product Universe menjadi registry source/integration. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; nilai utilization aktual tetap merupakan data inbound/integrated, bukan master limit.</div>
     </div>
   </section>;
 }
