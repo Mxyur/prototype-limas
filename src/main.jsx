@@ -413,40 +413,15 @@ function Login({go}){return <div className="app login"><div className="login-car
 
 function DomainKpi({label,value,sub,accent=""}){return <div className="metric"><div className="label">{label}</div><div className="value" style={accent?{color:`var(--${accent})`}:{}}>{value}</div><div className="sub">{sub}</div></div>}
 
-function OverviewTable({type, onDetail}){
-  const rows = {
-    Country:[
-      ["CN","China","2,000","1,420","71%","Normal"],
-      ["SG","Singapore","1,650","1,410","85%","Warning"],
-      ["AE","United Arab Emirates","500","512","102%","Breach"],
-      ["AU","Australia","900","710","79%","Normal"],
-      ["JP","Japan","750","645","86%","Warning"]
-    ],
-    CCL:[
-      ["ANZBAU3M","ANZ Bank","500","355","71%","Normal"],
-      ["CTBAAU2S","Commonwealth Bank","400","372","93%","Warning"],
-      ["NATAAU33","National Australia Bank","300","318","106%","Breach"],
-      ["FABAAE","First Abu Dhabi Bank","350","245","70%","Normal"],
-      ["ICBC","Agricultural Bank of China","2000","1700","85%","Warning"]
-    ],
-    MLK:[
-      ["4000264485","DJARUM","5,818","4,021","69%","Normal"],
-      ["1000145694","ANEKA TAMBANG","13,280","11,580","87%","Warning"],
-      ["4000027711","MANDIRI GROUP SAMPLE","9,000","9,630","107%","Breach"],
-      ["2000198372","SAMPLE GROUP B","7,500","4,650","62%","Normal"]
-    ],
-    CIL:[
-      ["INS-001|BMRI","Tugu Pratama","60,093","58,300","97%","Warning"],
-      ["INS-001|MTF","Tugu Pratama - MTF","10,592","10,129","96%","Warning"],
-      ["INS-002|BMRI","Perisai Listrik","6,661","5,980","90%","Warning"],
-      ["INS-003|BMRI","Insurance ABC","18,000","19,450","108%","Breach"]
-    ],
-    LPG:lpgDisplayRows().slice(0,6).map(r=>{
-      const lim=lpgScopeLimit(r,"Bankwide"),exp=lpgScopeExposure(r,"Bankwide"),u=lim&&exp!==null?exp/lim:0;
-      return [r.key, r.sector+" / "+r.segment,lim===null?"—":Number(lim).toLocaleString("id-ID"),exp===null?"—":Number(exp).toLocaleString("id-ID"),(u*100).toFixed(2)+"%",recordStatus("LPG",r)];
-    })
-  }[type];
-  return <div className="table-wrap"><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr></thead><tbody>{rows.map(r=><tr key={r[0]}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><Status v={r[5]}/></td><td><button className="btn ghost" onClick={()=>onDetail(type,r[0])}>View</button></td></tr>)}</tbody></table></div>
+function OverviewTable({type,onDetail}){
+  const sourceRows=type==="LPG"?lpgDisplayRows():(limasDemoData[type]||[]);
+  const rows=sourceRows.slice(0,6).map(r=>{
+    const key=r.key;
+    const object=type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector||r.key);
+    const limit=recordLimit(type,r),exposure=recordExposure(type,r),util=recordUtil(type,r),status=recordStatus(type,r);
+    return [key,object,Number.isFinite(limit)?Number(limit).toLocaleString("id-ID",{maximumFractionDigits:2}):"—",exposure===null?"—":Number(exposure).toLocaleString("id-ID",{maximumFractionDigits:2}),Number.isFinite(util)?(util*100).toFixed(2)+"%":"—",status];
+  });
+  return <div className="table-wrap"><table className="table"><thead><tr><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr></thead><tbody>{rows.map(r=><tr key={String(r[0])}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><Status v={r[5]}/></td><td><button className="btn ghost" onClick={()=>onDetail(type,r[0])}>View</button></td></tr>)}</tbody></table></div>
 }
 
 function Dashboard({nav}){
