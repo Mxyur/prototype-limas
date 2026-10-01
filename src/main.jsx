@@ -1087,6 +1087,27 @@ function ProductCatalog(){
   </section>;
 }
 
+function ProductDatabaseTable({view}){
+  const rows=productDatabase[view]||[];
+  const fields=productSchemaFields[view]||[];
+  const mapped=rows.filter(r=>(r.applied||[]).length).length;
+  return <section className="card product-database-card">
+    <div className="head"><div><h2>Product Database</h2><p>{rows.length} source records • seluruh kolom source tersimpan • Applied Limit menunjukkan kontribusi ke monitoring.</p></div><div className="chip blue">${rows.length} records</div></div>
+    <div className="body">
+      <div className="product-db-kpis"><div className="mini"><b>Source Records</b><strong>{rows.length}</strong></div><div className="mini"><b>Mapped Records</b><strong>{mapped}</strong></div><div className="mini"><b>Unmapped Records</b><strong>{rows.length-mapped}</strong></div></div>
+      <div className="table-wrap product-db-wrap"><table className="table product-db-table">
+        <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>Applied Limit</th></tr></thead>
+        <tbody>{rows.map(r=><tr key={r.recordId}>
+          <td className="key">{r.recordId}</td>
+          {fields.map(f=><td key={f}>{r.data[f]===0?0:(r.data[f]||"—")}</td>)}
+          <td>{r.sourceSystem}</td>
+          <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=><div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}{a.scope?" • "+a.scope:""}</div>):<span className="muted-small">Future / Not mapped</span>}</td>
+        </tr>)}</tbody>
+      </table></div>
+      <div className="field-help">Applied Limit menunjukkan tepat ke Master Limit mana source record dipakai. Contribution ini yang di-aggregate menjadi exposure/outstanding pada Monitoring dan Generate Report.</div>
+    </div>
+  </section>;
+}
 function ProductUsage({view}){
   const domainsUsing=productIntegratedDomains(view);
   const sourceDomainRows=domainsUsing.map(d=>[
@@ -1141,7 +1162,7 @@ function Products({nav}){
             ? <CreditLineFieldTable/>
             : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
           }
-          <ProductUsage view={view}/>
+          <ProductUsage view={view}/>{view!=="catalog"&&<ProductDatabaseTable view={view}/>}
         </div>
       </section>}
     </div>
