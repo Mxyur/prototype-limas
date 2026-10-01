@@ -1042,12 +1042,12 @@ function UtilizationTrace({type,key}){
     <div className="body">
       {apps.length===0?<div className="mini">Belum ada product utilization yang ter-mapping ke key ini.</div>:
       <div className="table-wrap"><table className="table">
-        <thead><tr><th>Product</th><th>Source Record</th><th>Exposure Field</th><th>Source Value</th><th>Applied Amount</th><th>Runtime Source</th><th>Mapping</th></tr></thead>
+        <thead><tr><th>Product</th><th>Source Record</th><th>Exposure Field</th><th>Country Exposure</th><th>Booking Office</th><th>Booking Type</th><th>Source Value</th><th>Applied Amount</th><th>Runtime Source</th><th>Mapping</th></tr></thead>
         <tbody>{apps.map((a,i)=>{
           const raw=a.sourceData?.[a.exposureField]??"—";
           const label=a.productId==="CREDIT LINE"?(a.scope?"Credit Line • "+a.scope:"Credit Line"):demoProductLabel(a.productId);
           return <tr key={a.recordId+"-"+i}>
-            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
+            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{a.countryExposure||"—"}</td><td>{a.bookingOffice||"—"}</td><td><Status v={a.bookingOfficeType||"Needs Mapping"}/></td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
           </tr>;
         })}</tbody>
       </table></div>}
