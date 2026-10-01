@@ -212,7 +212,7 @@ function buildReportDummy(data){
     LPG:data.LPG.map((r,i)=>{const p=productContributionMap("LPG",r.key),exp=recordExposure("LPG",r);return {no:i+1,sector:r.sector,segment:r.segment,region:r.region,limit:r.limit,outstanding:exp,util:r.limit?exp/r.limit:0,cl:p.CASHLOAN||0,ncl:p["NON CASH LOAN"]||0,crosscheck:(p.CASHLOAN||0)+(p["NON CASH LOAN"]||0)===exp?"Match":"Selisih",dataQuality:r.dataQuality,status:recordStatus("LPG",r)}})
   };
 }
-const reportDummy=buildReportDummy(limasDemoData);
+let reportDummy;
 
 const reportConfig={
   Country:{title:"3. Monitoring Eksposur & Capacity Limit per Negara",subtitle:"Format mengikuti struktur COUNTRY_MONITORING pada master report.",source:"master_reportMonitoring.xlsx • Sheet COUNTRY_MONITORING",note:"Report menggunakan canonical Master Limit + Product Utilization; source/lineage mengikuti mapping domain.",columns:[
@@ -928,6 +928,7 @@ function productContributionMap(type,key){
   return map;
 }
 function productContributionDetail(type,key){return Object.entries(productContributionMap(type,key)).map(([product,amount])=>({product,amount})).filter(x=>x.amount!==0);}
+const reportDummy=buildReportDummy(limasDemoData);
 
 
 const creditLineGroups={
