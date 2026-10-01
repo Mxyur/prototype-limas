@@ -40,13 +40,45 @@ function getMasterSections(type){
   return s;
 }
 
-const domainIntegrationProducts={
-  Country:["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"],
-  CCL:["CASHLOAN","NON CASH LOAN","CREDIT LINE","Investment Line"],
-  MLK:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
-  CIL:["Nominal Pertanggungan"],
-  LPG:["CASHLOAN","NON CASH LOAN"]
+const domainDataContract={
+  Country:{
+    masterKey:"Country Code",
+    masterObject:"Country",
+    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"],
+    utilizationGrain:"Country Code + Periode",
+    masterDescription:"Identitas country + approved Country Limit + adjustment/final limit."
+  },
+  CCL:{
+    masterKey:"Kode Bank / Swift Code",
+    masterObject:"Counterparty Bank",
+    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE","Investment Line"],
+    utilizationGrain:"Bank / Swift Code + Periode",
+    masterDescription:"Counterparty profile + risk/capacity basis + approved CCL / contractual limit."
+  },
+  MLK:{
+    masterKey:"CIF",
+    masterObject:"Debtor / Group Usaha",
+    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
+    utilizationGrain:"CIF / Group Usaha + Periode",
+    masterDescription:"Debtor profile + risk/capacity basis + approved Master Limit."
+  },
+  CIL:{
+    masterKey:"Insurance Company ID / Entity",
+    masterObject:"Insurance Company + Entity",
+    linkedProducts:["Nominal Pertanggungan"],
+    utilizationGrain:"Insurance Company + Entity + Periode",
+    masterDescription:"Insurance capacity + CIT + EIL + consolidated CIL."
+  },
+  LPG:{
+    masterKey:"Sector + Segment + Region",
+    masterObject:"Portfolio Guideline",
+    linkedProducts:["CASHLOAN","NON CASH LOAN"],
+    utilizationGrain:"Sector + Segment + Region + Periode",
+    masterDescription:"Approved Bankwide / Regional / KP+OVS guideline limit."
+  }
 };
+
+const domainIntegrationProducts=Object.fromEntries(Object.entries(domainDataContract).map(([domain,cfg])=>[domain,cfg.linkedProducts]));
 function integrationLabel(id){
   if(id==="CREDIT LINE") return "Credit Line (Commercial + Treasury)";
   const item=(typeof productMasterCatalog!=="undefined" ? productMasterCatalog.find(p=>p.id===id) : null);
