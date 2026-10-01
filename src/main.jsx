@@ -492,13 +492,13 @@ function Detail({nav,type="Country"}){
   const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(safeType));
   const [editing,setEditing]=useState(false);
   const [savedAt,setSavedAt]=useState("");
-  const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[\`\${section}||\${field}\`]:{...(m[\`\${section}||\${field}\`]||{}),[key]:value}}));
+  const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
   const startEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
   const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
   const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};saveMasterMeta(safeType,next);setMeta(next);setEditing(false);setSavedAt(next.lastUpdated);};
   const linkedProducts=domainIntegrationProducts[safeType]||[];
   return <Layout screen="detail" onNav={nav}>
-    <Header title={\`\${safeType} • Master Limit Detail\`} subtitle="Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."/>
+    <Header title={`${safeType} • Master Limit Detail`} subtitle="Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."/>;
     <div className="page">
       <section className="card">
         <div className="head">
@@ -506,11 +506,11 @@ function Detail({nav,type="Country"}){
           <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
-          <div className="tabs">{Object.keys(masterSections).map(s=><button className={\`tab \${tab===s?'active':''}\`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
+          <div className="tabs">{Object.keys(masterSections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
           <div className="field-table-wrap">
             <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
               <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
-                const id=\`\${tab}||\${f}\`;
+                const id=`${tab}||${f}`;
                 const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)};
                 return <tr key={f}><td><b>{f}</b></td><td>{v}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
               })}</tbody>
