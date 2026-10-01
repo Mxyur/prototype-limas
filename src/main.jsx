@@ -158,7 +158,10 @@ function lpgProductClassification(r){
 }
 function lpgProductAmount(r){
   if(r.productId==="CASHLOAN")return Number(r.data?.total_bade)||0;
-  if(r.productId==="NON CASH LOAN")return (Number(r.data?.EQVIDR)||0)/1000000;
+  if(r.productId==="NON CASH LOAN"){
+    if(r.sourceSystem==="DWH"&&r.data?.CCY==="IDR")return Number(r.data?.BALANCE)||0;
+    return (Number(r.data?.EQVIDR)||0)/1000000;
+  }
   return 0;
 }
 function lpgProductApplicationsForKey(key){
@@ -1175,8 +1178,8 @@ function canonicalExceptions(){
 }
 function productContributionMap(type,key){
   const map={};
-  const row=type==="LPG"?(limasDemoData.LPG||[]).find(r=>String(r.key)===String(key)):null;
-  const apps=row?.segment==="TOTAL SEKTOR"
+  const row=type==="LPG"?lpgDisplayRows().find(r=>String(r.key)===String(key)):null;
+  const apps=type==="LPG"&&row?.segment==="TOTAL SEKTOR"
     ? lpgLeafRows().filter(x=>x.sector===row.sector).flatMap(x=>productApplicationsFor("LPG",x.key))
     : productApplicationsFor(type,key);
   apps.forEach(a=>{const k=a.productId==='CREDIT LINE'?'CREDIT LINE|'+(a.scope||'Common'):a.productId;map[k]=(map[k]||0)+(Number(a.amount)||0);});
@@ -1216,7 +1219,7 @@ const productFieldNotes={
     "CPNM":"Nama counterparty yang digunakan untuk country judgment.",
     "Country Code":"Country Code hasil mapping counterparty.",
     "EQVIDR":"Nilai ekuivalen IDR untuk exposure.",
-    "BALANCE":"Saldo/transaksi outstanding yang menjadi referensi exposure.",
+    "BALANCE":"Saldo/transaksi outstanding yang menjadi referensi exposure. Pada demo DWH-Indonesia untuk LPG, field ini menjadi nilai outstanding dalam Rp Juta.",
     "ecosystem_lpg":"Atribut debitur untuk klasifikasi Ecosystem LPG/Sektor; bukan Applied Limit.",
     "segmen_lpg":"Atribut debitur untuk klasifikasi Segmen LPG.",
     "region_lpg":"Atribut region pada level debitur. Bankwide merupakan hasil agregasi seluruh debtor records."
