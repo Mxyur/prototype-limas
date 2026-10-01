@@ -154,3 +154,6 @@
 .product-credit-table td:nth-child(2),.product-credit-table td:nth-child(3){white-space:nowrap}
 .product-credit-table thead th:nth-child(2){background:#eef5ff;color:#1b5fae}
 .product-credit-table thead th:nth-child(3){background:#eef8f4;color:#16714f}
+
+.integration-chip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.integration-chip{min-height:64px}
