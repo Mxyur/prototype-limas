@@ -830,30 +830,30 @@ function ProductFieldTable({tab,group="",fields,sample}){
 
 function ProductCatalog(){
   const [editing,setEditing]=useState(false);
-  const [draft,setDraft]=useState(()=>Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));
+  const cilProduct=productMasterCatalog.find(item=>item.id==="Nominal Pertanggungan")||productMasterCatalog[productMasterCatalog.length-1];
+  const [draft,setDraft]=useState(()=>({[cilProduct.id]:loadProductCatalogMeta(cilProduct)}));
   const update=(id,key,value)=>setDraft(m=>({...m,[id]:{...(m[id]||{}),[key]:value}}));
-  const save=()=>{productMasterCatalog.forEach(item=>saveProductCatalogMeta(item,draft[item.id]||{}));setEditing(false)};
-  const cancel=()=>{setDraft(Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));setEditing(false)};
+  const save=()=>{saveProductCatalogMeta(cilProduct,draft[cilProduct.id]||{});setEditing(false)};
+  const cancel=()=>{setDraft({[cilProduct.id]:loadProductCatalogMeta(cilProduct)});setEditing(false)};
   return <section className="card">
     <div className="head">
-      <div><h2>Master Data Produk</h2><p>Master katalog product, source sheet, key, target limit, exposure field, Source Data dan Keterangan.</p></div>
-      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
+      <div><h2>Master Data Produk CIL</h2><p>Untuk domain CIL, master produk yang dimonitor adalah Nominal Pertanggungan. Master Cash Loan, Non Cash Loan, Credit Line, Investment Line, Bonds dan Nostro merupakan master untuk entitas limit pada domain lainnya.</p></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={()=>{save();setEditing(false)}}>Simpan Perubahan</button></div>}
     </div>
     <div className="body">
       <div className="table-wrap product-master-wrap">
         <table className="table product-master-table">
           <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Dipakai oleh Limit</th><th>Exposure Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
-          <tbody>{productMasterCatalog.map(item=>{
-            const m=draft[item.id]||{};
-            return <tr key={item.id}>
-              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{item.target}</td><td>{item.exposure}</td>
-              <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
-              <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+          <tbody>
+            <tr>
+              <td><b>{cilProduct.label}</b></td><td>{cilProduct.sheet}</td><td>{cilProduct.key}</td><td>{cilProduct.target}</td><td>{cilProduct.exposure}</td>
+              <td>{editing?<input className="input compact field-input" value={draft[cilProduct.id]?.source||""} onChange={e=>update(cilProduct.id,"source",e.target.value)}/>:<span className="source-text">{draft[cilProduct.id]?.source||"—"}</span>}</td>
+              <td>{editing?<textarea className="textarea compact-area" value={draft[cilProduct.id]?.note||""} onChange={e=>update(cilProduct.id,"note",e.target.value)}/>:<span className="note-text">{draft[cilProduct.id]?.note||"—"}</span>}</td>
             </tr>
-          })}</tbody>
+          </tbody>
         </table>
       </div>
-      <div className="field-help">Master Data Produk menjadi referensi utama sebelum detail field-level. Source CIL Nominal Pertanggungan menggunakan CIL_MONITORING karena komponen utilisasi CIL berasal dari monitoring CIL, bukan master_dataproduk.</div>
+      <div className="field-help">Master Data Produk CIL hanya menampilkan Nominal Pertanggungan. Detail field-level di bawahnya menjadi source utama untuk utilisasi CIL; master produk dari domain limit lain tetap tersedia pada tab domain masing-masing.</div>
     </div>
   </section>;
 }
