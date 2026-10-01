@@ -180,9 +180,7 @@ function demoProductLabel(p){
 }
 function productTotal(products){return Object.values(products||{}).reduce((a,v)=>a+(Number(v)||0),0)}
 function recordExposure(type,row){
-  if(type==="CIL")return Object.values(row.entities||{}).reduce((a,e)=>a+(Number(e.nominal)||0),0);
-  if(type==="LPG")return Number(row.outstanding)||0;
-  return productTotal(row.products);
+  return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.amount)||0),0);
 }
 function recordLimit(type,row){
   if(type==="Country")return Number(row.masterLimit)||0;
@@ -814,7 +812,7 @@ const productMasterCatalog=[
   {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
 ];
 
-const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):(productFields[p.id]||[])]));
+const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):(productFields[p.id]||[]))]]));
 
 function makeProductRecord(productId,overrides={},applied=[],meta={}){
   const base={};
@@ -851,6 +849,12 @@ const productDatabase={
     makeProductRecord('CREDIT LINE',{No:'2',Nama:'ABN Amro Bank NV','Swift Code':'ABNANL2A','Swift Code Vlookup':'ANZBAU3M',Code:'NL',Negara:'Netherlands',Bank:'Foreign','Comm Line Total':'13','Comm Line Total Utilisasi':'13','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'13','Credit Line Total Utilisasi':'13'},[{limitType:'CCL',key:'ANZBAU3M',amount:13,label:'Commercial Line',scope:'Commercial'}],{recordId:'CRL-CCL-001',sourceSystem:'Core Banking Limit System'}),
     makeProductRecord('CREDIT LINE',{No:'3',Nama:'Abu Dhabi Commercial Bank PJSC','Swift Code':'ADCBADAD','Swift Code Vlookup':'ADCB',Code:'AE',Negara:'UAE',Bank:'Foreign','Comm Line Total':'1','Comm Line Total Utilisasi':'1','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'1','Credit Line Total Utilisasi':'1'},[{limitType:'CCL',key:'ADCB',amount:1,label:'Commercial Line',scope:'Commercial'}],{recordId:'CRL-CCL-002',sourceSystem:'Core Banking Limit System'}),
     makeProductRecord('CREDIT LINE',{No:'4',Nama:'Agricultural Bank of China Limited','Swift Code':'ABOCCNBJ','Swift Code Vlookup':'AGRICN',Code:'CN',Negara:'China',Bank:'Foreign','Comm Line Total':'109','Comm Line Total Utilisasi':'109','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'109','Credit Line Total Utilisasi':'109'},[{limitType:'CCL',key:'AGRICN',amount:109,label:'Commercial Line',scope:'Commercial'}],{recordId:'CRL-CCL-003',sourceSystem:'Core Banking Limit System'})
+
+  'CREDIT LINE':[
+    makeProductRecord('CREDIT LINE',{No:'5',Nama:'DJARUM Treasury',Swift Code:'DJARUM-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'1938','Bade Treasury Line':'1938','Treasury Line Total Utilisasi':'1938','Credit Line Total Utilisasi':'1938'},[{limitType:'MLK',key:'4000264485',amount:1938,label:'Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-001',sourceSystem:'LIMAST'}),
+    makeProductRecord('CREDIT LINE',{No:'6',Nama:'ANEKA TAMBANG Treasury',Swift Code:'ANTAM-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'4248','Bade Treasury Line':'4248','Treasury Line Total Utilisasi':'4248','Credit Line Total Utilisasi':'4248'},[{limitType:'MLK',key:'1000145694',amount:4248,label:'Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-002',sourceSystem:'LIMAST'}),
+    makeProductRecord('CREDIT LINE',{No:'7',Nama:'TUNAS MOBILINDO Treasury',Swift Code:'TUNAS-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'59','Bade Treasury Line':'59','Treasury Line Total Utilisasi':'59','Credit Line Total Utilisasi':'59'},[{limitType:'MLK',key:'16000486963',amount:59,label:'Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-003',sourceSystem:'LIMAST'}),
+    makeProductRecord('CREDIT LINE',{No:'8',Nama:'TUNAS RIDEAN Treasury',Swift Code:'RIDEAN-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'262','Bade Treasury Line':'262','Treasury Line Total Utilisasi':'262','Credit Line Total Utilisasi':'262'},[{limitType:'MLK',key:'20000474637',amount:262,label:'Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-004',sourceSystem:'LIMAST'}),
   ],
   'Investment Line':Array.from({length:5},(_,i)=>makeProductRecord('Investment Line',{No:String(i+1),'Nama Bank':['ANZ','DBS','OCBC','MUFG','Mizuho'][i],'Nama Entity (Scope Entity : AKK)':'DPBM',Switftcode:['ANZxx','DBSxx','OCBCxx','MUFGxx','MHCBxx'][i],'Jenis Invesment Line':i<3?'Deposito':'Placement','Amount Invesment Line':['10000000000','5000000000','3500000000','2500000000','1800000000'][i]},[],{recordId:'INV-00'+(i+1),sourceSystem:'Investment source / Monthly'})),
   'BONDS':Array.from({length:5},(_,i)=>makeProductRecord('BONDS',{Date:'30-Apr-26',Branch:'Head Office','Securities Type':i===2?'Corporate Bond':'Fixed Rate','Securities Name':['FR0037','FR0080','OBL-ABC','FR0090','FR0100'][i],'Issuer Name':i===2?'Indo Corp':'Indo Gov','Issuer Country':'ID','Issuer Type':i===2?'Corporate':'Government',Portfolio:'Banking Book',CCY:'IDR',Amount:['585424000000','250000000000','100000000000','75000000000','50000000000'][i],'Amount Eq. IDR Juta':['585424','250000','100000','75000','50000'][i],'Maturity Date':['15-Sep-26','15-Jan-27','15-May-27','15-May-28','15-Jun-29'][i],Coupon:['12%','6.5%','7%','7.5%','7%'][i],'Potential P/L (Eq. IDR Juta)':'0'},[],{recordId:'BND-00'+(i+1),sourceSystem:'Market Risk/Treasury'})),
@@ -883,7 +887,7 @@ const creditLineSamples={
   "Commercial Line":productSample["COMMERCIAL LINE (CRDT)"]||{},
   "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
 };
-const creditLineFields=creditLineGroups["Commercial Line"];
+const creditLineFields=[...new Set(creditLineGroups["Commercial Line"])];
 const creditLineTreasuryOnly=new Set(["Treasury DN","Treasury DN Utilisasi","Treasury LN","Treasury LN Utilisasi","Treasury Line Total","Treasury Line Total Utilisasi","TDN","TDN Utilisasi","TLN","TLN Utilisasi","Treasury Line","Total Utilisasi","CDN","CDN Utilisasi","CLN","CLN Utilisasi"]);
 const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN","Comm LN Utilisasi","Comm Line Total","Comm Line Total Utilisasi"]);
 const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
