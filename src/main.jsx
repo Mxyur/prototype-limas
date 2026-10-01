@@ -953,7 +953,12 @@ function reconciliationIssues(){
     (r.applied||[]).forEach(a=>{
       const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
       if(!master){
-        push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:r.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Applied Limit menunjuk master key yang belum tersedia.",amount:Number(a.amount)||0});
+        const amount=Number(a.amount)||0;
+        if(productId==="BONDS"&&String(a.key)==="ID"&&amount===0){
+          push({status:"Excluded",issueType:"EXCLUDED",productId,recordId:r.recordId,limitType:a.limitType,key:a.key,object:"Indonesia",detail:"Domestic issuer tidak menjadi Country Limit exposure pada canonical model.",amount:0});
+        }else if(amount!==0){
+          push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:r.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Applied Limit menunjuk master key yang belum tersedia.",amount});
+        }
       }
     });
     if(productId==="CREDIT LINE"){
@@ -980,7 +985,7 @@ function canonicalExceptions(){
       rows.push({status:st,domain:type,key:r.key,object:r.name||r.sector,limit:recordLimit(type,r),exposure:recordExposure(type,r),util:recordUtil(type,r),threshold:st==="Breach"?"100%":st==="Warning"?"80%":"—",detail:st==="Data Issue"?(r.dataQuality||"Master data quality issue"):"Canonical monitoring exception"});
     }
   }));
-  reconciliationIssues().forEach(x=>rows.push({status:"Data Issue",domain:x.limitType,key:x.key,object:x.object,limit:"—",exposure:x.amount,util:0,threshold:"—",detail:x.issueType+" • "+x.detail+" • "+x.recordId}));
+  reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>rows.push({status:"Data Issue",domain:x.limitType,key:x.key,object:x.object,limit:"—",exposure:x.amount,util:0,threshold:"—",detail:x.issueType+" • "+x.detail+" • "+x.recordId}));
   return rows;
 }
 function productContributionMap(type,key){
