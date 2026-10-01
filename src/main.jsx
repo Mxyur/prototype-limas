@@ -331,7 +331,7 @@ function recordExposure(type,row){
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.amount)||0),0);
 }
 function recordLimit(type,row){
-  if(type==="Country")return Number(row.capacityLimit??row.masterLimit)||0;
+  if(type==="Country")return Number(row.capacityLimit)||0;
   if(type==="CCL")return Number(row.ccl)||0;
   if(type==="MLK")return Number(row.masterLimit)||0;
   if(type==="CIL")return Number(row.cil)||0;
@@ -398,7 +398,7 @@ function mlkMonitoringRows(rows){
 }
 function buildReportDummy(data){
   return {
-    Country:data.Country.map((r,i)=>{const p=productContributionMap("Country",r.key),exp=recordExposure("Country",r),totalLimits=limasDemoData.Country.reduce((a,x)=>a+(Number(x.capacityLimit??x.masterLimit)||0),0),share=totalLimits?(Number(r.capacityLimit??r.masterLimit)||0)/totalLimits:0,a=countryAllocationMetrics(r);return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,domestic:countryBookingExposure(r,"Domestic"),overseas:countryBookingExposure(r,"Overseas"),unmapped:countryBookingExposure(r,"Needs Mapping"),capacity:r.capacityLimit??r.masterLimit,capacityDomestic:a.domesticCapacity,capacityOverseas:a.overseasCapacity,allocatedCapacity:a.allocated,unallocatedCapacity:a.unallocated,clDomesticLimit:a.items.find(x=>x.product==="CASHLOAN")?.domestic,clOverseasLimit:a.items.find(x=>x.product==="CASHLOAN")?.overseas,clTotalLimit:a.items.find(x=>x.product==="CASHLOAN")?.total,nclDomesticLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.domestic,nclOverseasLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.overseas,nclTotalLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.total,comDomesticLimit:a.items.find(x=>x.product==="CREDIT LINE")?.domestic,comOverseasLimit:a.items.find(x=>x.product==="CREDIT LINE")?.overseas,comTotalLimit:a.items.find(x=>x.product==="CREDIT LINE")?.total,bondDomesticLimit:a.items.find(x=>x.product==="BONDS")?.domestic,bondOverseasLimit:a.items.find(x=>x.product==="BONDS")?.overseas,bondTotalLimit:a.items.find(x=>x.product==="BONDS")?.total,nosDomesticLimit:a.items.find(x=>x.product==="NOSTRO")?.domestic,nosOverseasLimit:a.items.find(x=>x.product==="NOSTRO")?.overseas,nosTotalLimit:a.items.find(x=>x.product==="NOSTRO")?.total,formulasi:r.formulasi,diputus:r.diputus,limit:r.capacityLimit??r.masterLimit,pct:share,status:recordStatus("Country",r)}}),
+    Country:data.Country.map((r,i)=>{const p=productContributionMap("Country",r.key),exp=recordExposure("Country",r),totalLimits=limasDemoData.Country.reduce((a,x)=>a+(Number(x.capacityLimit??x.masterLimit)||0),0),share=totalLimits?(Number(r.capacityLimit??r.masterLimit)||0)/totalLimits:0,a=countryAllocationMetrics(r);return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,domestic:countryBookingExposure(r,"Domestic"),overseas:countryBookingExposure(r,"Overseas"),unmapped:countryBookingExposure(r,"Needs Mapping"),capacity:r.capacityLimit,capacityDomestic:a.domesticCapacity,capacityOverseas:a.overseasCapacity,allocatedCapacity:a.allocated,unallocatedCapacity:a.unallocated,clDomesticLimit:a.items.find(x=>x.product==="CASHLOAN")?.domestic,clOverseasLimit:a.items.find(x=>x.product==="CASHLOAN")?.overseas,clTotalLimit:a.items.find(x=>x.product==="CASHLOAN")?.total,nclDomesticLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.domestic,nclOverseasLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.overseas,nclTotalLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.total,comDomesticLimit:a.items.find(x=>x.product==="CREDIT LINE")?.domestic,comOverseasLimit:a.items.find(x=>x.product==="CREDIT LINE")?.overseas,comTotalLimit:a.items.find(x=>x.product==="CREDIT LINE")?.total,bondDomesticLimit:a.items.find(x=>x.product==="BONDS")?.domestic,bondOverseasLimit:a.items.find(x=>x.product==="BONDS")?.overseas,bondTotalLimit:a.items.find(x=>x.product==="BONDS")?.total,nosDomesticLimit:a.items.find(x=>x.product==="NOSTRO")?.domestic,nosOverseasLimit:a.items.find(x=>x.product==="NOSTRO")?.overseas,nosTotalLimit:a.items.find(x=>x.product==="NOSTRO")?.total,formulasi:r.formulasi,diputus:r.diputus,limit:r.capacityLimit,pct:share,status:recordStatus("Country",r)}}),
     CCL:data.CCL.map((r,i)=>{const p=productContributionMap("CCL",r.key),exp=recordExposure("CCL",r);return {no:i+1,bank:r.name,category:r.category,country:r.country,countryRating:r.countryRating,bobot:r.bobot,rating:r.rating,position:r.position,ratingIndex:r.ratingIndex,inhouse:r.inhouse,tier1:r.tier1,capacity:r.capacity,adjusted:r.adjusted,globalParent:r.globalParent,top200:r.top200,ccl:r.ccl,cclCapacity:r.capacity? r.ccl/r.capacity:0,limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:exp,bmriLoan:p.CASHLOAN||0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:r.ccl?exp/r.ccl:0,contractualUtil:r.contractual?exp/r.contractual:0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
     MLK:mlkMonitoringRows(data.MLK),
     CIL:data.CIL.map((r,i)=>{const rows=productApplicationsFor("CIL",r.key),p=productContributionMap("CIL",r.key),total=recordExposure("CIL",r);const byEntity={};rows.forEach(a=>{byEntity[a.entity||"Entity"]=(byEntity[a.entity||"Entity"]||0)+(Number(a.amount)||0)});return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:byEntity.BMRI||0,bmriEil:r.eils?.BMRI||0,mtNominal:byEntity["Mandiri Taspen"]||0,mtEil:r.eils?.["Mandiri Taspen"]||0,mtfNominal:byEntity.MTF||0,mtfEil:r.eils?.MTF||0,mufNominal:byEntity.MUF||0,mufEil:r.eils?.MUF||0,cil:r.cil,totalNominal:total,projection:cilProjection(r.key),utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?cilProjection(r.key)/r.cit:0,cilUtil:r.cil?total/r.cil:0,eilUtil:Math.max(...Object.entries(byEntity).map(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil?amount/eil:0}),0),eilBreaches:Object.entries(byEntity).filter(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil>0&&amount/eil>=1}).map(([entity])=>entity).join(", "),status:recordStatus("CIL",r),score:r.score,action:r.action}}),
@@ -422,7 +422,7 @@ const LPG_REPORT_COLUMNS=[
     ["CL • Bankwide","cl"],["NCL • Bankwide","ncl"],["Bankwide vs Regional","crosscheck"],["Bankwide Source Reconciliation","bankwideReconciliation"],["Regional Source Coverage","regionalCoverage"],["Data Quality","dataQuality"],["Status","status"]
 ];
 const reportConfig={
-  Country:{title:"3. Monitoring Eksposur & Capacity Limit per Negara",subtitle:"Capacity Limit → Product Allocation → Domestic/Overseas utilization.",source:"master_reportMonitoring.xlsx • Sheet COUNTRY_MONITORING",note:"Country exposure mengikuti source country mapping. Domestic/Overseas ditentukan dari Booking Office Type pada Product Utilization; capacity/product allocation adalah master layer dan Bade/exposure adalah monitoring layer.",columns:[
+  Country:{title:"3. Monitoring Eksposur & Capacity Limit per Negara",subtitle:"Capacity Limit → Domestic/Overseas Distribution → Product Limit → Domestic/Overseas Exposure.",source:"master_reportMonitoring.xlsx • Sheet COUNTRY_MONITORING",note:"Country capacity adalah master layer. Capacity didistribusikan ke Domestic/Overseas lalu diturunkan ke masing-masing product. Exposure/Bade tetap menjadi monitoring layer dan Domestic/Overseas ditentukan dari Booking Office Type.",columns:[
     ["No","no"],["Negara","country"],["Code","code"],["Status","statusMaster"],["Capacity Limit","capacity"],["Capacity Distribution Domestic","capacityDomestic"],["Capacity Distribution Overseas","capacityOverseas"],["Allocated Capacity","allocatedCapacity"],["Unallocated Capacity","unallocatedCapacity"],["CASHLOAN Domestic Limit","clDomesticLimit"],["CASHLOAN Overseas Limit","clOverseasLimit"],["CASHLOAN Total Limit","clTotalLimit"],["NON CASH LOAN Domestic Limit","nclDomesticLimit"],["NON CASH LOAN Overseas Limit","nclOverseasLimit"],["NON CASH LOAN Total Limit","nclTotalLimit"],["CREDIT LINE Domestic Limit","comDomesticLimit"],["CREDIT LINE Overseas Limit","comOverseasLimit"],["CREDIT LINE Total Limit","comTotalLimit"],["BONDS Domestic Limit","bondDomesticLimit"],["BONDS Overseas Limit","bondOverseasLimit"],["BONDS Total Limit","bondTotalLimit"],["NOSTRO Domestic Limit","nosDomesticLimit"],["NOSTRO Overseas Limit","nosOverseasLimit"],["NOSTRO Total Limit","nosTotalLimit"],["Domestic Exposure","domestic"],["Overseas Exposure","overseas"],["Unmapped Booking Exposure","unmapped"],["TOTAL EXPOSURE","total"],["Status Monitoring","status"]
   ]},
   CCL:{title:"4. Counterparty Direct Limit - Bank Mandiri (BMRI) & Perusahaan Anak",subtitle:"Format mengikuti struktur CCL_MONITORING pada master report.",source:"master_reportMonitoring.xlsx • Sheet CCL_MONITORING",note:"Master CCL/capacity dipisahkan dari integrated product utilization.",columns:[
@@ -663,8 +663,8 @@ function Monitor({type,nav}){
   const totalExposure=rows.reduce((a,r)=>a+recordExposure(type,r),0);
   const overallUtil=totalLimit?totalExposure/totalLimit:0;
   const statusCounts={Normal:rows.filter(r=>recordStatus(type,r)==="Normal").length,Warning:rows.filter(r=>recordStatus(type,r)==="Warning").length,Breach:rows.filter(r=>recordStatus(type,r)==="Breach").length,"Data Issue":rows.filter(r=>recordStatus(type,r)==="Data Issue").length};
-  const titleMap={Country:"Country Limit Monitoring",CCL:"Counterparty / CCL Monitoring",MLK:"Debtor / MLK Monitoring",CIL:"Insurance / CIL Monitoring",LPG:"Portfolio / LPG Monitoring"};
-  const subtitleMap={Country:"Master Country Limit + integrated product utilization.",CCL:"Master CCL / Contractual Limit + integrated counterparty product utilization.",MLK:"Master Limit per CIF/group + integrated CL, NCL and Treasury Line exposure.",CIL:"Master IC/CIT/EIL/CIL + integrated Nominal Pertanggungan.",LPG:"Master limit Sector × Segment × Region + integrated CL/NCL outstanding."};
+  const titleMap={Country:"Country Capacity Limit Monitoring",CCL:"Counterparty / CCL Monitoring",MLK:"Debtor / MLK Monitoring",CIL:"Insurance / CIL Monitoring",LPG:"Portfolio / LPG Monitoring"};
+  const subtitleMap={Country:"Country Capacity Limit → Domestic/Overseas Distribution → Product Limit → integrated utilization.",CCL:"Master CCL / Contractual Limit + integrated counterparty product utilization.",MLK:"Master Limit per CIF/group + integrated CL, NCL and Treasury Line exposure.",CIL:"Master IC/CIT/EIL/CIL + integrated Nominal Pertanggungan.",LPG:"Master limit Sector × Segment × Region + integrated CL/NCL outstanding."};
   const unitMap={Country:"Rp Juta",CCL:"Rp Miliar",MLK:"Rp Juta",CIL:"Rp Juta",LPG:"Rp Juta"};
   const pct=v=>(v*100).toFixed(2)+"%";
   const productsText=r=>{
@@ -677,7 +677,7 @@ function Monitor({type,nav}){
     <Header title={titleMap[type]} subtitle={subtitleMap[type]}/>
     <div className="page">
       <div className="metric-grid">
-        <DomainKpi label="Total Master Limit" value={totalLimit.toLocaleString("id-ID",{maximumFractionDigits:2})} sub={unitMap[type]}/>
+        <DomainKpi label={type==="Country"?"Total Capacity Limit":"Total Master Limit"} value={totalLimit.toLocaleString("id-ID",{maximumFractionDigits:2})} sub={unitMap[type]}/>
         <DomainKpi label="Integrated Exposure" value={totalExposure.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Product utilization"/>
         <DomainKpi label="Utilisasi" value={pct(overallUtil)} sub="Exposure / Master Limit" accent={overallUtil>=1?"red":overallUtil>=0.8?"yellow":""}/>
         <DomainKpi label="Early Warning" value={statusCounts.Warning} sub="80%–<100%" accent="yellow"/>
@@ -696,7 +696,7 @@ function Monitor({type,nav}){
         <div className="head"><div><h2>Monitoring Detail</h2><p>Limit, exposure dan product contribution berasal dari canonical demo data.</p></div></div>
         <div className="body"><div className="table-wrap"><table className="table">
           <thead><tr>{
-            type==="Country"?<><th>Country Code</th><th>Country</th><th>Master Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="Country"?<><th>Country Code</th><th>Country</th><th>Capacity Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
             type==="CCL"?<><th>Swift</th><th>Bank</th><th>CCL</th><th>Contractual</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
             type==="MLK"?<><th>CIF</th><th>Debitur</th><th>Group</th><th>Master Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
             type==="CIL"?<><th>Insurance</th><th>Nama</th><th>CIL</th><th>Nominal Pertanggungan</th><th>Utilisasi CIL</th><th>Status</th><th>Entity Contribution</th></>:
@@ -741,7 +741,7 @@ function Setup({nav,setSel}){
           <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
           <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={"Cari "+info.key}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Limit</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
+            <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
             <tbody>{rows.map((r,i)=><tr key={String(r.key)+i}>
               <td className="key">{r.key}</td>
               <td>{type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector)}</td>
@@ -839,28 +839,26 @@ const mdFieldDescription={
     "Identitas||Negara":"Nama negara sebagai objek monitoring country limit.",
     "Identitas||Code":"Kode negara sebagai key join/mapping exposure product.",
     "Identitas||Status":"Status master country.",
-    "Checklist Product||CL":"Checklist keberadaan exposure Cash Loan.",
-    "Checklist Product||NCL":"Checklist keberadaan exposure Non Cash Loan.",
-    "Checklist Product||COM":"Checklist keberadaan Commercial Line.",
-    "Checklist Product||TRS":"Checklist keberadaan Treasury Line.",
-    "Checklist Product||BOND":"Checklist keberadaan Bond.",
-    "Checklist Product||NOS":"Checklist keberadaan Nostro.",
-    "Exposure Product||CL":"Exposure Cash Loan berdasarkan source product.",
-    "Exposure Product||NCL":"Exposure Non Cash Loan berdasarkan source product.",
-    "Exposure Product||COM":"Exposure Commercial Line berdasarkan utilisasi.",
-    "Exposure Product||TRS":"Exposure Treasury Line berdasarkan utilisasi.",
-    "Exposure Product||BOND":"Exposure Bond.",
-    "Exposure Product||NOS":"Exposure Nostro.",
-    "Exposure Product||TOTAL":"Total exposure product hasil agregasi.",
-    "Limit & Gap||Limit FIB / Formulasi":"Nilai Formulasi Limit FIB dari source internal.",
-    "Limit & Gap||Limit FIB / Diputus":"Nilai Diputus Limit FIB dari source internal.",
-    "Limit & Gap||Country Limit / Country Limit":"Country Limit berasal dari Dataset Country.",
-    "Limit & Gap||Country Limit / %Country Limit":"Persentase Country Limit terhadap total.",
-    "Limit & Gap||Gap Analysis / Needs":"Nilai Needs pada gap analysis.",
-    "Limit & Gap||Gap Analysis / Minus":"Nilai Minus pada gap analysis.",
-    "Limit & Gap||Gap Analysis / Add":"Nilai Add pada gap analysis.",
-    "Limit & Gap||Final Limit / Final Limit":"Final Limit hasil kalkulasi.",
-    "Limit & Gap||Final Limit / %Final Limit":"Persentase Final Limit terhadap total."
+    "Limit & Gap||Capacity Limit":"Approved Country Capacity Limit.",
+    "Limit & Gap||Capacity Distribution / Domestic":"Bagian Capacity Limit yang dialokasikan untuk booking Domestic.",
+    "Limit & Gap||Capacity Distribution / Overseas":"Bagian Capacity Limit yang dialokasikan untuk booking Overseas.",
+    "Limit & Gap||Product Distribution / CASHLOAN / Domestic Limit":"Approved Cash Loan limit untuk booking Domestic.",
+    "Limit & Gap||Product Distribution / CASHLOAN / Overseas Limit":"Approved Cash Loan limit untuk booking Overseas.",
+    "Limit & Gap||Product Distribution / CASHLOAN / Total Product Limit":"Total approved Cash Loan limit; Domestic + Overseas.",
+    "Limit & Gap||Product Distribution / NON CASH LOAN / Domestic Limit":"Approved Non Cash Loan limit untuk booking Domestic.",
+    "Limit & Gap||Product Distribution / NON CASH LOAN / Overseas Limit":"Approved Non Cash Loan limit untuk booking Overseas.",
+    "Limit & Gap||Product Distribution / NON CASH LOAN / Total Product Limit":"Total approved Non Cash Loan limit; Domestic + Overseas.",
+    "Limit & Gap||Product Distribution / CREDIT LINE / Domestic Limit":"Approved Credit Line limit untuk booking Domestic.",
+    "Limit & Gap||Product Distribution / CREDIT LINE / Overseas Limit":"Approved Credit Line limit untuk booking Overseas.",
+    "Limit & Gap||Product Distribution / CREDIT LINE / Total Product Limit":"Total approved Credit Line limit; Domestic + Overseas.",
+    "Limit & Gap||Product Distribution / BONDS / Domestic Limit":"Approved Bonds limit untuk booking Domestic.",
+    "Limit & Gap||Product Distribution / BONDS / Overseas Limit":"Approved Bonds limit untuk booking Overseas.",
+    "Limit & Gap||Product Distribution / BONDS / Total Product Limit":"Total approved Bonds limit; Domestic + Overseas.",
+    "Limit & Gap||Product Distribution / NOSTRO / Domestic Limit":"Approved Nostro limit untuk booking Domestic.",
+    "Limit & Gap||Product Distribution / NOSTRO / Overseas Limit":"Approved Nostro limit untuk booking Overseas.",
+    "Limit & Gap||Product Distribution / NOSTRO / Total Product Limit":"Total approved Nostro limit; Domestic + Overseas.",
+    "Limit & Gap||Allocated Capacity":"Total Capacity yang sudah diturunkan ke seluruh product.",
+    "Limit & Gap||Unallocated Capacity":"Sisa Capacity setelah seluruh product allocation."
   },
   CCL:{},
   MLK:{},
@@ -971,7 +969,7 @@ function countryAllocationMetrics(row){
   const allocated=items.some(x=>x.sourced)?items.reduce((a,x)=>a+x.total,0):null;
   const allocatedDomestic=items.some(x=>x.domestic!==null)?items.reduce((a,x)=>a+(x.domestic??0),0):null;
   const allocatedOverseas=items.some(x=>x.overseas!==null)?items.reduce((a,x)=>a+(x.overseas??0),0):null;
-  const capacity=Number(row.capacityLimit??row.masterLimit)||0;
+  const capacity=Number(row.capacityLimit)||0;
   const distributedCapacity=domesticCapacity===null&&overseasCapacity===null?null:(domesticCapacity??0)+(overseasCapacity??0);
   return {items,capacity,domesticCapacity,overseasCapacity,distributedCapacity,
     capacityDistributionGap:distributedCapacity===null?null:capacity-distributedCapacity,
@@ -983,14 +981,14 @@ function countryAllocationMetrics(row){
 function masterFieldValue(type,section,field,base,row,index){
   if(!row)return base;
   if(type==="Country"){
-    const total=limasDemoData.Country.reduce((a,r)=>a+(Number(r.capacityLimit??r.masterLimit)||0),0);
+    const total=limasDemoData.Country.reduce((a,r)=>a+(Number(r.capacityLimit)||0),0);
     const alloc=countryAllocationMetrics(row);
     const parts=field.split(" / ");
     const product=parts[1],sub=parts[2];
     const item=alloc.items.find(x=>x.product===product);
     if(parts[0]==="Product Distribution"&&item&&sub) return sub==="Domestic Limit"?item.domestic:sub==="Overseas Limit"?item.overseas:sub==="Total Product Limit"?item.total:base;
     const map={"No":index+1,"Negara":row.name,"Code":row.key,"Status":row.statusMaster,
-      "Capacity Limit":row.capacityLimit??row.masterLimit,
+      "Capacity Limit":row.capacityLimit,
       "Capacity Distribution / Domestic":alloc.domesticCapacity,
       "Capacity Distribution / Overseas":alloc.overseasCapacity,
       "Allocated Capacity":alloc.allocated,"Unallocated Capacity":alloc.unallocated};
