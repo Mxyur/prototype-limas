@@ -498,7 +498,7 @@ function Detail({nav,type="Country"}){
   const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};saveMasterMeta(safeType,next);setMeta(next);setEditing(false);setSavedAt(next.lastUpdated);};
   const linkedProducts=domainIntegrationProducts[safeType]||[];
   return <Layout screen="detail" onNav={nav}>
-    <Header title={`${safeType} • Master Limit Detail`} subtitle="Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."/>;
+    <Header title={`${safeType} • Master Limit Detail`} subtitle="Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."/>
     <div className="page">
       <section className="card">
         <div className="head">
