@@ -483,12 +483,12 @@ function Detail({nav,type="Country"}){
 function sourceName(p){return {'CASHLOAN':'CASHLOAN','NON CASH LOAN':'NON CASH LOAN','COMMERCIAL LINE (CRDT)':'COMMERCIAL LINE (CRDT)','TREASURY LINE (CRDT)':'TREASURY LINE (CRDT)','BONDS':'BONDS','NOSTRO':'NOSTRO','Nominal Pertanggungan':'CIL_Master'}[p]||p}
 function sourceKey(p){return {'CASHLOAN':'CIF / Project Location / Country Code','NON CASH LOAN':'CUSTID / Country Code / Swift Code','COMMERCIAL LINE (CRDT)':'Swift Code / Bank Country','TREASURY LINE (CRDT)':'Swift Code / Bank Country','BONDS':'Issuer Country','NOSTRO':'SwiftCode / Bank Country','Nominal Pertanggungan':'Insurance ID + Entity'}[p]||'—'}
 const productMasterCatalog=[
-  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",target:"Country / MLK / LPG",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country diambil melalui Project Location / Country Code. Workbook mencatat kebutuhan Convert IDR."},
-  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",target:"Country / CCL / MLK / LPG",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta kebutuhan CCL berdasarkan country counterparty."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Satu tab menggabungkan Commercial Line dan Treasury Line karena berasal dari source sheet yang sama."},
-  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",target:"CCL",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Workbook menandai Investment Line sebagai pooling untuk eksposur produk/fasilitas yang belum termapping."},
-  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",target:"Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Workbook mencatat limit balik ketika Maturity Date terpenuhi."},
-  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",target:"Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; Balance masih dalam kurs asli dan perlu konversi kurs tengah NTR."}
+  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",target:"Country / MLK / LPG",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country mapping melalui Project Location / Country Code. Workbook juga mencatat kebutuhan konversi IDR."},
+  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",target:"Country / CCL / MLK / LPG",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Workbook mencatat modul EXCO dan EPLC serta country judgment berdasarkan counterparty."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",target:"Country / CCL",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring."},
+  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",target:"CCL",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur produk/fasilitas yang belum termapping; workbook memberi kebutuhan frekuensi Monthly pada sample."},
+  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",target:"Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country limit hit pada issuer selain Indonesia; limit dapat kembali setelah Maturity Date."},
+  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",target:"Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country berdasarkan trim Swift Code; balance masih kurs asli dan perlu konversi kurs tengah NTR."}
 ];
 
 const creditLineGroups={
@@ -541,8 +541,8 @@ const productFieldNotes={
   }
 };
 
-function productMetaKey(tab,group,field){return `limas_product_field_meta_v1_${tab}||${group||"Default"}||${field}`;}
-function loadProductFieldMeta(tab,group,field,sample){
+function productMetaKey(tab,group,field){return `limas_product_field_meta_v2_${tab}||${group||"Default"}||${field}`;}
+function loadProductFieldMeta(tab,group,field){
   const key=productMetaKey(tab,group,field);
   try{
     const saved=window.localStorage.getItem(key);
@@ -559,55 +559,64 @@ function loadProductFieldMeta(tab,group,field,sample){
 function saveProductFieldMeta(tab,group,field,meta){
   try{window.localStorage.setItem(productMetaKey(tab,group,field),JSON.stringify(meta));}catch(e){}
 }
+function catalogMetaKey(id){return `limas_product_catalog_v2_${id}`;}
 function loadProductCatalogMeta(item){
-  const key=`limas_product_catalog_v1_${item.id}`;
   try{
-    const saved=window.localStorage.getItem(key);
+    const saved=window.localStorage.getItem(catalogMetaKey(item.id));
     if(saved)return JSON.parse(saved);
   }catch(e){}
   return {source:item.source,note:item.note};
 }
 function saveProductCatalogMeta(item,meta){
-  try{window.localStorage.setItem(`limas_product_catalog_v1_${item.id}`,JSON.stringify(meta));}catch(e){}
+  try{window.localStorage.setItem(catalogMetaKey(item.id),JSON.stringify(meta));}catch(e){}
 }
 
-function ProductFieldTable({tab,group,fields,sample,editing}){
-  const [metas,setMetas]=useState(()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta(tab,group,f,sample[f])])));
-  const update=(f,key,value)=>setMetas(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
-  const save=()=>fields.forEach(f=>saveProductFieldMeta(tab,group,f,metas[f]));
-  React.useEffect(()=>{if(!editing)save();},[editing]);
-  return <div className="table-wrap product-field-wrap">
-    <table className="table field-table product-field-table">
-      <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
-      <tbody>{fields.map(f=>{
-        const m=metas[f]||loadProductFieldMeta(tab,group,f,sample[f]);
-        return <tr key={f}>
-          <td><b>{f}</b></td>
-          <td>{sample[f]===0?0:(sample[f]||"—")}</td>
-          <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
-          <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
-        </tr>
-      })}</tbody>
-    </table>
+function ProductFieldTable({tab,group="",fields,sample}){
+  const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta(tab,group,f)]));
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState(buildDraft);
+  React.useEffect(()=>{setEditing(false);setDraft(buildDraft())},[tab,group,fields.join("|")]);
+  const update=(f,key,value)=>setDraft(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
+  const save=()=>{fields.forEach(f=>saveProductFieldMeta(tab,group,f,draft[f]||{}));setEditing(false)};
+  const cancel=()=>{setDraft(buildDraft());setEditing(false)};
+  return <div className="product-field-block">
+    <div className="product-field-toolbar">
+      <div><b>Source Fields Lengkap</b><span>Field + Sample Value + Source Data + Keterangan</span></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
+    </div>
+    <div className="table-wrap product-field-wrap">
+      <table className="table field-table product-field-table">
+        <thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+        <tbody>{fields.map(f=>{
+          const m=draft[f]||{};
+          return <tr key={f}>
+            <td><b>{f}</b></td><td>{sample[f]===0?0:(sample[f]||"—")}</td>
+            <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
+            <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+          </tr>
+        })}</tbody>
+      </table>
+    </div>
   </div>;
 }
 
-function ProductCatalog({editing,setEditing}){
-  const [items,setItems]=useState(()=>Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));
-  const update=(id,key,value)=>setItems(m=>({...m,[id]:{...(m[id]||{}),[key]:value}}));
-  const save=()=>productMasterCatalog.forEach(item=>saveProductCatalogMeta(item,items[item.id]||{}));
-  React.useEffect(()=>{if(!editing)save();},[editing]);
+function ProductCatalog(){
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState(()=>Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));
+  const update=(id,key,value)=>setDraft(m=>({...m,[id]:{...(m[id]||{}),[key]:value}}));
+  const save=()=>{productMasterCatalog.forEach(item=>saveProductCatalogMeta(item,draft[item.id]||{}));setEditing(false)};
+  const cancel=()=>{setDraft(Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));setEditing(false)};
   return <section className="card">
     <div className="head">
-      <div><h2>Master Data Produk</h2><p>Master katalog product source, key, target limit, exposure field, source data dan keterangan.</p></div>
-      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={()=>setEditing(false)}>Batal</button><button className="btn primary" onClick={()=>{save();setEditing(false)}}>Simpan Perubahan</button></div>}
+      <div><h2>Master Data Produk</h2><p>Master katalog product, source sheet, key, target limit, exposure field, Source Data dan Keterangan.</p></div>
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <div className="body">
-      <div className="table-wrap">
+      <div className="table-wrap product-master-wrap">
         <table className="table product-master-table">
           <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Dipakai oleh Limit</th><th>Exposure Field</th><th>Source Data</th><th>Keterangan</th></tr></thead>
           <tbody>{productMasterCatalog.map(item=>{
-            const m=items[item.id]||{};
+            const m=draft[item.id]||{};
             return <tr key={item.id}>
               <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{item.target}</td><td>{item.exposure}</td>
               <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
@@ -616,50 +625,57 @@ function ProductCatalog({editing,setEditing}){
           })}</tbody>
         </table>
       </div>
-      <div className="field-help">Source dan Keterangan pada katalog dapat disesuaikan tanpa mengubah struktur source field workbook.</div>
+      <div className="field-help">Master Data Produk menjadi referensi utama sebelum detail field-level. Edit metadata tidak mengubah nama kolom source pada workbook.</div>
     </div>
   </section>;
 }
 
+function ProductUsage({view}){
+  const usage=[];
+  if(view==="CASHLOAN") usage.push(["Country","Country Code / Project Location","total_bade"],["MLK","CIF","total_bade"],["LPG","CIF → Sector / Segment / Region","total_bade"]);
+  if(view==="NON CASH LOAN") usage.push(["Country","Country Code","EQVIDR / BALANCE"],["CCL","Swift Code / Counterparty","EQVIDR / BALANCE"],["MLK","CUSTID / CIF","EQVIDR / BALANCE"],["LPG","CUSTID/CIF → Sector / Segment / Region","EQVIDR / BALANCE"]);
+  if(view==="CREDIT LINE") usage.push(["Country","Country Code / Bank Country","Comm Line Utilisasi + Treasury Line Utilisasi"],["CCL","Swift Code","Comm Line Utilisasi + Treasury Line Utilisasi"]);
+  if(view==="Investment Line") usage.push(["CCL","Swift Code / Bank mapping","Amount Invesment Line"]);
+  if(view==="BONDS") usage.push(["Country","Issuer Country","Amount Eq. IDR Juta"]);
+  if(view==="NOSTRO") usage.push(["Country","SwiftCode / Bank Country","Balance"]);
+  return <div className="product-mapping-grid">
+    <div><div className="section-title">Dipakai oleh Limit</div>{usage.map(([d,target,exposure])=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {target} • Exposure: {exposure}</div></div>)}</div>
+    <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div>
+  </div>;
+}
+
 function Products({nav}){
   const [view,setView]=useState("catalog");
-  const [editing,setEditing]=useState(false);
   const limitTabs=[
-    ["CASHLOAN","Cash Loan"],["NON CASH LOAN","Non Cash Loan"],["CREDIT LINE","Credit Line"],["Investment Line","Investment Line"],["BONDS","Bonds"],["NOSTRO","Nostro"]
+    ["catalog","Master Data Produk"],["CASHLOAN","Cash Loan"],["NON CASH LOAN","Non Cash Loan"],["CREDIT LINE","Credit Line"],["Investment Line","Investment Line"],["BONDS","Bonds"],["NOSTRO","Nostro"]
   ];
-  const activeCatalog=view==="catalog";
-  const info=productMasterCatalog.find(x=>x.id===view)||productMasterCatalog[0];
+  const info=productMasterCatalog.find(x=>x.id===view);
   return <Layout screen="products" onNav={nav}>
     <Header title="Product Source & Mapping" subtitle="Master data produk + source field + mapping + traceability berdasarkan workbook master_dataproduk"/>
     <div className="page">
-      <ProductCatalog editing={editing} setEditing={setEditing}/>
-      {!activeCatalog&&<section className="card">
+      <section className="card">
+        <div className="body">
+          <div className="tabs product-tabs">{limitTabs.map(([id,label])=><button className={`tab ${view===id?'active':''}`} key={id} onClick={()=>setView(id)}>{label}</button>)}</div>
+        </div>
+      </section>
+
+      {view==="catalog"&&<ProductCatalog/>}
+
+      {info&&<section className="card">
         <div className="head">
-          <div><h2>{info.label}</h2><p>Source field lengkap • sample value • Source Data • Keterangan • mapping ke limit</p></div>
-          <div className="toolbar">
-            {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<button className="btn ghost" onClick={()=>setEditing(false)}>Selesai Edit</button>}
-          </div>
+          <div><h2>{info.label}</h2><p>Source sheet: <b>{info.sheet}</b> • Primary Key: <span className="key">{info.key}</span></p></div>
         </div>
         <div className="body">
-          <div className="tabs product-tabs">
-            {limitTabs.map(([id,label])=><button className={`tab ${view===id?'active':''}`} key={id} onClick={()=>{setView(id);setEditing(false)}}>{label}</button>)}
-          </div>
-          {view==="CREDIT LINE" ? <div className="credit-line-groups">
-            {Object.entries(creditLineGroups).map(([group,fields])=><section className="product-group" key={group}>
-              <div className="section-title">{group}</div>
-              <ProductFieldTable tab="CREDIT LINE" group={group} fields={fields} sample={creditLineSamples[group]} editing={editing}/>
-            </section>)}
-          </div> : <ProductFieldTable tab={view} group="" fields={productTabFields[view]||[]} sample={productSample[view]||{}} editing={editing}/>}
-          <div className="product-mapping-grid">
-            <div><div className="section-title">Dipakai oleh Limit</div>{Object.keys(domains).filter(d=>{
-              const pKey=view==="CREDIT LINE" ? "COMMERCIAL LINE (CRDT)" : view;
-              return domains[d].products.includes(pKey)||domains[d].products.includes("TREASURY LINE (CRDT)")&&view==="CREDIT LINE";
-            }).map(d=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {view==="CREDIT LINE"?(mapTargets[d]?.["COMMERCIAL LINE (CRDT)"]||mapTargets[d]?.["TREASURY LINE (CRDT)"]||"—"):mapTargets[d]?.[view]||"—"} • Exposure: {view==="CREDIT LINE"?"Commercial Line Utilisasi + Treasury Line Utilisasi":sourceExposure[view]||"—"}</div></div>)}</div>
-            <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div>
-          </div>
+          {view==="CREDIT LINE"
+            ? <div className="credit-line-groups">{Object.entries(creditLineGroups).map(([group,fields])=><section className="product-group" key={group}>
+                <div className="section-title">{group}</div>
+                <ProductFieldTable key={`${view}-${group}`} tab="CREDIT LINE" group={group} fields={fields} sample={creditLineSamples[group]}/>
+              </section>)}</div>
+            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
+          }
+          <ProductUsage view={view}/>
         </div>
       </section>}
-      {activeCatalog&&<section className="card"><div className="head"><div><h2>Master Data Produk</h2><p>Pilih salah satu product di katalog untuk melihat field-level source mapping yang editable.</p></div></div><div className="body"><div className="product-master-hint">Klik nama product pada katalog melalui tab di bawah untuk membuka detail.</div><div className="tabs product-tabs">{limitTabs.map(([id,label])=><button className="tab" key={id} onClick={()=>setView(id)}>{label}</button>)}</div></div></section>}
     </div>
   </Layout>;
 }
