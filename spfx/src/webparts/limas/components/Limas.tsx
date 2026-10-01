@@ -166,7 +166,13 @@ const LIMAS_CSS = `
 const domains={"Country": {"sheet": "COUNTRY_MONITORING", "key": "Country Code", "name": "Negara", "products": ["CASHLOAN", "NON CASH LOAN", "COMMERCIAL LINE (CRDT)", "TREASURY LINE (CRDT)", "BONDS", "NOSTRO"], "sections": {"Identitas": [["No", "1", "Data/master/reference"], ["Negara", "United Arab Emirates", "Data/master/reference"], ["Code", "AE", "Data/master/reference"], ["Status", "Exist", "Data/master/reference"]], "Checklist Product": [["CL", "-", "Data/master/reference"], ["NCL", "-", "Data/master/reference"], ["COM", "-", "Data/master/reference"], ["TRS", "-", "Data/master/reference"], ["BOND", "-", "Data/master/reference"], ["NOS", "v", "Data/master/reference"]], "Exposure Product": [["CL", "-", "Data/master/reference"], ["NCL", "-", "Data/master/reference"], ["COM", "-", "Data/master/reference"], ["TRS", "-", "Data/master/reference"], ["BOND", "-", "Data/master/reference"], ["NOS", "v", "Data/master/reference"], ["TOTAL", "26.64", "Data/master/reference"]], "Limit & Gap": [["Limit FIB / Formulasi", "New", "Data/master/reference"], ["Limit FIB / Diputus", "New", "Data/master/reference"], ["Country Limit / Country Limit", "35,941", "Data/master/reference"], ["Country Limit / %Country Limit", "5.72%", "Data/master/reference"], ["Gap Analysis / Needs", "0", "Data/master/reference"], ["Gap Analysis / Minus", "0", "Data/master/reference"], ["Gap Analysis / Add", "0", "Data/master/reference"], ["Final Limit / Final Limit", "35,941", "Data/master/reference"], ["Final Limit / %Final Limit", "5.72%", "Data/master/reference"]]}}, "CCL": {"sheet": "CCL_MONITORING", "key": "Kode Bank / Swift Code", "name": "Nama bank", "products": ["CASHLOAN", "NON CASH LOAN", "COMMERCIAL LINE (CRDT)", "TREASURY LINE (CRDT)"], "sections": {"Bank Profile": [["Nama bank", "ABN Amro Bank NV", "Data/master/reference"], ["CIF/Swift", "-", "Data/master/reference"], ["Kategori Bank", "Asing", "Data/master/reference"], ["Negara", "Netherlands", "Data/master/reference"], ["Global Parent Bank", "—", "Data/master/reference"], ["Apakah Bank termasuk Top 200 Bank Besar Dunia berdasarkan total aset menurut Banker's Almanac", "—", "Data/master/reference"]], "Risk & Capacity": [["Country Rating", "AAA", "Data/master/reference"], ["Bobot", "0.55", "Data/master/reference"], ["Rating", "AA-", "Data/master/reference"], ["Posisi Rating", "31/12/2023", "Data/master/reference"], ["Rating Index", "90.23%", "Data/master/reference"], ["Limit Inhouse (Rp Miliar)", "68,498", "Data/master/reference"], ["Tier 1 Capital (Rp Miliar)", "403,594", "Data/master/reference"], ["Capacity", "200,290", "Data/master/reference"], ["Capacity Limit Adjusted", "68,498", "Data/master/reference"]], "Limit": [["CCL", "500", "Data/master/reference"], ["Utilisasi Capacity", "0.73%", "Data/master/reference"], ["Limit Contractual", "500", "Data/master/reference"]], "BMRI Exposure": [["Outstanding", "13", "Data/master/reference"], ["Jenis Limit", "Direct", "Data/master/reference"], ["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Outstanding Maksimum", "13", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]], "Perusahaan Anak": [["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]]}}, "MLK": {"sheet": "MLK_Master", "key": "CIF", "name": "Nama Debitur", "products": ["CASHLOAN", "NON CASH LOAN", "TREASURY LINE (CRDT)"], "sections": {"Profil Debitur": [["Entitas", "BMRI", "Data/master/reference"], ["CIF", "4000264485", "Data/master/reference"], ["Nama Debitur", "DJARUM", "Data/master/reference"], ["Group Usaha", "DJARUM GROUP", "Data/master/reference"], ["Unit Kerja Pengelola", "CB6", "Data/master/reference"], ["Group", "DJARUM GROUP", "Data/master/reference"], ["BUMN/Swasta Flag", "Swasta", "Data/master/reference"], ["Tier", "B", "Data/master/reference"]], "Risk & Regulatory": [["BMPK Konsol", "67,204", "Data/master/reference"], ["Inhouse Limit Konsol", "60,484", "Data/master/reference"], ["BMPK/BMPP/BMPD Entitas", "55,993", "Data/master/reference"], ["Inhouse Limit Entitas", "50,394", "Data/master/reference"], ["Sektor DC", "INDUSTRI ROKOK", "Data/master/reference"], ["DC Sectoral", "3", "Data/master/reference"], ["Rating", "A+", "Data/master/reference"], ["Rating Multiplier", "2.67", "Data/master/reference"], ["Watchlist", "HIJAU", "Data/master/reference"], ["Discount Factor", "1", "Data/master/reference"]], "Financial & Capacity": [["EBITDA/Pengganti EBITDA", "1,938", "Data/master/reference"], ["Kredit Bank Lain", "12,010", "Data/master/reference"], ["Total Debt", "-", "Data/master/reference"], ["Borrowing Capacity", "15,523.38", "Data/master/reference"], ["Available BC", "(2,183.62)", "Data/master/reference"], ["Status Perhitungan", "-", "Data/master/reference"]], "Product Limit & Exposure": [["CL Bade", "500", "Data/master/reference"], ["CL Limit", "587", "Data/master/reference"], ["NCL Bade", "-", "Data/master/reference"], ["NCL Limit", "121", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Bade Treasury Line", "-", "Data/master/reference"], ["Total Limit Existing", "-", "Data/master/reference"], ["Total Bade Existing", "-", "Data/master/reference"]], "Master Limit": [["Master Limit Setting", "5,110", "Data/master/reference"], ["Master Limit", "5,818", "Data/master/reference"]]}}, "CIL": {"sheet": "CIL_Master", "key": "Insurance Company ID / Entity", "name": "Perusahaan Asuransi", "products": ["Nominal Pertanggungan"], "sections": {"Insurance Profile": [["No", "1", "Data/master/reference"], ["Perusahaan Asuransi", "PT Asuransi Tugu Pratama Indonesia Tbk", "Data/master/reference"], ["Jenis Perusahaan (Asuransi/Penjaminan)", "Asuransi", "Data/master/reference"], ["Jenis Produk Asuransi", "Asuransi Kredit", "Data/master/reference"]], "Capacity & Threshold": [["Insurance Capacity (IC) (Rp Juta)", "3,605,020,000", "Data/master/reference"], ["Multiplier Terpakai (%)", "3.00%", "Data/master/reference"], ["Consolidated Insurance Threshold (CIT) (Rp Juta)", "108,150,600", "Parameter monitoring"]], "BMRI": [["Nominal Pertanggungan BMRI 2025", "11,573,402.55", "Data/master/reference"], ["EIL BMRI", "60,093,270.28", "Data/master/reference"]], "Mandiri Taspen": [["Nominal Pertanggungan Mandiri Taspen 2025", "BUKAN REKANAN", "Data/master/reference"], ["EIL Mandiri Taspen", "26,999,429.42", "Data/master/reference"]], "MTF": [["Nominal Pertanggungan MTF 2025", "285,708.13", "Data/master/reference"], ["EIL MTF", "10,591,613.12", "Data/master/reference"]], "MUF": [["Nominal Pertanggungan MUF 2025", "21,313", "Data/master/reference"], ["EIL MUF", "10,129,963.92", "Data/master/reference"]], "Consolidated": [["Consolidated Insurance Limit (CIL) (Rp Juta)", "107,814,276.74", "Data/master/reference"], ["Total Nominal Pertanggungan All Entitas 2025 (Rp Juta)", "11,880,423.68", "Data/master/reference"], ["Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)", "13,060,790.52", "Data/master/reference"], ["Skor Akreditasi (PCP)", "79.38", "Data/master/reference"], ["Klasifikasi EWS (PCP)", "Monitoring", "Data/master/reference"]]}}, "LPG": {"sheet": "LPG_Loanportfolio", "key": "Sector + Segment + Region", "name": "Ecosystem LPG", "products": ["CASHLOAN", "NON CASH LOAN"], "sections": {"Identitas": [["No", "1", "Data/master/reference"], ["Ecosystem LPG (Sektor)", "BATUBARA", "Data/master/reference"], ["Segmen LPG", "Corporate", "Data/master/reference"]], "Bankwide": [["Bankwide / Limit", "65,140", "Data/master/reference"], ["Bankwide / Outstanding", "37,919", "Data/master/reference"], ["Bankwide / %Utilisasi", "58.20%", "Data/master/reference"]], "Region Monitoring": [["Region I / Limit", "—", "Data/master/reference"], ["Region I / Outstanding", "—", "Data/master/reference"], ["Region I / %Utilisasi", "—", "Data/master/reference"], ["Region II / Limit", "—", "Data/master/reference"], ["Region II / Outstanding", "—", "Data/master/reference"], ["Region II / %Utilisasi", "—", "Data/master/reference"], ["Region III / Limit", "—", "Data/master/reference"], ["Region III / Outstanding", "—", "Data/master/reference"], ["Region III / %Utilisasi", "—", "Data/master/reference"], ["Region IV / Limit", "—", "Data/master/reference"], ["Region IV / Outstanding", "—", "Data/master/reference"], ["Region IV / %Utilisasi", "—", "Data/master/reference"], ["Region V / Limit", "—", "Data/master/reference"], ["Region V / Outstanding", "—", "Data/master/reference"], ["Region V / %Utilisasi", "—", "Data/master/reference"], ["Region VI / Limit", "—", "Data/master/reference"], ["Region VI / Outstanding", "—", "Data/master/reference"], ["Region VI / %Utilisasi", "—", "Data/master/reference"], ["Region VII / Limit", "—", "Data/master/reference"], ["Region VII / Outstanding", "—", "Data/master/reference"], ["Region VII / %Utilisasi", "—", "Data/master/reference"], ["Region VIII / Limit", "—", "Data/master/reference"], ["Region VIII / Outstanding", "—", "Data/master/reference"], ["Region VIII / %Utilisasi", "—", "Data/master/reference"], ["Region IX / Limit", "—", "Data/master/reference"], ["Region IX / Outstanding", "—", "Data/master/reference"], ["Region IX / %Utilisasi", "—", "Data/master/reference"], ["Region X / Limit", "—", "Data/master/reference"], ["Region X / Outstanding", "—", "Data/master/reference"], ["Region X / %Utilisasi", "—", "Data/master/reference"], ["Region XI / Limit", "—", "Data/master/reference"], ["Region XI / Outstanding", "—", "Data/master/reference"], ["Region XI / %Utilisasi", "—", "Data/master/reference"], ["Region XII / Limit", "—", "Data/master/reference"], ["Region XII / Outstanding", "—", "Data/master/reference"], ["Region XII / %Utilisasi", "—", "Data/master/reference"]], "Validation": [["Status Crosscheck", "—", "Data/master/reference"], ["Data Quality", "—", "Data/master/reference"]]}}};
 const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_rek", "gas_reporting", "buc_reporting", "jns_krd", "src", "j_guna", "revolv", "bilokj", "total_limit", "total_bade", "project_location", "code", "MatDate/Jatem", "MatDate/Jatem"], "NON CASH LOAN": ["NO", "MODULE", "Swift Code", "REPORTTYPE", "TRXREF", "RELREF", "CUSTID", "CUSTNM", "CPNM", "CPCNTY", "CPBK", "BKCNTRY", "Country Code", "Country Name", "Type of Judgment", "TRXTYPE", "CCY", "AMOUNT", "BALANCE", "EXCHANGERT", "EQVIDR", "FINTYPE", "TRXDATE", "DUEDATE", "SERVCODE", "SERVNM", "PCCD", "PCNM", "BUCD", "SOF", "INTRT"], "COMMERCIAL LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "Treasury DN", "Treasury DN Utilisasi", "Treasury LN", "Treasury LN Utilisasi", "Treasury Line Total", "Treasury Line Total Utilisasi", "Comm DN", "Comm DN Utilisasi", "Comm LN", "Comm LN Utilisasi", "Comm Line Total", "Comm Line Total Utilisasi", "Corporate Card", "Credit Line Total", "Credit Line Total Utilisasi"], "Investment Line": ["No", "Nama Bank", "Nama Entity (Scope Entity : AKK)", "Switftcode", "Jenis Invesment Line", "Amount Invesment Line", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"], "BONDS": ["Date", "Branch", "Securities Type", "Securities Name", "Issuer Name", "Issuer Country", "Issuer Type", "Portfolio", "CCY", "Amount", "Amount Eq. IDR Juta", "Maturity Date", "Coupon", "Potential P/L (Eq. IDR Juta)"], "NOSTRO": ["Year", "Branch", "SwfitCode", "Bank Name", "Bank Country", "Balance"], "TREASURY LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "TDN", "TDN Utilisasi", "TLN", "TLN Utilisasi", "Treasury Line", "Total Utilisasi", "CDN", "CDN Utilisasi", "CLN", "CLN Utilisasi", "Comm Line", "Comm Line Utilisasi", "Corporate Card", "Credit Line", "Credit Line Utilisasi", "Maturity"]};
 const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT Asuransi Tugu Pratama Indonesia Tbk","Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":"BMRI","EIL Entitas (Rp Juta)":"60093270.28","Nominal Pertanggungan 2025 (Rp Juta)":"11573402.55","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":"13060790.52","Utilisasi EIL (%)":"21.73%","CIL (Rp Juta)":"107814276.74","CIT (Rp Juta)":"108150600","Utilisasi CIL (%)":"99.69%","% Utilisasi (Nominal Pertanggungan/CIL)":"10.74%","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)":"12.12%","Skor Akreditasi (PCP)":"79.38","Klasifikasi EWS (PCP)":"Monitoring","Status / Rekomendasi Action Plan":"Monitoring as usual / no specific action"},"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "273.52", "total_bade": "273.52", "project_location": "China", "code": "CN", "MatDate/Jatem": ""}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "14978.87", "BALANCE": "14978.87", "EXCHANGERT": "17310", "EQVIDR": "259284240", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "XXXXAEJX", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "Balance": "26.64"}};
-const mapTargets={"Country": {"CASHLOAN": "Country Code / Project Location", "NON CASH LOAN": "Country Code", "COMMERCIAL LINE (CRDT)": "Country Code / Bank Country", "TREASURY LINE (CRDT)": "Country Code / Bank Country", "BONDS": "Issuer Country", "NOSTRO": "Bank Country"}, "CCL": {"CASHLOAN": "Bank / Counterparty mapping", "NON CASH LOAN": "Swift Code / Counterparty", "COMMERCIAL LINE (CRDT)": "Swift Code", "TREASURY LINE (CRDT)": "Swift Code"}, "MLK": {"CASHLOAN": "CIF", "NON CASH LOAN": "CUSTID / CIF", "TREASURY LINE (CRDT)": "Debtor / CIF mapping"}, "CIL": {"Nominal Pertanggungan": "Insurance ID + Entity"}, "LPG": {"CASHLOAN": "CIF → Sector / Segment / Region", "NON CASH LOAN": "CUSTID/CIF → Sector / Segment / Region"}};
+const integrationTargets={
+  Country:{"CASHLOAN":"Country Code / Project Location","NON CASH LOAN":"Country Code","CREDIT LINE":"Country Code / Bank Country","BONDS":"Issuer Country","NOSTRO":"Bank Country"},
+  CCL:{"CASHLOAN":"Bank / Counterparty mapping","NON CASH LOAN":"Swift Code / Counterparty","CREDIT LINE":"Swift Code","Investment Line":"Swift Code / Entity"},
+  MLK:{"CASHLOAN":"CIF","NON CASH LOAN":"CUSTID / CIF","CREDIT LINE":"CIF / Debtor mapping (Treasury scope)"},
+  CIL:{"Nominal Pertanggungan":"Insurance Company + Entity"},
+  LPG:{"CASHLOAN":"CIF → Sector / Segment / Region","NON CASH LOAN":"CUSTID/CIF → Sector / Segment / Region"}
+};
 
 
 /*
@@ -211,7 +217,7 @@ const domainDataContract={
   CCL:{
     masterKey:"Kode Bank / Swift Code",
     masterObject:"Counterparty Bank",
-    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE","Investment Line"],
+    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
     utilizationGrain:"Bank / Swift Code + Periode",
     masterDescription:"Counterparty profile + risk/capacity basis + approved CCL / contractual limit."
   },
@@ -270,61 +276,81 @@ function loadProductMeta(type){
 function saveProductMeta(type,meta){try{window.localStorage.setItem(`limas_product_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
 function nowLabel(){return new Intl.DateTimeFormat('id-ID',{dateStyle:'medium',timeStyle:'short'}).format(new Date());}
 
-const reportDummy={
+const limasDemoData={
   Country:[
-    {no:1,country:"United Arab Emirates",code:"AE",statusMaster:"Exist",cl:"-",ncl:"-",com:"-",trs:"-",bond:"-",nos:"v",expCl:0,expNcl:0,expCom:0,expTrs:0,expBond:0,expNos:26.64,total:26.64,formulasi:"New",diputus:"New",limit:35941,pct:"5.72%",needs:0,minus:0,add:0,final:35941,status:"Normal"},
-    {no:2,country:"Australia",code:"AU",statusMaster:"Exist",cl:"-",ncl:"-",com:"v",trs:"v",bond:"-",nos:"v",expCl:0,expNcl:0,expCom:19739.15,expTrs:1469.93,expBond:0,expNos:608.7,total:21817.78,formulasi:510,diputus:565990,limit:41718.78,pct:"6.64%",needs:0,minus:0,add:0,final:41718.78,status:"Normal"},
-    {no:3,country:"Switzerland",code:"CH",statusMaster:"Exist",cl:"v",ncl:"-",com:"-",trs:"-",bond:"-",nos:"-",expCl:59000,expNcl:0,expCom:0,expTrs:0,expBond:0,expNos:0,total:59000,formulasi:"New",diputus:"New",limit:68442.83,pct:"10.89%",needs:0,minus:0,add:0,final:68442.83,status:"Warning"},
-    {no:4,country:"Japan",code:"JP",statusMaster:"Exist",cl:"v",ncl:"v",com:"-",trs:"-",bond:"-",nos:"-",expCl:72000,expNcl:18000,expCom:0,expTrs:0,expBond:0,expNos:0,total:90000,formulasi:1200,diputus:118000,limit:85000,pct:"13.53%",needs:0,minus:0,add:5000,final:90000,finalPct:"14.32%",status:"Breach"},
-    {no:5,country:"China",code:"CN",statusMaster:"Exist",cl:"v",ncl:"-",com:"-",trs:"-",bond:"-",nos:"-",expCl:279.85,expNcl:0,expCom:0,expTrs:0,expBond:0,expNos:0,total:279.85,formulasi:"New",diputus:"New",limit:260032.38,pct:"41.39%",needs:0,minus:0,add:0,final:260032.38,finalPct:"41.39%",status:"Data Issue"}
+    {key:"AE",name:"United Arab Emirates",statusMaster:"Exist",masterLimit:35941.00087486457,formulasi:"New",diputus:"New",products:{NOSTRO:26.64},dataQuality:"Normal"},
+    {key:"AU",name:"Australia",statusMaster:"Exist",masterLimit:41718.775509510284,formulasi:510,diputus:565990,products:{"CREDIT LINE|Commercial":19739.15,"CREDIT LINE|Treasury":1469.93,NOSTRO:608.7},dataQuality:"Normal"},
+    {key:"AT",name:"Austria",statusMaster:"Exist",masterLimit:35259.186470317814,formulasi:300,diputus:509391,products:{},dataQuality:"Normal"},
+    {key:"BE",name:"Belgium",statusMaster:"Exist",masterLimit:43116.7740055139,formulasi:250,diputus:396193,products:{},dataQuality:"Normal"},
+    {key:"CN",name:"China",statusMaster:"Exist",masterLimit:260032.3771028455,formulasi:"New",diputus:"New",products:{CASHLOAN:279.85},dataQuality:"Normal"}
   ],
   CCL:[
-    {no:1,bank:"ABN Amro Bank NV",category:"Asing",country:"Netherlands",countryRating:"AAA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:"90.23%",inhouse:68498,tier1:403594,capacity:200289.58,adjusted:68498,globalParent:"—",top200:"—",ccl:500,cclCapacity:"0.73%",limit:500,outstanding:13,jenis:"Direct",bmriTotal:500,bmriLoan:0,bmriCom:500,bmriTrs:0,bmriUtil:"100%",contractualUtil:"100%",maxOutstanding:13,maxContractualUtil:"2.60%",paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:"0%",paContractualUtil:"0%",paMaxOutstanding:0,paMaxContractualUtil:"0%",status:"Normal"},
-    {no:2,bank:"Agricultural Bank of China Limited",category:"Asing",country:"China",countryRating:"A+",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:"92.65%",inhouse:68498,tier1:6853801,capacity:3492525.64,adjusted:68498,globalParent:"—",top200:"Yes",ccl:2000,cclCapacity:"2.92%",limit:2000,outstanding:1700,jenis:"Direct",bmriTotal:2000,bmriLoan:0,bmriCom:570,bmriTrs:1130,bmriUtil:"100%",contractualUtil:"85%",maxOutstanding:227,maxContractualUtil:"11.35%",paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:"0%",paContractualUtil:"0%",paMaxOutstanding:0,paMaxContractualUtil:"0%",status:"Warning"},
-    {no:3,bank:"National Australia Bank",category:"Asing",country:"Australia",countryRating:"AA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:"90.23%",inhouse:68498,tier1:620000,capacity:307981.8,adjusted:68498,globalParent:"NAB Group",top200:"Yes",ccl:300,cclCapacity:"0.44%",limit:300,outstanding:318,jenis:"Direct",bmriTotal:300,bmriLoan:0,bmriCom:110,bmriTrs:190,bmriUtil:"100%",contractualUtil:"106%",maxOutstanding:329,maxContractualUtil:"109.67%",paTotal:20,paLoan:0,paCom:0,paTrs:20,paUtil:"6.67%",paContractualUtil:"100%",paMaxOutstanding:21,paMaxContractualUtil:"7.00%",status:"Breach"},
-    {no:4,bank:"First Abu Dhabi Bank",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:"90.23%",inhouse:68498,tier1:403000,capacity:200000,adjusted:68498,globalParent:"FAB Group",top200:"Yes",ccl:350,cclCapacity:"0.51%",limit:350,outstanding:245,jenis:"Direct",bmriTotal:350,bmriLoan:0,bmriCom:150,bmriTrs:200,bmriUtil:"100%",contractualUtil:"70%",maxOutstanding:280,maxContractualUtil:"80%",paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:"0%",paContractualUtil:"0%",paMaxOutstanding:0,paMaxContractualUtil:"0%",status:"Normal"},
-    {no:5,bank:"Commonwealth Bank",category:"Asing",country:"Australia",countryRating:"AA",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:"92.65%",inhouse:68498,tier1:550000,capacity:279000,adjusted:68498,globalParent:"CBA Group",top200:"Yes",ccl:400,cclCapacity:"0.58%",limit:400,outstanding:372,jenis:"Direct",bmriTotal:400,bmriLoan:0,bmriCom:200,bmriTrs:200,bmriUtil:"100%",contractualUtil:"93%",maxOutstanding:395,maxContractualUtil:"98.75%",paTotal:10,paLoan:0,paCom:10,paTrs:0,paUtil:"2.50%",paContractualUtil:"100%",paMaxOutstanding:10,paMaxContractualUtil:"2.50%",status:"Data Issue"}
+    {key:"ANZBAU3M",name:"ABN Amro Bank NV",category:"Asing",country:"Netherlands",countryRating:"AAA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:0.9023,inhouse:68498,tier1:403594,capacity:200289.57641,adjusted:68498,globalParent:"—",top200:"—",ccl:500,contractual:500.026,products:{"CREDIT LINE|Commercial":13},dataQuality:"Normal"},
+    {key:"ADCB",name:"Abu Dhabi Commercial Bank PJSC",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:269633,capacity:137398.235975,adjusted:68498,globalParent:"—",top200:"—",ccl:49,contractual:25.04,products:{"CREDIT LINE|Commercial":1},dataQuality:"Normal"},
+    {key:"ADIB",name:"Abu Dhabi Islamic",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"BBB",position:"31/12/2022",ratingIndex:0.7882,inhouse:68498,tier1:105885,capacity:45902.20635,adjusted:45902.20635,globalParent:"—",top200:"—",ccl:0,contractual:0,products:{},dataQuality:"Normal"},
+    {key:"AGRICN",name:"Agricultural Bank of China Limited",category:"Asing",country:"China",countryRating:"A+",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:6853801,capacity:3492525.644575,adjusted:68498,globalParent:"—",top200:"—",ccl:2000,contractual:1700.1335294117648,products:{"CREDIT LINE|Commercial":109},dataQuality:"Normal"},
+    {key:"AGRICD",name:"Agricultural Development Bank of China",category:"Asing",country:"China",countryRating:"A+",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:6812368,capacity:3471412.4236,adjusted:68498,globalParent:"—",top200:"—",ccl:200,contractual:200,products:{},dataQuality:"Normal"}
   ],
   MLK:[
-    {no:1,tier:"A",holding:"MIND ID HOLDING",subGroup:"ANTAM GROUP",flag:"BUMN",unit:"CB6",entity:"Konsolidasi",bmpkKonsol:85548,bmpkEntitas:14633,limitFasilitas:16576,bade:16576,borrowing:16576,masterLimit:16576,mlk:16576,utilBade:"100%",utilFacilityBmpk:"113.25%",utilMlkBmpk:"19.38%",debtors:2,totalBmpk:85548,totalMaster:16576,totalBorrowing:16576,variance:0,status:"Warning"},
-    {no:2,tier:"A",holding:"ASTRA HOLDING",subGroup:"ASTRA GROUP",flag:"Swasta",unit:"CB5",entity:"Konsolidasi",bmpkKonsol:67204,bmpkEntitas:55993,limitFasilitas:12000,bade:7200,borrowing:15000,masterLimit:12000,mlk:12000,utilBade:"60%",utilFacilityBmpk:"21.43%",utilMlkBmpk:"17.86%",debtors:4,totalBmpk:55993,totalMaster:12000,totalBorrowing:15000,variance:0,status:"Normal"},
-    {no:3,tier:"B",holding:"DJARUM HOLDING",subGroup:"DJARUM GROUP",flag:"Swasta",unit:"CB6",entity:"Konsolidasi",bmpkKonsol:67204,bmpkEntitas:50394,limitFasilitas:5818,bade:4021,borrowing:15523.38,masterLimit:5818,mlk:5818,utilBade:"69.11%",utilFacilityBmpk:"11.54%",utilMlkBmpk:"8.66%",debtors:1,totalBmpk:50394,totalMaster:5818,totalBorrowing:15523.38,variance:0,status:"Normal"},
-    {no:4,tier:"A",holding:"MIND ID HOLDING",subGroup:"MIND ID GROUP",flag:"BUMN",unit:"CB6",entity:"BMRI",bmpkKonsol:85548,bmpkEntitas:7467,limitFasilitas:30768,bade:30768,borrowing:30768,masterLimit:30768,mlk:30768,utilBade:"100%",utilFacilityBmpk:"411.99%",utilMlkBmpk:"35.97%",debtors:1,totalBmpk:7467,totalMaster:30768,totalBorrowing:30768,variance:0,status:"Breach"},
-    {no:5,tier:"B",holding:"IMIP HOLDING",subGroup:"BINTANG DELAPAN GROUP",flag:"Swasta",unit:"CB3",entity:"BMRI",bmpkKonsol:67204,bmpkEntitas:50394,limitFasilitas:500,bade:149,borrowing:2969.04,masterLimit:500,mlk:500,utilBade:"29.80%",utilFacilityBmpk:"0.99%",utilMlkBmpk:"0.74%",debtors:1,totalBmpk:50394,totalMaster:500,totalBorrowing:2969.04,variance:0,status:"Data Issue"}
+    {key:"4000264485",name:"DJARUM",group:"DJARUM GROUP",entity:"BMRI",tier:"B",masterLimit:5818,products:{CASHLOAN:500,"NON CASH LOAN":0,"TREASURY LINE":1938},dataQuality:"Normal"},
+    {key:"1000145694",name:"ANEKA TAMBANG",group:"ANTAM GROUP",entity:"BMRI",tier:"A",masterLimit:13280,products:{CASHLOAN:0,"NON CASH LOAN":215.81,"TREASURY LINE":4248},dataQuality:"Normal"},
+    {key:"ANTAM-NA",name:"ANTAM RESOURCINDO",group:"ANTAM GROUP",entity:"BMRI",tier:"A",masterLimit:20,products:{"TREASURY LINE":8},dataQuality:"Missing CIF"},
+    {key:"16000486963",name:"TUNAS MOBILINDO PERKASA",group:"ASTRA GROUP",entity:"BMRI",tier:"A",masterLimit:314,products:{CASHLOAN:10.93,"TREASURY LINE":59},dataQuality:"Normal"},
+    {key:"20000474637",name:"TUNAS RIDEAN",group:"ASTRA GROUP",entity:"BMRI",tier:"A",masterLimit:1035,products:{CASHLOAN:134.73,"NON CASH LOAN":15.57,"TREASURY LINE":262},dataQuality:"Normal"}
   ],
   CIL:[
-    {no:1,insurer:"PT Asuransi Tugu Pratama Indonesia Tbk",type:"Asuransi",ic:3605020000,multiplier:"3.00%",cit:108150600,bmriNominal:11573402.55,bmriEil:60093270.28,mtNominal:"BUKAN REKANAN",mtEil:26999429.42,mtfNominal:285708.13,mtfEil:10591613.12,mufNominal:21313,mufEil:10129963.92,cil:107814276.74,totalNominal:11880423.68,projection:13060790.52,utilCit:"10.99%",projectedUtil:"12.08%",status:"Normal"},
-    {no:2,insurer:"PT Asuransi Perisai Listrik Nasional",type:"Asuransi",ic:799280000,multiplier:"1.50%",cit:11989200,bmriNominal:1463320,bmriEil:6660670,mtNominal:21417716.08,mtEil:2992580,mtfNominal:"BUKAN REKANAN",mtfEil:1173960,mufNominal:18378,mufEil:1122790,cil:11950000,totalNominal:22899400,projection:24653500,utilCit:"191.00%",projectedUtil:"205.63%",status:"Breach"},
-    {no:3,insurer:"PT Asuransi Bangun Askrida",type:"Asuransi",ic:1544050000,multiplier:"1.50%",cit:23160750,bmriNominal:2618580,bmriEil:12864700,mtNominal:17299747.72,mtEil:5780000,mtfNominal:"BUKAN REKANAN",mtfEil:2267440,mufNominal:"BUKAN REKANAN",mufEil:2168610,cil:23080700,totalNominal:19918300,projection:21477700,utilCit:"86.00%",projectedUtil:"92.73%",status:"Warning"},
-    {no:4,insurer:"PT Asuransi Kredit Indonesia",type:"Asuransi",ic:3086550000,multiplier:"3.00%",cit:92596500,bmriNominal:1058530,bmriEil:51624800,mtNominal:4878825.62,mtEil:23194600,mtfNominal:"BUKAN REKANAN",mtfEil:9099030,mufNominal:"BUKAN REKANAN",mufEil:8702430,cil:92620900,totalNominal:5937350,projection:6409120,utilCit:"6.41%",projectedUtil:"6.92%",status:"Normal"},
-    {no:5,insurer:"PT Asuransi Umum XYZ",type:"Penjaminan",ic:1250000000,multiplier:"2.00%",cit:25000000,bmriNominal:18500000,bmriEil:22000000,mtNominal:3200000,mtEil:2500000,mtfNominal:900000,mtfEil:700000,mufNominal:500000,mufEil:400000,cil:24000000,totalNominal:22600000,projection:25500000,utilCit:"90.40%",projectedUtil:"102.00%",status:"Data Issue"}
+    {key:"TUGU",name:"PT Asuransi Tugu Pratama Indonesia Tbk",type:"Asuransi",ic:3605020000,multiplier:0.03,cit:108150600,cil:107814276.74,projection:13060790.51975,score:79.38,entities:{BMRI:{nominal:11573402.55,eil:60093270.28},"Mandiri Taspen":{nominal:0,eil:26999429.42},MTF:{nominal:285708.13,eil:10591613.12},MUF:{nominal:21313,eil:10129963.92}},dataQuality:"Normal",action:"Monitoring as usual / no specific action"},
+    {key:"PLN-INS",name:"PT Asuransi Perisai Listrik Nasional",type:"Asuransi",ic:799280000,multiplier:0.015,cit:11989200,cil:11950003.75,projection:24653453.73,score:57.75,entities:{BMRI:{nominal:1463320.54,eil:6660665.24},"Mandiri Taspen":{nominal:21417716.08,eil:2992584.03},MTF:{nominal:0,eil:1173961.56},MUF:{nominal:18378,eil:1122792.92}},dataQuality:"Normal",action:"Switching Limit"},
+    {key:"ASKRIDA",name:"PT Asuransi Bangun Askrida",type:"Asuransi",ic:1544045714.2857144,multiplier:0.015,cit:23160685.714285716,cil:23080742.88,projection:21477669.153,score:34.25,entities:{BMRI:{nominal:2618582.14,eil:12864690.67},"Mandiri Taspen":{nominal:17299747.72,eil:5780003.42},MTF:{nominal:0,eil:2267439.03},MUF:{nominal:0,eil:2168609.76}},dataQuality:"Normal",action:"Monitoring as usual / no specific action"},
+    {key:"AKRINDO",name:"PT Asuransi Kredit Indonesia",type:"Asuransi",ic:3086548421.052632,multiplier:0.03,cit:92596452.63157895,cil:92620921.35,projection:6409118.3525,score:60.63,entities:{BMRI:{nominal:1058528.01,eil:51624833.26},"Mandiri Taspen":{nominal:4878825.62,eil:23194627.88},MTF:{nominal:0,eil:9099026.54},MUF:{nominal:0,eil:8702433.67}},dataQuality:"Normal",action:"Monitoring as usual / no specific action"}
   ],
   LPG:[
-    {no:1,sector:"BATUBARA",segment:"Corporate",region:"Region I",limit:65140,outstanding:37919,util:"58.20%",cl:30000,ncl:7919,status:"Normal",crosscheck:"Match",dataQuality:"Good"},
-    {no:2,sector:"NIKEL",segment:"Corporate",region:"Region II",limit:42000,outstanding:44500,util:"105.95%",cl:32000,ncl:12500,status:"Breach",crosscheck:"Match",dataQuality:"Good"},
-    {no:3,sector:"SAWIT",segment:"Corporate",region:"Region III",limit:50000,outstanding:33600,util:"67.20%",cl:26000,ncl:7600,status:"Normal",crosscheck:"Match",dataQuality:"Good"},
-    {no:4,sector:"MANUFAKTUR",segment:"Commercial",region:"Region IV",limit:35949,outstanding:30550,util:"84.98%",cl:21800,ncl:8750,status:"Warning",crosscheck:"Match",dataQuality:"Good"},
-    {no:5,sector:"FURNITUR",segment:"SME",region:"Region V",limit:18000,outstanding:16500,util:"91.67%",cl:12000,ncl:4500,status:"Data Issue",crosscheck:"Selisih",dataQuality:"Needs Review"}
+    {key:"BATUBARA|Corporate|Bankwide",sector:"BATUBARA",segment:"Corporate",region:"Bankwide",limit:65140,outstanding:37919,products:{CASHLOAN:30000,"NON CASH LOAN":7919},dataQuality:"Demo split: source total reconciled"},
+    {key:"BATUBARA|Commercial|Bankwide",sector:"BATUBARA",segment:"Commercial",region:"Bankwide",limit:35949,outstanding:26856,products:{CASHLOAN:21000,"NON CASH LOAN":5856},dataQuality:"Demo split: source total reconciled"},
+    {key:"ENERGI & AIR|Corporate|Bankwide",sector:"ENERGI & AIR",segment:"Corporate",region:"Bankwide",limit:123949,outstanding:71744,products:{CASHLOAN:57000,"NON CASH LOAN":14744},dataQuality:"Demo split: source total reconciled"},
+    {key:"ENERGI & AIR|Commercial|Bankwide",sector:"ENERGI & AIR",segment:"Commercial",region:"Bankwide",limit:33854,outstanding:18415,products:{CASHLOAN:14500,"NON CASH LOAN":3915},dataQuality:"Demo split: source total reconciled"},
+    {key:"FARMASI & KESEHATAN|Corporate|Bankwide",sector:"FARMASI & KESEHATAN",segment:"Corporate",region:"Bankwide",limit:24600,outstanding:12000,products:{CASHLOAN:10000,"NON CASH LOAN":2000},dataQuality:"Demo split: source total reconciled"}
   ]
 };
-
-const reportConfig={
-  Country:{title:"3. Monitoring Eksposur & Capacity Limit per Negara",subtitle:"Format mengikuti struktur COUNTRY_MONITORING pada master report.",source:"master_reportMonitoring.xlsx • Sheet COUNTRY_MONITORING",note:"Source per field mengikuti row Source pada MD Country.",columns:[
-    ["No","no"],["Negara","country"],["Code","code"],["Status","statusMaster"],["CL","cl"],["NCL","ncl"],["COM","com"],["TRS","trs"],["BOND","bond"],["NOS","nos"],["Exposure CL","expCl"],["Exposure NCL","expNcl"],["Exposure COM","expCom"],["Exposure TRS","expTrs"],["Exposure BOND","expBond"],["Exposure NOS","expNos"],["TOTAL","total"],["Limit FIB Formulasi","formulasi"],["Limit FIB Diputus","diputus"],["Country Limit","limit"],["% Country Limit","pct"],["Needs","needs"],["Minus","minus"],["Add","add"],["Final Limit","final"],["% Final Limit","finalPct"]
-  ]},
-  CCL:{title:"4. Counterparty Direct Limit - Bank Mandiri (BMRI) & Perusahaan Anak",subtitle:"Format mengikuti struktur CCL_MONITORING pada master report.",source:"master_reportMonitoring.xlsx • Sheet CCL_MONITORING",note:"Source utama mengikuti row Source pada MD CCL. BMRI menggunakan Core Banking Limit System; Perusahaan Anak masih manual.",columns:[
-    ["No","no"],["Nama bank","bank"],["Kategori Bank","category"],["Negara","country"],["Country Rating","countryRating"],["Bobot","bobot"],["Rating","rating"],["Posisi Rating","position"],["Rating Index","ratingIndex"],["Limit Inhouse (Rp Miliar)","inhouse"],["Tier 1 Capital (Rp Miliar)","tier1"],["Capacity","capacity"],["Capacity Limit Adjusted","adjusted"],["Global Parent Bank","globalParent"],["Top 200 Bank","top200"],["CCL","ccl"],["CCL to Capacity","cclCapacity"],["Limit","limit"],["Outstanding","outstanding"],["Jenis Limit","jenis"],["BMRI Total Limit","bmriTotal"],["BMRI Bank Loan","bmriLoan"],["BMRI Commercial Line","bmriCom"],["BMRI Treasury Line","bmriTrs"],["BMRI Utilisasi CCL","bmriUtil"],["BMRI Utilisasi Kontraktual","contractualUtil"],["BMRI Outstanding Maksimum","maxOutstanding"],["BMRI Utilisasi Maks. Kontraktual","maxContractualUtil"],["PA Total Limit","paTotal"],["PA Bank Loan","paLoan"],["PA Commercial Line","paCom"],["PA Treasury Line","paTrs"],["PA Utilisasi CCL","paUtil"],["PA Utilisasi Kontraktual","paContractualUtil"],["PA Outstanding Maksimum","paMaxOutstanding"],["PA Utilisasi Maks. Kontraktual","paMaxContractualUtil"]
-  ]},
-  MLK:{title:"7. Monitoring Debitur per Group Usaha (Konsolidasi)",subtitle:"Format mengikuti struktur MLK_Monitor dan dikorelasikan dengan MLK_Master.",source:"master_reportMonitoring.xlsx • Sheet MLK_Master + MLK_Monitor",note:"Master Limit dan Borrowing Capacity pada dummy report merepresentasikan reference monitoring; perhitungan capacity tetap berasal dari proses bisnis.",columns:[
-    ["No","no"],["Tier","tier"],["Group Usaha (Holding)","holding"],["Sub-Group","subGroup"],["BUMN/Swasta","flag"],["Unit Kerja Pengelola","unit"],["Entitas","entity"],["BMPK Konsol","bmpkKonsol"],["BMPK Entitas","bmpkEntitas"],["Limit Fasilitas","limitFasilitas"],["Total Bade","bade"],["Borrowing Capacity","borrowing"],["Master Limit","masterLimit"],["MLK Konsolidasi","mlk"],["Utilisasi Bade / Limit Fasilitas","utilBade"],["Utilisasi Limit / BMPK Entitas","utilFacilityBmpk"],["MLK / BMPK Konsol","utilMlkBmpk"],["Jumlah Debitur","debtors"],["Total BMPK Entitas (Master)","totalBmpk"],["Total Master Limit (Master)","totalMaster"],["Total Borrowing Capacity (Master)","totalBorrowing"],["Selisih Master Limit","variance"],["Status","status"]
-  ]},
-  CIL:{title:"CIL Master Monitoring",subtitle:"Format mengikuti struktur CIL_Master pada master report.",source:"master_reportMonitoring.xlsx • Sheet CIL_Master",note:"Source per field belum dituliskan eksplisit pada MD CIL; prototype menandai field sebagai reference sampai source owner dilengkapi.",columns:[
-    ["No","no"],["Perusahaan Asuransi","insurer"],["Jenis Perusahaan","type"],["Insurance Capacity (Rp Juta)","ic"],["Multiplier Terpakai","multiplier"],["CIT (Rp Juta)","cit"],["Nominal Pertanggungan BMRI","bmriNominal"],["EIL BMRI","bmriEil"],["Nominal Pertanggungan Mandiri Taspen","mtNominal"],["EIL Mandiri Taspen","mtEil"],["Nominal Pertanggungan MTF","mtfNominal"],["EIL MTF","mtfEil"],["Nominal Pertanggungan MUF","mufNominal"],["EIL MUF","mufEil"],["CIL","cil"],["Total Nominal Pertanggungan","totalNominal"],["Proyeksi 2026","projection"],["% Nominal / CIT","utilCit"],["% Proyeksi / CIT","projectedUtil"],["Status","status"]
-  ]},
-  LPG:{title:"Loan Portfolio Guideline (LPG) Monitoring",subtitle:"Monitoring Sektor × Segmen × Wilayah dengan CL/NCL breakdown.",source:"LIMAS LPG Master / current monitoring structure",note:"LPG belum terdapat sebagai sheet pada master_reportMonitoring yang dilampirkan; struktur ini mengikuti definisi LPG saat ini di LIMAS.",columns:[
-    ["No","no"],["Sektor","sector"],["Segmen","segment"],["Region","region"],["Limit","limit"],["Outstanding","outstanding"],["Utilisasi","util"],["CL","cl"],["NCL","ncl"],["Crosscheck","crosscheck"],["Data Quality","dataQuality"],["Status","status"]
-  ]}
-};
+function demoProductLabel(p){
+  if(p==="CASHLOAN")return "Cash Loan";
+  if(p==="NON CASH LOAN")return "Non Cash Loan";
+  if(p==="CREDIT LINE|Commercial")return "Credit Line • Commercial Line";
+  if(p==="CREDIT LINE|Treasury")return "Credit Line • Treasury Line";
+  if(p==="TREASURY LINE")return "Credit Line • Treasury Line";
+  if(p==="NOSTRO")return "Nostro";
+  if(p==="Nominal Pertanggungan")return "Nominal Pertanggungan";
+  return p;
+}
+function productTotal(products){return Object.values(products||{}).reduce((a,v)=>a+(Number(v)||0),0)}
+function recordExposure(type,row){
+  if(type==="CIL")return Object.values(row.entities||{}).reduce((a,e)=>a+(Number(e.nominal)||0),0);
+  if(type==="LPG")return Number(row.outstanding)||0;
+  return productTotal(row.products);
+}
+function recordLimit(type,row){
+  if(type==="Country")return Number(row.masterLimit)||0;
+  if(type==="CCL")return Number(row.ccl)||0;
+  if(type==="MLK")return Number(row.masterLimit)||0;
+  if(type==="CIL")return Number(row.cil)||0;
+  return Number(row.limit)||0;
+}
+function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposure(type,row);return limit?exp/limit:0}
+function recordStatus(type,row){
+  if(String(row.dataQuality||"Normal").startsWith("Missing"))return "Data Issue";
+  const u=recordUtil(type,row);
+  return u>=1?"Breach":u>=0.8?"Warning":"Normal";
+}
+function buildReportDummy(data){
+  return {
+    Country:data.Country.map((r,i)=>{const p=r.products||{},exp=recordExposure("Country",r),totalLimits=(limasDemoData.Country||[]).reduce((a,x)=>a+(Number(x.masterLimit)||0),0),u=recordUtil("Country",r),share=totalLimits?r.masterLimit/totalLimits:0;return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,formulasi:r.formulasi,diputus:r.diputus,limit:r.masterLimit,pct:share,needs:0,minus:0,add:0,final:r.masterLimit,finalPct:share,status:recordStatus("Country",r)}}),
+    CCL:data.CCL.map((r,i)=>{const p=r.products||{},exp=recordExposure("CCL",r),u=recordUtil("CCL",r);return {no:i+1,bank:r.name,category:"Asing",country:r.country,countryRating:"Source reference",bobot:"—",rating:"—",position:"—",ratingIndex:"—",inhouse:r.ccl,tier1:"—",capacity:"—",adjusted:r.ccl,globalParent:"—",top200:"—",ccl:r.ccl,cclCapacity:"—",limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:r.ccl,bmriLoan:0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:1,contractualUtil:r.contractual?exp/r.contractual:0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
+    MLK:data.MLK.map((r,i)=>{const p=r.products||{},exp=recordExposure("MLK",r),u=recordUtil("MLK",r);return {no:i+1,tier:r.tier,holding:r.group,subGroup:r.group,flag:"Source",unit:"Source",entity:r.entity,bmpkKonsol:"—",bmpkEntitas:"—",limitFasilitas:r.masterLimit,bade:exp,borrowing:"Reference",masterLimit:r.masterLimit,mlk:r.masterLimit,utilBade:u,utilFacilityBmpk:"—",utilMlkBmpk:"—",debtors:1,totalBmpk:"—",totalMaster:r.masterLimit,totalBorrowing:"—",variance:0,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:p}}),
+    CIL:data.CIL.map((r,i)=>{const total=recordExposure("CIL",r);return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:r.entities.BMRI?.nominal||0,bmriEil:r.entities.BMRI?.eil||0,mtNominal:r.entities["Mandiri Taspen"]?.nominal||0,mtEil:r.entities["Mandiri Taspen"]?.eil||0,mtfNominal:r.entities.MTF?.nominal||0,mtfEil:r.entities.MTF?.eil||0,mufNominal:r.entities.MUF?.nominal||0,mufEil:r.entities.MUF?.eil||0,cil:r.cil,totalNominal:total,projection:r.projection,utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?r.projection/r.cit:0,cilUtil:r.cil?total/r.cil:0,status:recordStatus("CIL",r),score:r.score,action:r.action}}),
+    LPG:data.LPG.map((r,i)=>{const p=r.products||{},exp=recordExposure("LPG",r);return {no:i+1,sector:r.sector,segment:r.segment,region:r.region,limit:r.limit,outstanding:exp,util:r.limit?exp/r.limit:0,cl:p.CASHLOAN||0,ncl:p["NON CASH LOAN"]||0,crosscheck:(p.CASHLOAN||0)+(p["NON CASH LOAN"]||0)===exp?"Match":"Selisih",dataQuality:r.dataQuality,status:recordStatus("LPG",r)}})
+  };
+}
+const reportDummy=buildReportDummy(limasDemoData);
 function fmtReport(v){if(v===null||v===undefined||v==="")return "—";if(typeof v==="number")return v.toLocaleString('id-ID',{maximumFractionDigits:2});return v;}
 function statusForReport(row){return row.status||row.statusMaster||"Normal";}
 function downloadReportCsv(type,rows){
@@ -346,7 +372,7 @@ function Report({nav}){
   const generate=()=>setGenerated(true);
   const summary={total:rows.length,normal:rows.filter(r=>statusForReport(r)==="Normal").length,warning:rows.filter(r=>statusForReport(r)==="Warning").length,breach:rows.filter(r=>statusForReport(r)==="Breach").length,issue:rows.filter(r=>statusForReport(r)==="Data Issue").length};
   return <Layout screen="report" onNav={nav}><Header title="Generate Monitoring Report" subtitle="Generate report monitoring dengan struktur yang mengikuti master report masing-masing limit"/><div className="page">
-    <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Pilih domain, periode dan kondisi lalu generate report.</p></div><div className="chip blue">Dummy Data • 5 records</div></div><div className="body">
+    <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Pilih domain, periode dan kondisi lalu generate report.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
       <div className="report-controls">
         <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select></div>
         <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>Agustus 2026</option><option>Juli 2026</option><option>Juni 2026</option></select></div>
@@ -409,39 +435,73 @@ function OverviewTable({type, onDetail}){
 }
 
 function Dashboard({nav}){
-  return <Layout screen="dashboard" onNav={nav}><Header title="Halo, Risk Management" subtitle="Executive monitoring limit Bank Mandiri Group"/>
+  const domainsList=["Country","CCL","MLK","CIL","LPG"];
+  const summary=domainsList.reduce((a,type)=>{
+    const rows=limasDemoData[type]||[];
+    return {...a,records:a.records+rows.length,normal:a.normal+rows.filter(r=>recordStatus(type,r)==="Normal").length,warning:a.warning+rows.filter(r=>recordStatus(type,r)==="Warning").length,breach:a.breach+rows.filter(r=>recordStatus(type,r)==="Breach").length,issue:a.issue+rows.filter(r=>recordStatus(type,r)==="Data Issue").length};
+  },{records:0,normal:0,warning:0,breach:0,issue:0});
+  return <Layout screen="dashboard" onNav={nav}>
+    <Header title="Halo, Risk Management" subtitle="Executive monitoring limit Bank Mandiri Group"/>
     <div className="page">
       <div className="hero">
-        <h2>Limit Management Overview</h2><p>Master limit aktif, aggregated exposure dan status monitoring periode berjalan.</p>
+        <h2>Limit Management Overview</h2>
+        <p>Master limit aktif, product utilization terintegrasi dan monitoring status periode berjalan.</p>
         <div className="hero-grid">
-          <div><div className="hero-label">Total Limit</div><div className="hero-value">Rp 125.45 T</div></div>
-          <div><div className="hero-label">Exposure</div><div className="hero-value">Rp 87.32 T</div></div>
-          <div><div className="hero-label">Utilisasi</div><div className="hero-value">69.6%</div></div>
+          <div><div className="hero-label">Master Objects</div><div className="hero-value">{summary.records}</div></div>
+          <div><div className="hero-label">Integrated Exposure Records</div><div className="hero-value">{summary.records}</div></div>
+          <div><div className="hero-label">Breach</div><div className="hero-value">{summary.breach}</div></div>
         </div>
       </div>
+
       <div className="metric-grid">
-        <DomainKpi label="Country Limit" value="73%" sub="245 monitored • 8 EWS • 2 Breach"/>
-        <DomainKpi label="Counterparty CCL" value="61%" sub="128 banks • 7 EWS • 2 Breach"/>
-        <DomainKpi label="Debtor MLK" value="82%" sub="1,245 CIF • 9 EWS • 3 Breach" accent="yellow"/>
-        <DomainKpi label="Insurance CIL" value="55%" sub="32 insurers • 3 EWS • 1 Breach"/>
-        <DomainKpi label="Portfolio LPG" value="78%" sub="96 combinations • 6 EWS • 1 Breach" accent="yellow"/>
+        {domainsList.map(type=>{
+          const rows=limasDemoData[type]||[],lim=rows.reduce((a,r)=>a+recordLimit(type,r),0),exp=rows.reduce((a,r)=>a+recordExposure(type,r),0),u=lim?exp/lim:0;
+          return <DomainKpi key={type} label={type+" Limit"} value={(u*100).toFixed(1)+"%"} sub={rows.length+" objects • "+rows.filter(r=>recordStatus(type,r)==="Warning").length+" EWS • "+rows.filter(r=>recordStatus(type,r)==="Breach").length+" Breach"} accent={u>=1?"red":u>=0.8?"yellow":""}/>;
+        })}
       </div>
+
       <div className="dash-grid">
-        <section className="card"><div className="head"><div><h2>Utilisasi per Domain</h2><p>Perbandingan limit vs exposure</p></div></div><div className="body"><div className="chart-list">{[["Country",73],["CCL",61],["MLK",82],["CIL",55],["LPG",78]].map(([a,v])=><div className="chart-row" key={a}><div className="chart-row-head"><b>{a}</b><span>{v}%</span></div><div className="chart-track"><span style={{width:`${v}%`}}></span></div></div>)}</div></div></section>
-        <section className="card"><div className="head"><div><h2>Distribusi Status</h2><p>Normal / EWS / Breach</p></div></div><div className="body"><div className="pie"></div><div className="legend"><div><i className="dot" style={{background:"#1c73e8"}}/> Normal 81%</div><div><i className="dot" style={{background:"#f2c04d"}}/> Early Warning 14%</div><div><i className="dot" style={{background:"#e45757"}}/> Breach 5%</div></div></div></section>
+        <section className="card">
+          <div className="head"><div><h2>Utilisasi per Domain</h2><p>Exposure terintegrasi dibandingkan dengan master limit domain.</p></div></div>
+          <div className="body"><div className="chart-list">
+            {domainsList.map(type=>{
+              const rows=limasDemoData[type]||[],lim=rows.reduce((a,r)=>a+recordLimit(type,r),0),exp=rows.reduce((a,r)=>a+recordExposure(type,r),0),u=lim?Math.min(exp/lim,1):0;
+              return <div className="chart-row" key={type}><div className="chart-row-head"><b>{type}</b><span>{(u*100).toFixed(1)}%</span></div><div className="chart-track"><span style={{width:(u*100)+"%"}}/></div></div>;
+            })}
+          </div></div>
+        </section>
+        <section className="card">
+          <div className="head"><div><h2>Distribusi Status</h2><p>Satu sumber data untuk dashboard, monitoring dan report.</p></div></div>
+          <div className="body">
+            <div className="legend">
+              <div><i className="dot" style={{background:"#1c73e8"}}/> Normal {summary.normal}</div>
+              <div><i className="dot" style={{background:"#f2c04d"}}/> Early Warning {summary.warning}</div>
+              <div><i className="dot" style={{background:"#e45757"}}/> Breach {summary.breach}</div>
+              <div><i className="dot" style={{background:"#8692a6"}}/> Data Issue {summary.issue}</div>
+            </div>
+          </div>
+        </section>
       </div>
+
+      <section className="card">
+        <div className="head"><div><h2>Data Lineage</h2><p>Traceability dari Master Limit sampai product utilization dan monitoring output.</p></div></div>
+        <div className="body"><div className="integration-chip-grid">
+          <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">Approved limit, parameter, effective period, version dan status.</div></div>
+          <div className="mini integration-chip"><b>2. Product Universe</b><div className="muted-small">Product source registry dan integration mapping.</div></div>
+          <div className="mini integration-chip"><b>3. Product Utilization</b><div className="muted-small">Source record → target key → aggregation → outstanding/exposure.</div></div>
+          <div className="mini integration-chip"><b>4. Monitoring / Report</b><div className="muted-small">Utilisasi → remaining → threshold → EWS/Breach → report.</div></div>
+        </div></div>
+      </section>
+
       <div className="dash-grid">
-        <section className="card"><div className="head"><div><h2>Early Warning & Breach</h2><p>Exception lintas seluruh domain</p></div><button className="btn secondary" onClick={()=>nav("warning")}>Buka EWS Center</button></div><div className="body"><div className="alert-list">
-          <div className="alert breach"><span className="bar"></span><div><b>MLK • MANDIRI GROUP SAMPLE</b><div style={{fontSize:10,color:"var(--muted)"}}>CIF 4000027711 • Utilisasi 107%</div></div><Status v="Breach"/></div>
-          <div className="alert breach"><span className="bar"></span><div><b>CCL • National Australia Bank</b><div style={{fontSize:10,color:"var(--muted)"}}>Swift NATAAU33 • Utilisasi 106%</div></div><Status v="Breach"/></div>
-          <div className="alert warning"><span className="bar"></span><div><b>Country • Singapore</b><div style={{fontSize:10,color:"var(--muted)"}}>Country Code SG • Utilisasi 85%</div></div><Status v="Warning"/></div>
-          <div className="alert warning"><span className="bar"></span><div><b>CIL • Tugu Pratama BMRI</b><div style={{fontSize:10,color:"var(--muted)"}}>EIL utilization 97%</div></div><Status v="Warning"/></div>
+        <section className="card"><div className="head"><div><h2>Early Warning & Breach</h2><p>Exception lintas domain dari canonical monitoring model.</p></div><button className="btn secondary" onClick={()=>nav("warning")}>Buka EWS Center</button></div><div className="body"><div className="alert-list">
+          {domainsList.flatMap(type=>(limasDemoData[type]||[]).map(r=>({type,r,st:recordStatus(type,r)}))).filter(x=>x.st==="Warning"||x.st==="Breach").slice(0,6).map(({type,r,st})=><div className={"alert "+(st==="Breach"?"breach":"warning")} key={type+"|"+r.key}><span className="bar"></span><div><b>{type+" • "+(r.name||r.sector)}</b><div className="muted-small">Utilisasi {(recordUtil(type,r)*100).toFixed(2)}%</div></div><Status v={st}/></div>)}
         </div></div></section>
-        <section className="card"><div className="head"><div><h2>Data Freshness</h2><p>Status pembaruan data source</p></div></div><div className="body">
-          {[["Cash Loan","08 Aug 2026 22:00","Normal"],["NCL","08 Aug 2026 22:10","Normal"],["Commercial/Treasury","08 Aug 2026 21:45","Normal"],["Bonds","31 Jul 2026","Normal"],["Nostro","08 Aug 2026 21:30","Normal"],["PA / SISM","07 Aug 2026","Warning"]].map(r=><div className="mini" style={{marginBottom:8}} key={r[0]}><b>{r[0]}</b><div style={{fontSize:10,color:"var(--muted)",marginTop:3}}>{r[1]} <span style={{float:"right"}}><Status v={r[2]}/></span></div></div>)}
+        <section className="card"><div className="head"><div><h2>Reconciliation Status</h2><p>Data issue yang memerlukan investigasi.</p></div></div><div className="body">
+          {domainsList.map(type=>(limasDemoData[type]||[]).filter(r=>recordStatus(type,r)==="Data Issue").map(r=><div className="mini" style={{marginBottom:8}} key={type+"|"+r.key}><b>{type+" • "+(r.name||r.sector)}</b><div className="muted-small">{r.dataQuality}</div></div>))}
+          {summary.issue===0&&<div className="mini">No data issue.</div>}
         </div></section>
       </div>
-      <section className="card"><div className="head"><div><h2>Top Monitoring Exceptions</h2><p>Objek dengan utilisasi tertinggi</p></div></div><div className="body"><OverviewTable type="MLK" onDetail={(t,k)=>nav("detail",{type:t,key:k})}/></div></section>
     </div>
   </Layout>
 }
@@ -473,87 +533,104 @@ function Warning({nav}){
 }
 
 function Monitor({type,nav}){
-  const cfg={
-    Country:{title:"Country Limit Monitoring",subtitle:"Monitoring exposure per negara dengan product breakdown",total:"35,941",exp:"29,820",util:"82.9%",unit:"Rp Miliar", rows:[
-      ["CN","China","2,000","1,420","71%","Normal","CL 550 • NCL 210 • COM 70 • TRS 100 • BOND 50 • NOS 30"],
-      ["SG","Singapore","1,650","1,410","85%","Warning","CL 980 • NCL 210 • COM 80 • TRS 100 • BOND 20 • NOS 20"],
-      ["AE","UAE","500","512","102%","Breach","CL 220 • NCL 80 • COM 110 • TRS 90 • BOND 0 • NOS 12"],
-      ["AU","Australia","900","710","79%","Normal","CL 260 • NCL 120 • COM 70 • TRS 190 • BOND 50 • NOS 20"]
-    ]},
-    CCL:{title:"Counterparty / CCL Monitoring",subtitle:"Monitoring bank counterpart, CCL vs contractual limit, BMRI vs PA",total:"18,500",exp:"11,285",util:"61.0%",unit:"Rp Miliar", rows:[
-      ["ANZBAU3M","ANZ Bank","500","810","355","71%","Normal"],
-      ["CTBAAU2S","Commonwealth Bank","400","400","372","93%","Warning"],
-      ["NATAAU33","National Australia Bank","300","300","318","106%","Breach"],
-      ["FABAAE","First Abu Dhabi Bank","350","450","245","70%","Normal"]
-    ]},
-    MLK:{title:"Debtor / MLK Monitoring",subtitle:"Monitoring CIF dan Group Usaha dengan roll-up exposure",total:"76,420",exp:"62,840",util:"82.2%",unit:"Rp Miliar",rows:[
-      ["4000264485","DJARUM","DJARUM GROUP","5,818","4,021","69%","Normal"],
-      ["1000145694","ANEKA TAMBANG","ANTAM GROUP","13,280","11,580","87%","Warning"],
-      ["4000027711","MANDIRI GROUP SAMPLE","MANDIRI GROUP","9,000","9,630","107%","Breach"],
-      ["2000198372","SAMPLE DEBTOR","GROUP B","7,500","4,650","62%","Normal"]
-    ]},
-    CIL:{title:"Insurance / CIL Monitoring",subtitle:"Monitoring EIL, CIL, CIT dan nominal pertanggungan per entity",total:"107,814",exp:"84,520",util:"78.4%",unit:"Rp Juta",rows:[
-      ["INS-001","Tugu Pratama","60,093","58,300","97%","Warning","BMRI 58,300 • MTF 10,129"],
-      ["INS-002","Perisai Listrik Nasional","24,000","17,500","73%","Normal","BMRI 5,980 • PA 11,520"],
-      ["INS-003","Insurance ABC","18,000","19,450","108%","Breach","BMRI 19,450"]
-    ]},
-    LPG:{title:"Portfolio / LPG Monitoring",subtitle:"Monitoring konsentrasi Sektor × Segmen × Wilayah",total:"315,000",exp:"246,300",util:"78.2%",unit:"Rp Miliar",rows:[
-      ["BATUBARA","Corporate","Region I","65,140","37,919","58%","Normal"],
-      ["BATUBARA","Commercial","Region I","35,949","30,350","84%","Warning"],
-      ["NIKEL","Corporate","Region II","42,000","44,500","106%","Breach"],
-      ["SAWIT","Corporate","Region III","50,000","33,600","67%","Normal"]
-    ]}
-  }[type];
-  const [period,setPeriod]=useState("Agustus 2026");
-  return <Layout screen={type} onNav={nav}><Header title={cfg.title} subtitle={cfg.subtitle}/><div className="page">
-    <div className="metric-grid"><DomainKpi label="Total Limit" value={cfg.total} sub={cfg.unit}/><DomainKpi label="Total Exposure" value={cfg.exp} sub="Aggregated product"/><DomainKpi label="Utilisasi" value={cfg.util} sub="Current period" accent={parseFloat(cfg.util)>100?"red":parseFloat(cfg.util)>=80?"yellow":""}/><DomainKpi label="Early Warning" value={type==="MLK"?"9":type==="Country"?"8":"6"} sub="Objek perlu monitoring" accent="yellow"/><DomainKpi label="Breach" value={type==="MLK"?"3":type==="Country"?"2":"1"} sub="Objek melewati limit" accent="red"/></div>
-    <section className="card"><div className="head"><div><h2>Monitoring Controls</h2><p>Threshold dan period dapat difilter tanpa mengubah master limit</p></div></div><div className="body"><div className="toolbar"><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>Agustus 2026</option><option>Juli 2026</option><option>Juni 2026</option></select><select className="select"><option>All Status</option><option>Normal</option><option>Warning</option><option>Breach</option></select><select className="select"><option>All Entity</option><option>BMRI</option><option>Perusahaan Anak</option></select><button className="btn secondary">Export Excel</button></div></div></section>
-    <div className="dash-grid">
-      <section className="card"><div className="head"><div><h2>Utilisasi Overview</h2><p>Limit vs exposure</p></div></div><div className="body"><div className="detail-summary"><div className="detail-box"><div className="small">Limit</div><div className="big">{cfg.total}</div></div><div className="detail-box"><div className="small">Exposure</div><div className="big">{cfg.exp}</div></div><div className="detail-box"><div className="small">Utilisasi</div><div className="big">{cfg.util}</div></div><div className="detail-box"><div className="small">Status</div><div className="big"><Status v={parseFloat(cfg.util)>=100?"Breach":parseFloat(cfg.util)>=80?"Warning":"Normal"}/></div></div></div><div style={{marginTop:14}}><div className="progress"><span style={{width:Math.min(parseFloat(cfg.util),100)+"%"}}/></div></div></div></section>
-      <section className="card"><div className="head"><div><h2>Utilisasi Trend</h2><p>6 periode terakhir</p></div></div><div className="body"><div className="spark">{[48,55,58,66,72,79].map((v,i)=><span key={i} className={i>3?"active":""} style={{height:v*0.75}}/>)}</div></div></section>
+  const rows=limasDemoData[type]||[];
+  const totalLimit=rows.reduce((a,r)=>a+recordLimit(type,r),0);
+  const totalExposure=rows.reduce((a,r)=>a+recordExposure(type,r),0);
+  const overallUtil=totalLimit?totalExposure/totalLimit:0;
+  const statusCounts={Normal:rows.filter(r=>recordStatus(type,r)==="Normal").length,Warning:rows.filter(r=>recordStatus(type,r)==="Warning").length,Breach:rows.filter(r=>recordStatus(type,r)==="Breach").length,"Data Issue":rows.filter(r=>recordStatus(type,r)==="Data Issue").length};
+  const titleMap={Country:"Country Limit Monitoring",CCL:"Counterparty / CCL Monitoring",MLK:"Debtor / MLK Monitoring",CIL:"Insurance / CIL Monitoring",LPG:"Portfolio / LPG Monitoring"};
+  const subtitleMap={Country:"Master Country Limit + integrated product utilization.",CCL:"Master CCL / Contractual Limit + integrated counterparty product utilization.",MLK:"Master Limit per CIF/group + integrated CL, NCL and Treasury Line exposure.",CIL:"Master IC/CIT/EIL/CIL + integrated Nominal Pertanggungan.",LPG:"Master limit Sector × Segment × Region + integrated CL/NCL outstanding."};
+  const unitMap={Country:"Rp Juta",CCL:"Rp Miliar",MLK:"Rp Juta",CIL:"Rp Juta",LPG:"Rp Juta"};
+  const pct=v=>(v*100).toFixed(2)+"%";
+  const productsText=r=>{
+    if(type==="CIL") return Object.entries(r.entities||{}).map(([e,v])=>e+" "+Number(v.nominal||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ");
+    return Object.entries(r.products||{}).map(([p,v])=>demoProductLabel(p)+": "+Number(v||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ")||"Tidak ada exposure";
+  };
+  return <Layout screen={type} onNav={nav}>
+    <Header title={titleMap[type]} subtitle={subtitleMap[type]}/>
+    <div className="page">
+      <div className="metric-grid">
+        <DomainKpi label="Total Master Limit" value={totalLimit.toLocaleString("id-ID",{maximumFractionDigits:2})} sub={unitMap[type]}/>
+        <DomainKpi label="Integrated Exposure" value={totalExposure.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Product utilization"/>
+        <DomainKpi label="Utilisasi" value={pct(overallUtil)} sub="Exposure / Master Limit" accent={overallUtil>=1?"red":overallUtil>=0.8?"yellow":""}/>
+        <DomainKpi label="Early Warning" value={statusCounts.Warning} sub="80%–<100%" accent="yellow"/>
+        <DomainKpi label="Breach" value={statusCounts.Breach} sub="≥100%" accent="red"/>
+      </div>
+      <section className="card">
+        <div className="head"><div><h2>Data Lineage</h2><p>Angka monitoring berasal dari master limit dan product utilization yang sama dengan report.</p></div><span className="chip blue">Master → Integration → Monitoring</span></div>
+        <div className="body"><div className="integration-chip-grid">
+          <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">{domainDataContract[type].masterDescription}</div></div>
+          <div className="mini integration-chip"><b>2. Product Universe</b><div className="muted-small">{(domainIntegrationProducts[type]||[]).map(integrationLabel).join(" • ")}</div></div>
+          <div className="mini integration-chip"><b>3. Utilization Inbound</b><div className="muted-small">Source record → target key → aggregation → exposure</div></div>
+          <div className="mini integration-chip"><b>4. Monitoring Output</b><div className="muted-small">Utilization + remaining + threshold + EWS/Breach</div></div>
+        </div></div>
+      </section>
+      <section className="card">
+        <div className="head"><div><h2>Monitoring Detail</h2><p>Limit, exposure dan product contribution berasal dari canonical demo data.</p></div></div>
+        <div className="body"><div className="table-wrap"><table className="table">
+          <thead><tr>{
+            type==="Country"?<><th>Country Code</th><th>Country</th><th>Master Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="CCL"?<><th>Swift</th><th>Bank</th><th>CCL</th><th>Contractual</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="MLK"?<><th>CIF</th><th>Debitur</th><th>Group</th><th>Master Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>:
+            type==="CIL"?<><th>Insurance</th><th>Nama</th><th>CIL</th><th>Nominal Pertanggungan</th><th>Utilisasi CIL</th><th>Status</th><th>Entity Contribution</th></>:
+            <><th>Sektor</th><th>Segmen</th><th>Region</th><th>Master Limit</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Product Contribution</th></>
+          }</tr></thead>
+          <tbody>{rows.map((r,i)=>{
+            const lim=recordLimit(type,r),exp=recordExposure(type,r),u=recordUtil(type,r),st=recordStatus(type,r);
+            if(type==="Country") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            if(type==="CCL") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(r.contractual||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            if(type==="MLK") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{r.group}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            if(type==="CIL") return <tr key={i}><td className="key">{r.key}</td><td>{r.name}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+            return <tr key={i}><td>{r.sector}</td><td>{r.segment}</td><td>{r.region}</td><td>{lim.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{exp.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{pct(u)}</td><td><Status v={st}/></td><td style={{fontSize:10}}>{productsText(r)}</td></tr>;
+          })}</tbody>
+        </table></div></div>
+      </section>
+      <section className="card">
+        <div className="head"><div><h2>Reconciliation</h2><p>Exposure harus sama dengan penjumlahan contribution source yang terhubung.</p></div></div>
+        <div className="body"><div className="metric-grid">
+          <DomainKpi label="Records" value={rows.length} sub="Master objects"/>
+          <DomainKpi label="Normal" value={statusCounts.Normal} sub="Within threshold"/>
+          <DomainKpi label="Warning" value={statusCounts.Warning} sub="Needs monitoring" accent="yellow"/>
+          <DomainKpi label="Breach" value={statusCounts.Breach} sub="Above master limit" accent="red"/>
+          <DomainKpi label="Data Issue" value={statusCounts["Data Issue"]} sub="Mapping / master quality"/>
+        </div></div>
+      </section>
     </div>
-    <section className="card"><div className="head"><div><h2>{type==="Country"?"Country":type==="CCL"?"Counterparty":type==="MLK"?"Debtor / Group":type==="CIL"?"Insurance / Entity":"Sector / Segment / Region"} Detail</h2><p>Drill-down tersedia dari key ke product/exposure detail</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead>{type==="Country"?<tr><th>Country Code</th><th>Country</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Product Exposure</th><th>Detail</th></tr>:type==="CCL"?<tr><th>Swift</th><th>Bank</th><th>CCL</th><th>Contractual</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr>:type==="MLK"?<tr><th>CIF</th><th>Debitur</th><th>Group</th><th>MLK</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr>:type==="CIL"?<tr><th>Insurance</th><th>Nama</th><th>EIL/CIL</th><th>Exposure</th><th>Utilisasi</th><th>Status</th><th>Entity / Product</th><th>Detail</th></tr>:<tr><th>Sektor</th><th>Segmen</th><th>Region</th><th>Limit</th><th>Outstanding</th><th>Utilisasi</th><th>Status</th><th>Detail</th></tr>}</thead><tbody>
-      {cfg.rows.map((r,i)=> type==="Country"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><Status v={r[5]}/></td><td style={{fontSize:10}}>{r[6]}</td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      : type==="CCL"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td><Status v={r[6]}/></td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      : type==="MLK"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td><Status v={r[6]}/></td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      : type==="CIL"?<tr key={i}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><Status v={r[5]}/></td><td>{r[6]}</td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:r[0]})}>Detail</button></td></tr>
-      :<tr key={i}><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td><Status v={r[6]}/></td><td><button className="btn ghost" onClick={()=>nav("detail",{type,key:`${r[0]}|${r[1]}|${r[2]}`})}>Detail</button></td></tr>)}
-      </tbody></table></div></div></section>
-    <section className="card"><div className="head"><div><h2>Product Contribution</h2><p>Kontribusi exposure terhadap utilization {type}</p></div><button className="btn secondary" onClick={()=>nav("products")}>Buka Product Mapping</button></div><div className="body"><div className="heatmap">{(type==="Country"?["Cash Loan","NCL","Commercial","Treasury","Bond","Nostro"]:type==="CCL"?["Bank Loan","NCL","Commercial","Treasury"]:type==="MLK"?["Cash Loan","NCL","Treasury Line"]:type==="CIL"?["Nominal Pertanggungan"]:["Cash Loan","Non Cash Loan"]).map((p,i)=><div className={`heat ${i===2?"warn":i===3?"mid":"low"}`} key={p}><div>{p}</div><div style={{fontSize:18,marginTop:8}}>{[34,18,14,20,7,7][i]||52}%</div></div>)}</div></div></section>
-  </div></Layout>
+  </Layout>;
 }
 
 function Setup({nav,setSel}){
-  const [type,setType]=useState('Country');
-  const info=domains[type], masterSections=getMasterSections(type), linkedProducts=domainIntegrationProducts[type]||[], meta=loadMasterMeta(type);
+  const [type,setType]=useState("Country");
+  const info=domains[type], linkedProducts=domainIntegrationProducts[type]||[], rows=limasDemoData[type]||[];
   return <Layout screen="setup" onNav={nav}>
     <Header title="Master Limit Setup" subtitle="Repository master limit per domain • utilization product diintegrasikan terpisah"/>
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • master limit tersimpan di LIMAS; exposure product bukan bagian dari master.</p></div>
+          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • hanya approved master limit dan parameter yang disimpan.</p></div>
           <div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Master Limit</button></div>
         </div>
         <div className="body">
-          <div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
-          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Sections</th><th>Linked Product Integration</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
-              <tbody><tr>
-                <td className="key">{sampleKey(type)}</td><td>{sampleName(type)}</td><td>{Object.keys(masterSections).join(', ')}</td>
-                <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
-                <td>v{meta.version||1}</td><td><Status v={meta.status||"Active"}/></td>
-                <td><button className="btn ghost" onClick={()=>{setSel(type);nav('detail')}}>Buka Detail</button></td>
-              </tr></tbody>
-            </table>
-          </div>
-          <div className="field-help">Master Limit Setup menyimpan limit dan parameter keputusan. Outstanding, Utilisasi dan EWS berasal dari Product Utilization Integration dan dipantau pada menu Monitoring.</div>
+          <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
+          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={"Cari "+info.key}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
+          <div className="table-wrap"><table className="table">
+            <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Limit</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody>{rows.map((r,i)=><tr key={String(r.key)+i}>
+              <td className="key">{r.key}</td>
+              <td>{r.name||r.sector}</td>
+              <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
+              <td>v1</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":"Active"}/></td>
+              <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
+            </tr>)}</tbody>
+          </table></div>
+          <div className="field-help">Master Limit menyimpan limit/parameter. Outstanding, utilization dan EWS berasal dari Product Utilization Integration.</div>
         </div>
       </section>
     </div>
   </Layout>
 }
+
 function sampleKey(t){const m={Country:'AE',CCL:'ANZB AU 3M',MLK:'4000264485',CIL:'INS-001 + BMRI',LPG:'BATUBARA + Corporate + Region I'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'ABN Amro Bank NV',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
 
@@ -676,8 +753,10 @@ function loadFieldMeta(type){
 }
 function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
-function Detail({nav,type="Country"}){
+function Detail({nav,type="Country",recordKey=""}){
   const safeType=domains[type]?type:"Country";
+  const selectedRecord=getDemoRecord(safeType,recordKey);
+  const selectedIndex=Math.max(0,(limasDemoData[safeType]||[]).findIndex(r=>String(r.key)===String(selectedRecord?.key)));
   const masterSections=getMasterSections(safeType);
   const [tab,setTab]=useState(()=>Object.keys(masterSections)[0]);
   const [meta,setMeta]=useState(()=>loadMasterMeta(safeType));
@@ -694,7 +773,7 @@ function Detail({nav,type="Country"}){
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{sampleName(safeType)}</h2><p>Unique Key: <span className="key">{sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p></div>
+          <div><h2>{selectedRecord?.name||selectedRecord?.sector||sampleName(safeType)}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p></div>
           <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
@@ -703,8 +782,8 @@ function Detail({nav,type="Country"}){
             <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
               <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
                 const id=`${tab}||${f}`;
-                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)};
-                return <tr key={f}><td><b>{f}</b></td><td>{v}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
+                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)}; const displayValue=masterFieldValue(safeType,tab,f,v,selectedRecord,selectedIndex);
+                return <tr key={f}><td><b>{f}</b></td><td>{displayValue}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
               })}</tbody>
             </table>
           </div>
@@ -958,19 +1037,14 @@ function ProductCatalog(){
 }
 
 function ProductUsage({view}){
-  const usage=[];
-  if(view==="CASHLOAN") usage.push(["Country","Country Code / Project Location","total_bade"],["MLK","CIF","total_bade"],["LPG","CIF → Sector / Segment / Region","total_bade"]);
-  if(view==="NON CASH LOAN") usage.push(["Country","Country Code","EQVIDR / BALANCE"],["CCL","Swift Code / Counterparty","EQVIDR / BALANCE"],["MLK","CUSTID / CIF","EQVIDR / BALANCE"],["LPG","CUSTID/CIF → Sector / Segment / Region","EQVIDR / BALANCE"]);
-  if(view==="CREDIT LINE") usage.push(["Country","Country Code / Bank Country","Comm Line Utilisasi + Treasury Line Utilisasi"],["CCL","Swift Code","Comm Line Utilisasi + Treasury Line Utilisasi"]);
-  if(view==="Investment Line") usage.push(["CCL","Swift Code / Bank mapping","Amount Invesment Line"]);
-  if(view==="BONDS") usage.push(["Country","Issuer Country","Amount Eq. IDR Juta"]);
-  if(view==="NOSTRO") usage.push(["Country","SwiftCode / Bank Country","Balance"]);
-  if(view==="Nominal Pertanggungan") usage.push(["CIL","Perusahaan Asuransi + Entitas","Nominal Pertanggungan 2025 / Proyeksi 2026"]);
+  const domainsUsing=productIntegratedDomains(view);
+  const sourceDomainRows=domainsUsing.map(d=>[d,integrationTargets[d]?.[view]||"Target mapping belum dilengkapi",getProductMeta(view)?.exposure||"—"]);
   return <div className="product-mapping-grid">
-    <div><div className="section-title">Target Integration</div>{usage.map(([d,target,exposure])=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target: {target} • Exposure: {exposure}</div></div>)}</div>
-    <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div></div>
+    <div><div className="section-title">Integration Target</div>{sourceDomainRows.map(([d,target,exposure])=><div className="mini" key={d}><b>{d}</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target Key: {target} • Utilization Field: {exposure}</div></div>)}</div>
+    <div><div className="section-title">Data Quality</div><div className="mini">Unique Key <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div><div className="mini" style={{marginTop:8}}>Source <span>{getProductMeta(view)?.sheet||"—"}</span></div></div>
   </div>;
 }
+
 
 function Products({nav}){
   const [view,setView]=useState("catalog");
@@ -1027,7 +1101,7 @@ function App(){
   if(!login) return <Login go={()=>setLogin(true)}/>;
   if(screen==="dashboard") return <Dashboard nav={nav}/>;
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;
-  if(screen==="detail") return <Detail nav={nav} type={sel} key={sel+":"+selKey} />;
+  if(screen==="detail") return <Detail nav={nav} type={sel} recordKey={selKey} key={sel+":"+selKey} />;
   if(screen==="products") return <Products nav={nav}/>;
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
