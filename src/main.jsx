@@ -1119,27 +1119,31 @@ function ProductDatabaseTable({view}){
 }
 function ProductUsage({view}){
   const domainsUsing=productIntegratedDomains(view);
+  const rows=productDatabase[view]||[];
   const sourceDomainRows=domainsUsing.map(d=>[
     d,
     integrationTargets[d]?.[view]||"Target mapping belum dilengkapi",
     integrationRuntimeSource[d]?.[view]||"Runtime source belum dilengkapi",
-    getProductMeta(view)?.exposure||"—"
+    getProductMeta(view)?.exposure||"—",
+    rows.filter(r=>(r.applied||[]).some(a=>a.limitType===d)).length
   ]);
   return <div className="product-mapping-grid">
     <div>
       <div className="section-title">Applied to Limit / Runtime Lineage</div>
-      {sourceDomainRows.map(([d,target,source,exposure])=><div className="mini" key={d}>
+      {sourceDomainRows.map(([d,target,source,exposure,count])=><div className="mini" key={d}>
         <b>{d}</b>
-        <div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Target Key: {target}</div>
-        <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>Runtime Source: {source}</div>
-        <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>Utilization Field: {exposure}</div>
+        <div className="muted-small">Target Key: {target}</div>
+        <div className="muted-small">Runtime Source: {source}</div>
+        <div className="muted-small">Utilization Field: {exposure}</div>
+        <div className="muted-small">Mapped Records: {count}</div>
       </div>)}
-      {!sourceDomainRows.length&&<div className="mini"><b>Future / Scoped</b><div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Belum menjadi runtime integration aktif.</div></div>}
+      {!sourceDomainRows.length&&<div className="mini"><b>Future / Scoped</b><div className="muted-small">Belum menjadi runtime integration aktif.</div></div>}
     </div>
     <div>
       <div className="section-title">Data Quality</div>
-      <div className="mini">Unique Key <Status v="Normal"/></div>
-      <div className="mini" style={{marginTop:8}}>Mapping <Status v="Normal"/></div>
+      <div className="mini">Product Records <span className="chip blue">{rows.length}</span></div>
+      <div className="mini" style={{marginTop:8}}>Unique Key <Status v="Normal"/></div>
+      <div className="mini" style={{marginTop:8}}>Mapping <Status v={rows.filter(r=>(r.applied||[]).length).length===rows.length?"Normal":"Warning"}/></div>
       <div className="mini" style={{marginTop:8}}>Source Schema <span>{getProductMeta(view)?.sheet||"—"}</span></div>
     </div>
   </div>;
