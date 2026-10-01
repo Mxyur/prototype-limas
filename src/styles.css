@@ -144,3 +144,13 @@
   .product-field-toolbar{align-items:flex-start;flex-direction:column}
   .product-mapping-grid{grid-template-columns:1fr}
 }
+
+.product-credit-table{min-width:1250px}
+.product-credit-table th,.product-credit-table td{vertical-align:top}
+.product-credit-table th:nth-child(1){min-width:190px}
+.product-credit-table th:nth-child(2),.product-credit-table th:nth-child(3){min-width:190px}
+.product-credit-table th:nth-child(4){min-width:250px}
+.product-credit-table th:nth-child(5){min-width:360px}
+.product-credit-table td:nth-child(2),.product-credit-table td:nth-child(3){white-space:nowrap}
+.product-credit-table thead th:nth-child(2){background:#eef5ff;color:#1b5fae}
+.product-credit-table thead th:nth-child(3){background:#eef8f4;color:#16714f}
