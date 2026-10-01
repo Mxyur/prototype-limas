@@ -1458,7 +1458,6 @@ const productFieldNotes={
     region_lpg:"Atribut region pada level debitur (Region I–XII atau KP + OVS). Bankwide dibentuk dari agregasi outstanding product, bukan dari record khusus Bankwide."
   },
   "NON CASH LOAN":{
-    "Country Code":"Country Exposure / key Country Limit pada source NCL. Tidak membuat field Country Exposure baru.",
     "Swift Code":"Identifier/source Swift counterparty. Untuk CCL, join ke master menggunakan Swift Code Vlookup; actual Swift tidak wajib identik dengan normalized master key.",
     "CUSTID":"Identifier CIF/customer.",
     "CPNM":"Nama counterparty yang digunakan untuk country judgment.",
@@ -1476,13 +1475,13 @@ const productFieldNotes={
   },
   "BONDS":{
     "Branch":"Branch pada source Bonds digunakan sebagai source kantor pembukuan bila dibutuhkan untuk bucket Domestic/Overseas; tidak membuat field Booking Office baru.",
-    "Issuer Country":"Negara issuer untuk Country Exposure/Country Limit.";
+    "Issuer Country":"Negara issuer untuk Country Exposure/Country Limit.",
     "Amount Eq. IDR Juta":"Exposure ekuivalen IDR.",
     "Maturity Date":"Tanggal maturity; workbook mencatat limit dapat kembali setelah maturity."
   },
   "NOSTRO":{
     "Branch":"Branch pada source Nostro digunakan sebagai source kantor pembukuan bila dibutuhkan untuk bucket Domestic/Overseas; tidak membuat field Booking Office baru.",
-    "Bank Country":"Country pada source Nostro sebagai Country Exposure/Country Limit.";
+    "Bank Country":"Country pada source Nostro sebagai Country Exposure/Country Limit.",
     "Balance":"Balance dalam kurs asli; workbook mencatat kebutuhan konversi menggunakan kurs tengah NTR."
   },
   "Nominal Pertanggungan":{
