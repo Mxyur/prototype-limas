@@ -157,3 +157,15 @@
 
 .integration-chip-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .integration-chip{min-height:64px}
+
+.product-database-card{margin-top:18px}
+.product-db-wrap{max-height:620px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.product-db-table{min-width:1800px}
+.product-db-table th,.product-db-table td{vertical-align:top;white-space:nowrap}
+.product-db-table th:first-child,.product-db-table td:first-child{position:sticky;left:0;z-index:2;background:inherit}
+.product-db-table td:first-child{font-weight:700}
+.product-db-kpis{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.product-db-kpis .mini{display:flex;flex-direction:column;gap:4px}
+.product-db-kpis strong{font-size:20px;color:var(--text)}
+.db-apply-row{padding:3px 0;line-height:1.35;border-bottom:1px dashed var(--line)}
+.db-apply-row:last-child{border-bottom:0}
