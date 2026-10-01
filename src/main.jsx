@@ -343,8 +343,8 @@ function Setup({nav,setSel}){
           <div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Master Limit</button></div>
         </div>
         <div className="body">
-          <div className="tabs">{Object.keys(domains).map(d=><button className={\`tab \${d===type?'active':''}\`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
-          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={\`Cari \${info.key}\`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
+          <div className="tabs">{Object.keys(domains).map(d=><button className={`tab ${d===type?'active':''}`} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
+          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={`Cari ${info.key}`}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Unique Key</th><th>Master Object</th><th>Master Sections</th><th>Linked Product Integration</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
