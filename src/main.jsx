@@ -1224,14 +1224,14 @@ const productTabSource={
   "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
   "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
 };
-const canonicalProductUtilizationFields=["Booking Office","Booking Office Type","Booking Office Status","Country Exposure"];
+const canonicalProductUtilizationFields=[];
 const countryIntegratedProductIds=["CASHLOAN","NON CASH LOAN","Investment Line","BONDS","NOSTRO"];
 const productTabFields={
-  "CASHLOAN":[...(productFields["CASHLOAN"]||[]),...canonicalProductUtilizationFields],
-  "NON CASH LOAN":[...(productFields["NON CASH LOAN"]||[]),...canonicalProductUtilizationFields],
-  "Investment Line":[...(productFields["Investment Line"]||[]),...canonicalProductUtilizationFields],
-  "BONDS":[...(productFields["BONDS"]||[]),...canonicalProductUtilizationFields],
-  "NOSTRO":[...(productFields["NOSTRO"]||[]),...canonicalProductUtilizationFields],
+  "CASHLOAN":[...(productFields["CASHLOAN"]||[])],
+  "NON CASH LOAN":[...(productFields["NON CASH LOAN"]||[])],
+  "Investment Line":[...(productFields["Investment Line"]||[])],
+  "BONDS":[...(productFields["BONDS"]||[])],
+  "NOSTRO":[...(productFields["NOSTRO"]||[])],
   "Nominal Pertanggungan":[
     "No","Perusahaan Asuransi","Jenis Prudk Asuransi","Entitas","EIL Entitas (Rp Juta)",
     "Nominal Pertanggungan 2025 (Rp Juta)","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)",
@@ -1243,7 +1243,7 @@ const productTabFields={
 
 const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
   p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
-  p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[]),...canonicalProductUtilizationFields]:
+  p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[])]:
   (productTabFields[p.id]||productFields[p.id]||[])
 )]]));
 
@@ -1439,22 +1439,18 @@ const creditLineSamples={
   "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
 };
 const creditLineFields=[...new Set(creditLineGroups["Commercial Line"])];
-const creditLineCanonicalFields=[...canonicalProductUtilizationFields];
+const creditLineCanonicalFields=[];
 const creditLineTreasuryOnly=new Set(["Treasury DN","Treasury DN Utilisasi","Treasury LN","Treasury LN Utilisasi","Treasury Line Total","Treasury Line Total Utilisasi","TDN","TDN Utilisasi","TLN","TLN Utilisasi","Treasury Line","Total Utilisasi","CDN","CDN Utilisasi","CLN","CLN Utilisasi"]);
 const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN","Comm LN Utilisasi","Comm Line Total","Comm Line Total Utilisasi"]);
 const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
 
 
 const productFieldNotes={
-  "_CANONICAL_":{
-    "Booking Office":"Kantor pembukuan yang menjadi atribut canonical untuk menentukan bucket Domestic/Overseas.",
-    "Booking Office Type":"Tipe kantor pembukuan: Domestic atau Overseas. Untuk Country, field ini adalah determinant canonical split exposure.",
-    "Booking Office Status":"Status kualitas mapping Booking Office terhadap Booking Office Type.",
-    "Country Exposure":"Country key yang menjadi target Country Limit. Country dan Domestic/Overseas adalah dua dimensi berbeda."
-  },
+  "_CANONICAL_":{},
   "CASHLOAN":{
-    project_location:"Country mapping berdasarkan lokasi proyek.",
-    code:"Country Code sebagai key mapping.",
+    nm_cab:"Nama cabang/kantor pembukuan pada source Cash Loan. Digunakan sebagai source field Booking Office; tidak membuat field Booking Office baru.",
+    project_location:"Lokasi proyek sebagai source context Country Exposure; bukan nama kantor pembukuan.",
+    code:"Country Code sebagai key Country Exposure untuk Country Limit.",
     total_limit:"Total limit rekening/fasilitas.",
     total_bade:"Total outstanding/BADE yang digunakan sebagai exposure.",
     ecosystem_lpg:"Atribut debitur untuk klasifikasi Ecosystem LPG/Sektor; bukan master limit dan bukan Applied Limit.",
@@ -1462,6 +1458,7 @@ const productFieldNotes={
     region_lpg:"Atribut region pada level debitur (Region I–XII atau KP + OVS). Bankwide dibentuk dari agregasi outstanding product, bukan dari record khusus Bankwide."
   },
   "NON CASH LOAN":{
+    "Country Code":"Country Exposure / key Country Limit pada source NCL. Tidak membuat field Country Exposure baru.",
     "Swift Code":"Identifier/source Swift counterparty. Untuk CCL, join ke master menggunakan Swift Code Vlookup; actual Swift tidak wajib identik dengan normalized master key.",
     "CUSTID":"Identifier CIF/customer.",
     "CPNM":"Nama counterparty yang digunakan untuk country judgment.",
@@ -1478,12 +1475,14 @@ const productFieldNotes={
     "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa":"Catatan pooling untuk fasilitas yang belum termapping."
   },
   "BONDS":{
-    "Issuer Country":"Negara issuer untuk country limit.",
+    "Branch":"Branch pada source Bonds digunakan sebagai source kantor pembukuan bila dibutuhkan untuk bucket Domestic/Overseas; tidak membuat field Booking Office baru.",
+    "Issuer Country":"Negara issuer untuk Country Exposure/Country Limit.";
     "Amount Eq. IDR Juta":"Exposure ekuivalen IDR.",
     "Maturity Date":"Tanggal maturity; workbook mencatat limit dapat kembali setelah maturity."
   },
   "NOSTRO":{
-    "Bank Country":"Country hasil trim Swift Code.",
+    "Branch":"Branch pada source Nostro digunakan sebagai source kantor pembukuan bila dibutuhkan untuk bucket Domestic/Overseas; tidak membuat field Booking Office baru.",
+    "Bank Country":"Country pada source Nostro sebagai Country Exposure/Country Limit.";
     "Balance":"Balance dalam kurs asli; workbook mencatat kebutuhan konversi menggunakan kurs tengah NTR."
   },
   "Nominal Pertanggungan":{
@@ -1511,16 +1510,9 @@ function loadProductFieldMeta(tab,group,field){
     if(saved)return JSON.parse(saved);
   }catch(e){}
   const sheet=productTabSource[tab]||tab;
-  const canonicalSource={
-    "Booking Office":sheet+" / Booking Office reference",
-    "Booking Office Type":sheet+" / Booking Office reference",
-    "Booking Office Status":sheet+" / Booking Office reference",
-    "Country Exposure":sheet+" / Country mapping"
-  };
-  const note=productFieldNotes[tab]?.[field]||productFieldNotes._CANONICAL?.[field]||
+  const note=productFieldNotes[tab]?.[field]||
     (tab==="CREDIT LINE" ? group+" field dari source sheet Credit Line (CommLine and TL)." : "Field "+field+" digunakan sebagai source data "+tab+".");
-  const source=canonicalSource[field]||("master_dataproduk.xlsx • "+sheet);
-  return {source,note};
+  return {source:"master_dataproduk.xlsx • "+sheet,note};
 }
 function saveProductFieldMeta(tab,group,field,meta){
   try{window.localStorage.setItem(productMetaKey(tab,group,field),JSON.stringify(meta));}catch(e){}
@@ -1538,7 +1530,7 @@ function saveProductCatalogMeta(item,meta){
 }
 
 function CreditLineFieldTable(){
-  const fields=[...creditLineFields,...creditLineCanonicalFields];
+  const fields=creditLineFields;
   const [editing,setEditing]=useState(false);
   const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta("CREDIT LINE","Combined",f)]));
   const [draft,setDraft]=useState(buildDraft);
@@ -1578,17 +1570,6 @@ function CreditLineFieldTable(){
   </div>;
 }
 
-function productDictionarySample(tab,field,sample){
-  if(canonicalProductUtilizationFields.includes(field)){
-    const row=(productDatabase[tab]||[])[0];
-    if(field==="Booking Office")return row?.bookingOffice||"—";
-    if(field==="Booking Office Type")return row?.bookingOfficeType||"Needs Mapping";
-    if(field==="Booking Office Status")return row?.bookingOfficeStatus||"Needs Mapping";
-    if(field==="Country Exposure")return row?.countryExposure||"—";
-  }
-  return sample[field]===0?0:(sample[field]||"—");
-}
-
 function ProductFieldTable({tab,group="",fields=[],sample={}}){
   const buildDraft=()=>Object.fromEntries(fields.map(f=>[f,loadProductFieldMeta(tab,group,f)]));
   const [editing,setEditing]=useState(false);
@@ -1608,7 +1589,7 @@ function ProductFieldTable({tab,group="",fields=[],sample={}}){
         <tbody>{fields.map(f=>{
           const m=draft[f]||{};
           return <tr key={f}>
-            <td><b>{f}</b></td><td>{productDictionarySample(tab,f,sample)}</td>
+            <td><b>{f}</b></td><td>{sample[f]===0?0:(sample[f]||"—")}</td>
             <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
             <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
           </tr>
