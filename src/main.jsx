@@ -844,6 +844,25 @@ const productMasterCatalog=[
   {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
 ];
 
+const productTabSource={
+  "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
+  "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
+};
+const productTabFields={
+  "CASHLOAN":productFields["CASHLOAN"]||[],
+  "NON CASH LOAN":productFields["NON CASH LOAN"]||[],
+  "Investment Line":productFields["Investment Line"]||[],
+  "BONDS":productFields["BONDS"]||[],
+  "NOSTRO":productFields["NOSTRO"]||[],
+  "Nominal Pertanggungan":[
+    "No","Perusahaan Asuransi","Jenis Prudk Asuransi","Entitas","EIL Entitas (Rp Juta)",
+    "Nominal Pertanggungan 2025 (Rp Juta)","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)",
+    "Utilisasi EIL (%)","CIL (Rp Juta)","CIT (Rp Juta)","Utilisasi CIL (%)",
+    "% Utilisasi (Nominal Pertanggungan/CIL)","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)",
+    "Skor Akreditasi (PCP)","Klasifikasi EWS (PCP)","Status / Rekomendasi Action Plan"
+  ]
+};
+
 const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
   p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
   p.id==='CREDIT LINE'?[...(productFields["COMMERCIAL LINE (CRDT)"]||[]),...(productFields["TREASURY LINE (CRDT)"]||[])]:
@@ -945,24 +964,6 @@ const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN",
 const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
 
 
-const productTabSource={
-  "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
-  "Investment Line":"Investment Line","BONDS":"BONDS","NOSTRO":"NOSTRO","Nominal Pertanggungan":"CIL_MONITORING"
-};
-const productTabFields={
-  "CASHLOAN":productFields["CASHLOAN"]||[],
-  "NON CASH LOAN":productFields["NON CASH LOAN"]||[],
-  "Investment Line":productFields["Investment Line"]||[],
-  "BONDS":productFields["BONDS"]||[],
-  "NOSTRO":productFields["NOSTRO"]||[],
-  "Nominal Pertanggungan":[
-    "No","Perusahaan Asuransi","Jenis Prudk Asuransi","Entitas","EIL Entitas (Rp Juta)",
-    "Nominal Pertanggungan 2025 (Rp Juta)","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)",
-    "Utilisasi EIL (%)","CIL (Rp Juta)","CIT (Rp Juta)","Utilisasi CIL (%)",
-    "% Utilisasi (Nominal Pertanggungan/CIL)","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)",
-    "Skor Akreditasi (PCP)","Klasifikasi EWS (PCP)","Status / Rekomendasi Action Plan"
-  ]
-};
 const productFieldNotes={
   "CASHLOAN":{
     project_location:"Country mapping berdasarkan lokasi proyek.",
