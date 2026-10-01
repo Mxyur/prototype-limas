@@ -955,13 +955,18 @@ function getDemoRecord(type,key){
 function masterFieldValue(type,section,field,base,row,index){
   if(!row)return base;
   if(type==="Country"){
-    const total=limasDemoData.Country.reduce((a,r)=>a+(Number(r.masterLimit)||0),0);
+    const total=limasDemoData.Country.reduce((a,r)=>a+(Number(r.capacityLimit??r.masterLimit)||0),0);
+    const alloc=countryAllocationMetrics(row);
+    const parts=field.split(" / "),product=parts[0],sub=parts[1];
+    const item=alloc.items.find(x=>x.product===product);
+    if(item&&sub) return sub==="Domestic Limit"?item.domestic:sub==="Overseas Limit"?item.overseas:sub==="Total Product Limit"?item.total:base;
     const map={"No":index+1,"Negara":row.name,"Code":row.key,"Status":row.statusMaster,
+      "Capacity / Capacity Limit":row.capacityLimit??row.masterLimit,"Capacity / Allocated Capacity":alloc.allocated,"Capacity / Unallocated Capacity":alloc.unallocated,
       "Limit FIB / Formulasi":row.formulasi,"Limit FIB / Diputus":row.diputus,
-      "Country Limit / Country Limit":row.masterLimit,
-      "Country Limit / %Country Limit":total?row.masterLimit/total:0,
+      "Country Limit / Country Limit":row.capacityLimit??row.masterLimit,
+      "Country Limit / %Country Limit":total?(Number(row.capacityLimit??row.masterLimit)||0)/total:0,
       "Gap Analysis / Needs":0,"Gap Analysis / Minus":0,"Gap Analysis / Add":0,
-      "Final Limit / Final Limit":row.masterLimit,"Final Limit / %Final Limit":total?row.masterLimit/total:0};
+      "Final Limit / Final Limit":row.capacityLimit??row.masterLimit,"Final Limit / %Final Limit":total?(Number(row.capacityLimit??row.masterLimit)||0)/total:0};
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="CCL"){
@@ -1160,13 +1165,13 @@ function makeProductRecord(productId,overrides={},applied=[],meta={}){
   const base={};
   (productSchemaFields[productId]||[]).forEach(f=>{base[f]='';});
   Object.assign(base,productSample[productId]||{},overrides);
-  const booking=deriveBookingAttributes(productId,base,meta);
+  const booking=deriveBookingAttributes(productId,overrides,meta);
   return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',status:meta.status||'Normal',...booking};
 }
 
 const productDatabase={
   'CASHLOAN':[
-    makeProductRecord('CASHLOAN',{no_cus:'16000000010',nm_cus:'PURE SOURCE DAIRY FARM CO., LTD',no_rek:'6090100009393',jns_krd:'I-SYN-CNY',src:'KLN',total_limit:'286035.62',total_bade:'286035.62',project_location:'China',code:'CN'},[{limitType:'Country',key:'CN',amount:286035.62,label:'Cash Loan'}],{recordId:'CL-COUNTRY-CN',sourceSystem:'Big Data (adjusted Country)'}),
+    makeProductRecord('CASHLOAN',{no_cus:'16000000010',nm_cus:'PURE SOURCE DAIRY FARM CO., LTD',no_rek:'6090100009393',jns_krd:'I-SYN-CNY',src:'KLN',total_limit:'286035.62',total_bade:'286035.62',project_location:'China',code:'CN'},[{limitType:'Country',key:'CN',amount:286035.62,label:'Cash Loan'}],{recordId:'CL-COUNTRY-CN',sourceSystem:'Big Data (adjusted Country)',bookingOffice:'PT BANK MANDIRI SHANGHAI (CNY)',bookingOfficeType:'Overseas',countryExposure:'CN'}),
     makeProductRecord('CASHLOAN',{no_cus:'4000264485',nm_cus:'DJARUM',no_rek:'BMRI-4000264485',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'587',total_bade:'500',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'4000264485',amount:500,label:'Cash Loan'}],{recordId:'CL-MLK-001',sourceSystem:'LIMAST'}),
     makeProductRecord('CASHLOAN',{no_cus:'1000145694',nm_cus:'ANEKA TAMBANG',no_rek:'BMRI-1000145694',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'0',total_bade:'0',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'1000145694',amount:0,label:'Cash Loan'}],{recordId:'CL-MLK-002',sourceSystem:'LIMAST'}),
     makeProductRecord('CASHLOAN',{no_cus:'16000486963',nm_cus:'TUNAS MOBILINDO PERKASA',no_rek:'BMRI-16000486963',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'12',total_bade:'10.93',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'16000486963',amount:10.93,label:'Cash Loan'}],{recordId:'CL-MLK-003',sourceSystem:'LIMAST'}),
@@ -1533,11 +1538,11 @@ function ProductDatabaseTable({view}){
     <div className="body">
       <div className="product-db-kpis"><div className="mini"><b>Source Records</b><strong>{rows.length}</strong></div><div className="mini"><b>Mapped Records</b><strong>{mapped}</strong></div><div className="mini"><b>Unmapped Records</b><strong>{rows.length-mapped}</strong></div><div className="mini"><b>Direct Unmapped</b><strong>{directUnmapped}</strong></div><div className="mini"><b>LPG Classified</b><strong>{lpgClassified}</strong></div><div className="mini"><b>Mapping Issues</b><strong>{mappingIssues}</strong></div></div>
       <div className="table-wrap product-db-wrap"><table className="table product-db-table">
-        <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
+        <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Booking Office</th><th>Booking Type</th><th>Country Exposure</th><th>Runtime Source</th><th>Applied Limit</th><th>Derived Integration</th></tr></thead>
         <tbody>{rows.map(r=><tr key={r.recordId}>
           <td className="key">{r.recordId}</td>
           {fields.map(f=><td key={f}>{r.data[f]===0?0:(r.data[f]||"—")}</td>)}
-          <td>{r.sourceSystem}</td>
+          <td>{r.bookingOffice||"—"}</td><td><Status v={r.bookingOfficeType||"Needs Mapping"}/></td><td>{r.countryExposure||"—"}</td><td>{r.sourceSystem}</td>
 
           <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=><div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}{a.scope?" • "+a.scope:""}</div>):<span className="muted-small">No direct limit mapping</span>}</td><td>{["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified?<span className="muted-small">LPG derived • {lpgProductAttribute(r,"ecosystem_lpg")} / {lpgProductAttribute(r,"segmen_lpg")} / {lpgProductAttribute(r,"region_lpg")||"Region belum diisi"}</span>:<span className="muted-small">—</span>}</td>
         </tr>)}</tbody>
@@ -1556,6 +1561,8 @@ function ProductUsage({view}){
     getProductMeta(view)?.exposure||"—",
     d==="LPG"?rows.filter(r=>["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified).length:rows.filter(r=>(r.applied||[]).some(a=>a.limitType===d)).length
   ]);
+  const bookingMapped=rows.filter(r=>r.bookingOfficeType!=="Needs Mapping").length;
+  const bookingNeedsMapping=rows.filter(r=>r.bookingOfficeType==="Needs Mapping").length;
   return <div className="product-mapping-grid">
     <div>
       <div className="section-title">Integration / Runtime Lineage</div>
@@ -1571,6 +1578,7 @@ function ProductUsage({view}){
     <div>
       <div className="section-title">Data Quality</div>
       <div className="mini">Product Records <span className="chip blue">{rows.length}</span></div>
+      <div className="mini" style={{marginTop:8}}>Booking Office Mapping <span className="chip blue">{bookingMapped}</span> <span className="muted-small">mapped / {bookingNeedsMapping} needs mapping</span></div>
       <div className="mini" style={{marginTop:8}}>Unique Key <Status v="Normal"/></div>
       <div className="mini" style={{marginTop:8}}>Integration Coverage <Status v={(() => {
         if(view==="CASHLOAN"||view==="NON CASH LOAN"){
