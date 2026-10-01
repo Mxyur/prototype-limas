@@ -721,8 +721,8 @@ function masterFieldValue(type,section,field,base,row,index){
   if(type==="MLK"){
     const map={"Entitas":row.entity,"CIF":row.key,"Nama Debitur":row.name,"Group Usaha":row.group,"Group":row.group,
       "Tier":row.tier,"Master Limit Setting":row.masterLimit,"Master Limit":row.masterLimit,
-      "CL Bade":row.products?.CASHLOAN||0,"NCL Bade":row.products?.["NON CASH LOAN"]||0,
-      "Bade Treasury Line":row.products?.["TREASURY LINE"]||0};
+      "CL Bade":productContributionMap("MLK",row.key).CASHLOAN||0,"NCL Bade":productContributionMap("MLK",row.key)["NON CASH LOAN"]||0,
+      "Bade Treasury Line":productContributionMap("MLK",row.key)["CREDIT LINE|Treasury"]||0};
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="CIL"){
@@ -744,6 +744,27 @@ function masterFieldValue(type,section,field,base,row,index){
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   return base;
+}
+
+function UtilizationTrace({type,key}){
+  const apps=productApplicationsFor(type,key);
+  return <section className="card">
+    <div className="head"><div><h2>Utilization Source Trace</h2><p>Jejak source record yang benar-benar membentuk outstanding/exposure pada Master Limit ini.</p></div><span className="chip blue">{apps.length} mapped source records</span></div>
+    <div className="body">
+      {apps.length===0?<div className="mini">Belum ada product utilization yang ter-mapping ke key ini.</div>:
+      <div className="table-wrap"><table className="table">
+        <thead><tr><th>Product</th><th>Source Record</th><th>Exposure Field</th><th>Source Value</th><th>Applied Amount</th><th>Runtime Source</th><th>Mapping</th></tr></thead>
+        <tbody>{apps.map((a,i)=>{
+          const raw=a.sourceData?.[a.exposureField]??"—";
+          const label=a.productId==="CREDIT LINE"?(a.scope?"Credit Line • "+a.scope:"Credit Line"):demoProductLabel(a.productId);
+          return <tr key={a.recordId+"-"+i}>
+            <td><b>{label}</b></td><td className="key">{a.recordId}</td><td>{a.exposureField}</td><td>{raw}</td><td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{a.sourceSystem}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/><div className="muted-small">{a.masterMatch?"Target master found":"Target master not found"} • {a.transform}</div></td>
+          </tr>;
+        })}</tbody>
+      </table></div>}
+      <div className="field-help">Applied Amount adalah nilai yang masuk ke aggregation limit. Source Value menunjukkan nilai asli pada product database; bila ada konversi/normalisasi, transform ditampilkan agar lineage dapat ditelusuri.</div>
+    </div>
+  </section>;
 }
 function Detail({nav,type="Country",recordKey=""}){
   const safeType=domains[type]?type:"Country";
@@ -783,6 +804,8 @@ function Detail({nav,type="Country",recordKey=""}){
           <div className="field-help">Master Limit Detail hanya menyimpan master limit/parameter. Product exposure, outstanding dan utilisasi tidak direplikasi di sini.</div>
         </div>
       </section>
+      <UtilizationTrace type={safeType} key={selectedRecord?.key||recordKey}/>
+
       <section className="card">
         <div className="head"><div><h2>Linked Product Integration</h2><p>Hanya ringkasan koneksi; detail source field dikelola pada Product Source & Mapping.</p></div><button className="btn secondary" onClick={()=>nav('products')}>Buka Product Mapping</button></div>
         <div className="body"><div className="integration-chip-grid">{linkedProducts.map(p=><div className="mini integration-chip" key={p}><b>{integrationLabel(p)}</b><div style={{fontSize:10,color:"var(--muted)",marginTop:4}}>Product utilization terintegrasi • {p==="CREDIT LINE"?"Commercial + Treasury scope":"linked exposure"}</div></div>)}</div></div>
@@ -848,7 +871,7 @@ const productDatabase={
     makeProductRecord('CASHLOAN',{no_cus:'LPG-005',nm_cus:'PT FARMASI CORPORATE A',no_rek:'LPG-FK-001',jns_krd:'KREDIT',src:'DWH',total_limit:'24600',total_bade:'10000',project_location:'Indonesia',code:'ID'},[{limitType:'LPG',key:'FARMASI & KESEHATAN|Corporate|Bankwide',amount:10000,label:'Cash Loan'}],{recordId:'CL-LPG-005',sourceSystem:'DWH'})
   ],
   'NON CASH LOAN':[
-    makeProductRecord('NON CASH LOAN',{NO:'1',MODULE:'EXCO','Swift Code':'ANZB AU 3M',REPORTTYPE:'Export Collection Financing',TRXREF:'XC77126002607',CUSTID:'16000005630',CUSTNM:'PT. PABRIK KERTAS TJIWI KIMIA TBK',CPNM:'KENSINGTON INTERNATIONAL LIMITED','Country Code':'HK','Country Name':'Hong Kong',CCY:'USD',AMOUNT:'14978.87',BALANCE:'14978.87',EXCHANGERT:'17310',EQVIDR:'259284240',FINTYPE:'DISCOUNT/REDISCOUNT',TRXDATE:'07/04/2026',DUEDATE:'02/10/2026',SERVCODE:'77106',SERVNM:'Trade Operation Export',SOF:'T',INTRT:'6.97'},[{limitType:'CCL',key:'ANZBAU3M',amount:0,label:'Non Cash Loan'}],{recordId:'NCL-CCL-001',sourceSystem:'Core Banking Limit System'}),
+    makeProductRecord('NON CASH LOAN',{NO:'1',MODULE:'EXCO','Swift Code':'ANZB AU 3M',REPORTTYPE:'Export Collection Financing',TRXREF:'XC77126002607',CUSTID:'16000005630',CUSTNM:'PT. PABRIK KERTAS TJIWI KIMIA TBK',CPNM:'KENSINGTON INTERNATIONAL LIMITED','Country Code':'HK','Country Name':'Hong Kong',CCY:'USD',AMOUNT:'14978.87',BALANCE:'14978.87',EXCHANGERT:'17310',EQVIDR:'259284240',FINTYPE:'DISCOUNT/REDISCOUNT',TRXDATE:'07/04/2026',DUEDATE:'02/10/2026',SERVCODE:'77106',SERVNM:'Trade Operation Export',SOF:'T',INTRT:'6.97'},[{limitType:'CCL',key:'ANZBAU3M',amount:0,label:'Non Cash Loan'},{limitType:'Country',key:'HK',amount:259.28424,label:'Non Cash Loan'}],{recordId:'NCL-CCL-001',sourceSystem:'Core Banking Limit System'}),
     makeProductRecord('NON CASH LOAN',{NO:'2',MODULE:'EPLC','Swift Code':'ANZB AU 3M',REPORTTYPE:'Bank Guarantee',TRXREF:'NCL-0002',CUSTID:'1000145694',CUSTNM:'ANEKA TAMBANG',CPNM:'ANZ Banking Group','Country Code':'AU','Country Name':'Australia',CCY:'USD',AMOUNT:'12.47',BALANCE:'12.47',EXCHANGERT:'17310',EQVIDR:'215810000',FINTYPE:'GUARANTEE'},[{limitType:'MLK',key:'1000145694',amount:215.81,label:'Non Cash Loan'}],{recordId:'NCL-MLK-002',sourceSystem:'LIMAST'}),
     makeProductRecord('NON CASH LOAN',{NO:'3',MODULE:'EPLC','Swift Code':'DBSASGSG',REPORTTYPE:'Bank Guarantee',TRXREF:'NCL-0003',CUSTID:'20000474637',CUSTNM:'TUNAS RIDEAN',CPNM:'DBS Bank','Country Code':'SG','Country Name':'Singapore',CCY:'USD',AMOUNT:'900',BALANCE:'900',EXCHANGERT:'17300',EQVIDR:'155700000',FINTYPE:'GUARANTEE'},[{limitType:'MLK',key:'20000474637',amount:15.57,label:'Non Cash Loan'}],{recordId:'NCL-MLK-003',sourceSystem:'LIMAST'}),
     makeProductRecord('NON CASH LOAN',{NO:'4',MODULE:'LPG',REPORTTYPE:'LPG Portfolio',TRXREF:'LPG-NCL-001',CUSTID:'LPG-NCL-001',CUSTNM:'PT BATUBARA CORPORATE NCL','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'7919',BALANCE:'7919',EQVIDR:'7919',FINTYPE:'Portfolio'},[{limitType:'LPG',key:'BATUBARA|Corporate|Bankwide',amount:7919,label:'Non Cash Loan'}],{recordId:'NCL-LPG-001',sourceSystem:'DWH'}),
@@ -869,7 +892,7 @@ const productDatabase={
     makeProductRecord('CREDIT LINE',{No:'9',Nama:'TUNAS RIDEAN Treasury', 'Swift Code':'RIDEAN-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'262','Bade Treasury Line':'262','Treasury Line Total Utilisasi':'262','Credit Line Total Utilisasi':'262'},[{limitType:'MLK',key:'20000474637',amount:262,label:'Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-004',sourceSystem:'LIMAST'})
   ],
   'Investment Line':Array.from({length:5},(_,i)=>makeProductRecord('Investment Line',{No:String(i+1),'Nama Bank':['ANZ','DBS','OCBC','MUFG','Mizuho'][i],'Nama Entity (Scope Entity : AKK)':'DPBM',Switftcode:['ANZxx','DBSxx','OCBCxx','MUFGxx','MHCBxx'][i],'Jenis Invesment Line':i<3?'Deposito':'Placement','Amount Invesment Line':['10000000000','5000000000','3500000000','2500000000','1800000000'][i]},[],{recordId:'INV-00'+(i+1),sourceSystem:'Investment source / Monthly'})),
-  'BONDS':Array.from({length:5},(_,i)=>makeProductRecord('BONDS',{Date:'30-Apr-26',Branch:'Head Office','Securities Type':i===2?'Corporate Bond':'Fixed Rate','Securities Name':['FR0037','FR0080','OBL-ABC','FR0090','FR0100'][i],'Issuer Name':i===2?'Indo Corp':'Indo Gov','Issuer Country':'ID','Issuer Type':i===2?'Corporate':'Government',Portfolio:'Banking Book',CCY:'IDR',Amount:['585424000000','250000000000','100000000000','75000000000','50000000000'][i],'Amount Eq. IDR Juta':['585424','250000','100000','75000','50000'][i],'Maturity Date':['15-Sep-26','15-Jan-27','15-May-27','15-May-28','15-Jun-29'][i],Coupon:['12%','6.5%','7%','7.5%','7%'][i],'Potential P/L (Eq. IDR Juta)':'0'},[],{recordId:'BND-00'+(i+1),sourceSystem:'Market Risk/Treasury'})),
+  'BONDS':Array.from({length:5},(_,i)=>makeProductRecord('BONDS',{Date:'30-Apr-26',Branch:'Head Office','Securities Type':i===2?'Corporate Bond':'Fixed Rate','Securities Name':['FR0037','FR0080','OBL-ABC','FR0090','FR0100'][i],'Issuer Name':i===2?'Indo Corp':'Indo Gov','Issuer Country':'ID','Issuer Type':i===2?'Corporate':'Government',Portfolio:'Banking Book',CCY:'IDR',Amount:['585424000000','250000000000','100000000000','75000000000','50000000000'][i],'Amount Eq. IDR Juta':['585424','250000','100000','75000','50000'][i],'Maturity Date':['15-Sep-26','15-Jan-27','15-May-27','15-May-28','15-Jun-29'][i],Coupon:['12%','6.5%','7%','7.5%','7%'][i],'Potential P/L (Eq. IDR Juta)':'0'},[{limitType:'Country',key:'ID',amount:0,label:'Bonds',reason:'Issuer Country = ID; excluded from active Country exposure demo'}],{recordId:'BND-00'+(i+1),sourceSystem:'Market Risk/Treasury'})),
   'NOSTRO':Array.from({length:5},(_,i)=>makeProductRecord('NOSTRO',{Year:'Apr-26',Branch:'Head Office',SwfitCode:['XXXXAEJX','XXXXUSXX','XXXXSGXX','XXXXJPXX','XXXXGBXX'][i],'Bank Name':['FIRST ABU DABI BANK','BANK OF AMERICA','DBS BANK','MUFG BANK','BARCLAYS BANK'][i],'Bank Country':['AE','US','SG','JP','GB'][i],Balance:['26.64','0','0','0','0'][i]},[{limitType:'Country',key:['AE','US','SG','JP','GB'][i],amount:i===0?26.64:0,label:'Nostro'}],{recordId:'NOS-00'+(i+1),sourceSystem:'Internal Mandiri'})),
   'Nominal Pertanggungan':Array.from({length:16},(_,i)=>{
     const insurers=[['TUGU','PT Asuransi Tugu Pratama Indonesia Tbk','Asuransi Kredit',[['BMRI',60093270.28,11573402.55],['Mandiri Taspen',26999429.42,0],['MTF',10591613.12,285708.13],['MUF',10129963.92,21313]]],['PLN-INS','PT Asuransi Perisai Listrik Nasional','Asuransi',[['BMRI',6660665.24,1463320.54],['Mandiri Taspen',2992584.03,21417716.08],['MTF',1173961.56,0],['MUF',1122792.92,18378]]],['ASKRIDA','PT Asuransi Bangun Askrida','Asuransi',[['BMRI',12864690.67,2618582.14],['Mandiri Taspen',5780003.42,17299747.72],['MTF',2267439.03,0],['MUF',2168609.76,0]]],['AKRINDO','PT Asuransi Kredit Indonesia','Asuransi',[['BMRI',51624833.26,1058528.01],['Mandiri Taspen',23194627.88,4878825.62],['MTF',9099026.54,0],['MUF',8702433.67,0]]]];
@@ -880,7 +903,23 @@ const productDatabase={
 
 function productApplicationsFor(type,key){
   const out=[];
-  Object.values(productDatabase).forEach(rows=>rows.forEach(r=>(r.applied||[]).forEach(a=>{if(a.limitType===type&&String(a.key)===String(key))out.push({...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem});})));
+  const exposureField=(productId,scope)=>{
+    if(productId==="CASHLOAN")return "total_bade";
+    if(productId==="NON CASH LOAN")return "EQVIDR / BALANCE";
+    if(productId==="CREDIT LINE")return scope==="Commercial"?"Comm Line Total Utilisasi":"Treasury Line Total Utilisasi";
+    if(productId==="BONDS")return "Amount Eq. IDR Juta";
+    if(productId==="NOSTRO")return "Balance";
+    if(productId==="Nominal Pertanggungan")return "Nominal Pertanggungan 2025 (Rp Juta)";
+    return getProductMeta(productId)?.exposure||"—";
+  };
+  const transform=(productId)=>productId==="NON CASH LOAN"?"EQVIDR dikonversi ke Rp Juta (/1.000.000)":"Direct / source unit";
+  Object.values(productDatabase).forEach(rows=>rows.forEach(r=>(r.applied||[]).forEach(a=>{
+    if(a.limitType===type&&String(a.key)===String(key))out.push({
+      ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
+      exposureField:exposureField(r.productId,a.scope),transform:transform(r.productId),
+      masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key))
+    });
+  })));
   return out;
 }
 function productContributionMap(type,key){
