@@ -178,7 +178,7 @@ function lpgProductApplicationsForKey(key){
           sourceData:r.data,amount,label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",
           scope:c.region||null,entity:r.data?.nm_cus||r.data?.CUSTNM||"",
           exposureField:productId==="CASHLOAN"?"total_bade":"EQVIDR",
-          transform:productId==="NON CASH LOAN"?"EQVIDR / 1.000.000":"Direct / Rp Juta",
+          transform:productId==="NON CASH LOAN"?(r.sourceSystem==="DWH"&&r.data?.CCY==="IDR"?"BALANCE / Rp Juta":"EQVIDR / 1.000.000"):"Direct / Rp Juta",
           masterMatch:true
         });
       }
@@ -189,8 +189,8 @@ function lpgProductApplicationsForKey(key){
 function lpgRawProductApps(row,scope){
   if(!row)return [];
   const rows=row.segment==="TOTAL SEKTOR"?lpgLeafRows().filter(x=>x.sector===row.sector):[row];
-  return rows.flatMap(x=>lpgProductApplicationsForKey(x.key))
-    .filter(a=>scope===LPG_BANK_SCOPE?(a.scope==null||a.scope===""):a.scope===scope);
+  const apps=rows.flatMap(x=>lpgProductApplicationsForKey(x.key));
+  return scope===LPG_BANK_SCOPE ? apps : apps.filter(a=>a.scope===scope);
 }
 function lpgScopeProductExposure(row,scope){
   const apps=lpgRawProductApps(row,scope);
