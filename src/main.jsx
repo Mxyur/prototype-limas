@@ -928,7 +928,7 @@ function productContributionMap(type,key){
   return map;
 }
 function productContributionDetail(type,key){return Object.entries(productContributionMap(type,key)).map(([product,amount])=>({product,amount})).filter(x=>x.amount!==0);}
-const reportDummy=buildReportDummy(limasDemoData);
+reportDummy=buildReportDummy(limasDemoData);
 
 
 const creditLineGroups={
