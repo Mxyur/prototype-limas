@@ -1212,8 +1212,8 @@ function sourceExposure(p){return getProductMeta(p)?.exposure||"—"}
 
 const productMasterCatalog=[
   {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country Exposure memakai field code/Country Code pada source. Booking Office memakai nm_cab; Domestic/Overseas adalah derived classification dari kantor pembukuan, bukan source field baru."},
-  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Country Exposure memakai Country Code/judgment source. Source NCL tidak menyediakan field Booking Office pada schema saat ini; jangan membuat field baru atau menginfer kantor dari Country Code."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring. Country mapping memakai Code/Negara sesuai source; schema saat ini belum memiliki source Booking Office, sehingga Domestic/Overseas tidak boleh diisi dengan field baru tanpa source/reference yang disepakati."},
+  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Country Exposure memakai Country Code. Untuk kebutuhan Domestic/Overseas, LIMAS menambahkan Business Enrichment Booking Office + Booking Office Type sebagai reference layer karena source NCL belum menyediakan kantor pembukuan. Nilai tidak boleh diinfer dari Country Code."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Comm Line Utilisasi + Treasury Line Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Commercial Line dan Treasury Line digabung dalam satu source sheet dan satu tab monitoring. Country mapping memakai Code/Negara. Untuk kebutuhan Domestic/Overseas, LIMAS menambahkan Business Enrichment Booking Office + Booking Office Type sebagai reference layer karena source Credit Line belum menyediakan kantor pembukuan."},
   {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur yang belum termapping. Tidak termasuk linked product Country saat ini; source field tetap mengikuti Investment Line."},
   {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country Exposure memakai Issuer Country. Jika Domestic/Overseas diperlukan, Branch adalah source field kantor pembukuan; Branch tidak boleh diganti dengan Issuer Country dan tidak perlu dibuat field Booking Office baru."},
   {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country Exposure memakai Bank Country. Jika Domestic/Overseas diperlukan, Branch adalah source field kantor pembukuan; tidak membuat field Booking Office baru. Balance masih kurs asli dan perlu konversi kurs tengah NTR."},
@@ -1222,12 +1222,20 @@ const productMasterCatalog=[
 
 const productBusinessMapping={
   "CASHLOAN":{countryExposureField:"code",countryExposureLabel:"Country Code",bookingOfficeField:"nm_cab",bookingOfficeLabel:"nm_cab",exposureField:"total_bade",exposureLabel:"Total BADE",limitSource:"Country master: Product Distribution / CASHLOAN / Domestic + Overseas Limit"},
-  "NON CASH LOAN":{countryExposureField:"Country Code",countryExposureLabel:"Country Code",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia pada source schema",exposureField:"EQVIDR / BALANCE",exposureLabel:"EQVIDR / BALANCE",limitSource:"Country master: Product Distribution / NON CASH LOAN / Domestic + Overseas Limit"},
-  "CREDIT LINE":{countryExposureField:"Code",countryExposureLabel:"Code / Negara",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia pada source schema",exposureField:"Comm Line Total Utilisasi / Bade Treasury Line",exposureLabel:"Commercial / Treasury utilization",limitSource:"Country master: Product Distribution / CREDIT LINE / Domestic + Overseas Limit"},
+  "NON CASH LOAN":{countryExposureField:"Country Code",countryExposureLabel:"Country Code",bookingOfficeField:"Booking Office",bookingOfficeLabel:"Business enrichment / reference",exposureField:"EQVIDR / BALANCE",exposureLabel:"EQVIDR / BALANCE",limitSource:"Country master: Product Distribution / NON CASH LOAN / Domestic + Overseas Limit"},
+  "CREDIT LINE":{countryExposureField:"Code",countryExposureLabel:"Code / Negara",bookingOfficeField:"Booking Office",bookingOfficeLabel:"Business enrichment / reference",exposureField:"Comm Line Total Utilisasi / Bade Treasury Line",exposureLabel:"Commercial / Treasury utilization",limitSource:"Country master: Product Distribution / CREDIT LINE / Domestic + Overseas Limit"},
   "BONDS":{countryExposureField:"Issuer Country",countryExposureLabel:"Issuer Country",bookingOfficeField:"Branch",bookingOfficeLabel:"Branch",exposureField:"Amount Eq. IDR Juta",exposureLabel:"Amount Eq. IDR Juta",limitSource:"Country master: Product Distribution / BONDS / Domestic + Overseas Limit"},
   "NOSTRO":{countryExposureField:"Bank Country",countryExposureLabel:"Bank Country",bookingOfficeField:"Branch",bookingOfficeLabel:"Branch",exposureField:"Balance",exposureLabel:"Balance",limitSource:"Country master: Product Distribution / NOSTRO / Domestic + Overseas Limit"},
   "Investment Line":{countryExposureField:null,countryExposureLabel:"Tidak menjadi Country-linked product saat ini",bookingOfficeField:null,bookingOfficeLabel:"Tidak tersedia / tidak digunakan",exposureField:"Amount Invesment Line",exposureLabel:"Amount Invesment Line",limitSource:"Investment Line source / scoped; tidak menjadi Country master allocation"},
   "Nominal Pertanggungan":{countryExposureField:null,countryExposureLabel:"Tidak relevan",bookingOfficeField:null,bookingOfficeLabel:"Tidak relevan",exposureField:"Nominal Pertanggungan 2025 (Rp Juta)",exposureLabel:"Nominal Pertanggungan 2025",limitSource:"CIL master: EIL / Consolidated Insurance Limit"}
+};
+const productBusinessEnrichment={
+  "NON CASH LOAN":["Booking Office","Booking Office Type"],
+  "CREDIT LINE":["Booking Office","Booking Office Type"]
+};
+const productBusinessEnrichmentNote={
+  "NON CASH LOAN":"Field enrichment LIMAS karena source NCL belum menyediakan kantor pembukuan. Nilai wajib diisi dari reference/mapping yang disepakati; tidak diinfer dari Country Code, Country Name, Swift Code, atau counterparty.",
+  "CREDIT LINE":"Field enrichment LIMAS karena source Credit Line belum menyediakan kantor pembukuan. Nilai wajib diisi dari reference/mapping yang disepakati; tidak diinfer dari Code, Negara, Swift Code, atau nama bank."
 };
 const productBusinessMappingLabel=(productId,kind)=>{
   const m=productBusinessMapping[productId]||{};
@@ -1652,12 +1660,12 @@ function ProductCatalog(){
                 const gap=bookingRequired&&!bookingAvailable;
                 return <tr key={"audit-"+item.id}>
                   <td><b>{item.label}</b></td><td>{productBusinessMappingLabel(item.id,"country")}</td><td>{productBusinessMappingLabel(item.id,"booking")}</td><td>{productBusinessMappingLabel(item.id,"exposure")}</td><td>{productBusinessMappingLabel(item.id,"limit")}</td>
-                  <td><Status v={gap?"Warning":"Normal"}/><div className="muted-small">{gap?"Source gap — reference required":"No duplicate source field"}</div></td>
+                  <td><Status v={gap?"Warning":(productBusinessEnrichment[item.id]?"Normal":"Normal")}/><div className="muted-small">{gap?"Source gap — reference required":productBusinessEnrichment[item.id]?"Business enrichment created":"Existing source field reused"}</div></td>
                 </tr>;
               })}</tbody>
             </table>
           </div>
-          <div className="field-help">Non Cash Loan dan Credit Line belum memiliki source Booking Office pada schema yang tersedia. Audit tidak mengisi atau menginfer field tersebut dari Country Code, Negara, project location, Swift, atau nama bank. Domestic/Overseas hanya boleh berasal dari source/reference mapping yang disepakati.</div>
+          <div className="field-help">Non Cash Loan dan Credit Line sekarang memiliki Business Enrichment <b>Booking Office</b> + <b>Booking Office Type</b> di LIMAS. Keduanya bukan source field asli; nilainya wajib berasal dari reference/mapping yang disepakati. Audit tetap melarang inference dari Country Code, Negara, project location, Swift, atau nama bank.</div>
         </div>
       </section>
       <div className="field-help">Product Universe menjadi registry source/integration. Product Database menyimpan source records per produk. LPG tidak menjadi direct Applied Limit: klasifikasi LPG berasal dari debtor attributes Cash Loan/Non Cash Loan lalu diagregasi menjadi monitoring LPG. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; Investment Line masih Future / Scoped.</div>
@@ -1718,7 +1726,8 @@ function ProductUsage({view}){
     <div>
       <div className="section-title">Data Quality</div>
       <div className="mini">Product Records <span className="chip blue">{rows.length}</span></div>
-      <div className="mini" style={{marginTop:8}}><b>Booking Office Source</b><div className="muted-small">{productBusinessMappingLabel(view,"booking")}</div><div className="muted-small">Classification: {bookingMapped} mapped / {bookingNeedsMapping} needs mapping</div></div>
+      <div className="mini" style={{marginTop:8}}><b>Booking Office</b><div className="muted-small">{productBusinessMappingLabel(view,"booking")}</div><div className="muted-small">Classification: {bookingMapped} mapped / {bookingNeedsMapping} needs mapping</div></div>
+      {productBusinessEnrichment[view]&&<div className="mini" style={{marginTop:8}}><b>Business Enrichment</b><div className="muted-small">{productBusinessEnrichment[view].join(" + ")}</div><div className="muted-small">{productBusinessEnrichmentNote[view]}</div></div>}
       <div className="mini" style={{marginTop:8}}>Unique Key <Status v="Normal"/></div>
       <div className="mini" style={{marginTop:8}}>Integration Coverage <Status v={(() => {
         if(view==="CASHLOAN"||view==="NON CASH LOAN"){
