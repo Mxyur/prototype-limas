@@ -1164,7 +1164,7 @@ function Detail({nav,type="Country",recordKey=""}){
 }
 
 
-const countryStyleTag=typeof document!=="undefined"&&!document.getElementById("country-limit-styles")?(()=>{const s=document.createElement("style");s.id="country-limit-styles";s.textContent=countryLimitStyles;document.head.appendChild(s);return s})():null;
+
 
 function getProductMeta(productId){
   return typeof productMasterCatalog!=="undefined" ? productMasterCatalog.find(p=>p.id===productId) : null;
