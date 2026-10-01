@@ -667,6 +667,60 @@ function loadFieldMeta(type){
 }
 function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
+function getDemoRecord(type,key){
+  const rows=limasDemoData[type]||[];
+  if(key!==undefined&&key!==null&&key!==""){
+    const found=rows.find(r=>String(r.key)===String(key));
+    if(found)return found;
+  }
+  return rows[0]||null;
+}
+function masterFieldValue(type,section,field,base,row,index){
+  if(!row)return base;
+  if(type==="Country"){
+    const total=limasDemoData.Country.reduce((a,r)=>a+(Number(r.masterLimit)||0),0);
+    const map={"No":index+1,"Negara":row.name,"Code":row.key,"Status":row.statusMaster,
+      "Limit FIB / Formulasi":row.formulasi,"Limit FIB / Diputus":row.diputus,
+      "Country Limit / Country Limit":row.masterLimit,
+      "Country Limit / %Country Limit":total?row.masterLimit/total:0,
+      "Gap Analysis / Needs":0,"Gap Analysis / Minus":0,"Gap Analysis / Add":0,
+      "Final Limit / Final Limit":row.masterLimit,"Final Limit / %Final Limit":total?row.masterLimit/total:0};
+    return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
+  }
+  if(type==="CCL"){
+    const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
+      "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
+      "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
+      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":row.ccl,"Limit Contractual":row.contractual};
+    return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
+  }
+  if(type==="MLK"){
+    const map={"Entitas":row.entity,"CIF":row.key,"Nama Debitur":row.name,"Group Usaha":row.group,"Group":row.group,
+      "Tier":row.tier,"Master Limit Setting":row.masterLimit,"Master Limit":row.masterLimit,
+      "CL Bade":row.products?.CASHLOAN||0,"NCL Bade":row.products?.["NON CASH LOAN"]||0,
+      "Bade Treasury Line":row.products?.["TREASURY LINE"]||0};
+    return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
+  }
+  if(type==="CIL"){
+    const map={"No":index+1,"Perusahaan Asuransi":row.name,
+      "Jenis Perusahaan (Asuransi/Penjaminan)":row.type,
+      "Insurance Capacity (IC) (Rp Juta)":row.ic,
+      "Multiplier Terpakai (%)":(row.multiplier*100).toFixed(2)+"%",
+      "Consolidated Insurance Threshold (CIT) (Rp Juta)":row.cit,
+      "EIL BMRI":row.entities?.BMRI?.eil||0,
+      "EIL Mandiri Taspen":row.entities?.["Mandiri Taspen"]?.eil||0,
+      "EIL MTF":row.entities?.MTF?.eil||0,
+      "EIL MUF":row.entities?.MUF?.eil||0,
+      "Consolidated Insurance Limit (CIL) (Rp Juta)":row.cil};
+    return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
+  }
+  if(type==="LPG"){
+    const map={"No":index+1,"Ecosystem LPG (Sektor)":row.sector,"Segmen LPG":row.segment,
+      "Bankwide / Limit":row.limit};
+    return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
+  }
+  return base;
+}
 function Detail({nav,type="Country",recordKey=""}){
   const safeType=domains[type]?type:"Country";
   const selectedRecord=getDemoRecord(safeType,recordKey);
