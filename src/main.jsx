@@ -1362,8 +1362,12 @@ function ProductCatalog(){
 function ProductDatabaseTable({view}){
   const rows=productDatabase[view]||[];
   const fields=productSchemaFields[view]||[];
-  const mapped=rows.filter(r=>(r.applied||[]).some(a=>(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)))).length;
-  const mappingIssues=rows.reduce((n,r)=>n+(r.applied||[]).filter(a=>!(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key))).length,0);  return <section className="card product-database-card">
+  const isLpgDerived=["CASHLOAN","NON CASH LOAN"].includes(view);
+  const mapped=rows.filter(r=>(r.applied||[]).some(a=>(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key))) || (isLpgDerived&&lpgProductClassification(r).classified)).length;
+  const directUnmapped=rows.filter(r=>(r.applied||[]).length===0 && !(isLpgDerived&&lpgProductClassification(r).classified)).length;
+  const lpgClassified=rows.filter(r=>isLpgDerived&&lpgProductClassification(r).classified).length;
+  const mappingIssues=rows.reduce((n,r)=>n+(r.applied||[]).filter(a=>!(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key))).length,0);
+  return <section className="card product-database-card">
     <div className="head"><div><h2>Product Database</h2><p>{rows.length} source records • seluruh kolom source tersimpan • Applied Limit menunjukkan kontribusi ke monitoring.</p></div><div className="chip blue">{rows.length} records</div></div>
     <div className="body">
       <div className="product-db-kpis"><div className="mini"><b>Source Records</b><strong>{rows.length}</strong></div><div className="mini"><b>Mapped Records</b><strong>{mapped}</strong></div><div className="mini"><b>Unmapped Records</b><strong>{rows.length-mapped}</strong></div><div className="mini"><b>Direct Unmapped</b><strong>{directUnmapped}</strong></div><div className="mini"><b>LPG Classified</b><strong>{lpgClassified}</strong></div><div className="mini"><b>Mapping Issues</b><strong>{mappingIssues}</strong></div></div>
@@ -1377,7 +1381,7 @@ function ProductDatabaseTable({view}){
           <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=><div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}{a.scope?" • "+a.scope:""}</div>):<span className="muted-small">No direct limit mapping</span>}</td><td>{["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified?<span className="muted-small">LPG derived • {lpgProductAttribute(r,"ecosystem_lpg")} / {lpgProductAttribute(r,"segmen_lpg")} / {lpgProductAttribute(r,"region_lpg")||"Region belum diisi"}</span>:<span className="muted-small">—</span>}</td>
         </tr>)}</tbody>
       </table></div>
-      <div className="field-help">Untuk CL/NCL, ecosystem_lpg, segmen_lpg dan region_lpg adalah atribut source pada level debitur. Atribut ini bukan produk LPG dan bukan Applied Limit. LPG Bankwide/Region dibentuk oleh aggregation engine dari total_bade (Cash Loan) dan EQVIDR (Non Cash Loan) berdasarkan atribut tersebut.</div>
+      <div className="field-help">Untuk CL/NCL, ecosystem_lpg, segmen_lpg dan region_lpg adalah atribut source pada level debitur. Atribut ini bukan produk LPG dan bukan Applied Limit. LPG Bankwide/Region dibentuk oleh aggregation engine dari total_bade (Cash Loan) dan exposure Non Cash Loan sesuai source/unit (BALANCE untuk demo DWH IDR, atau EQVIDR yang dinormalisasi). Click pada product tetap menampilkan source record asli.</div>
     </div>
   </section>;
 }
