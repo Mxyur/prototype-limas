@@ -68,11 +68,11 @@ function loadMasterMeta(type){
 function saveMasterMeta(type,meta){try{window.localStorage.setItem(`limas_master_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
 function defaultProductProvenance(type){
   const info=domains[type];
-  return Object.fromEntries(info.products.map(product=>[product,{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[type]?.owner||"Risk Management"}]));
+  return Object.fromEntries((domainIntegrationProducts[type]||[]).map(product=>[product,{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure[product]||"—",owner:provenanceDefaults[type]?.owner||"Risk Management"}]));
 }
 function loadProductMeta(type){
   const key=`limas_product_meta_v1_${type}`;
-  try{const saved=window.localStorage.getItem(key);if(saved){const parsed=JSON.parse(saved);return Object.fromEntries(domains[type].products.map(product=>[product,{product,...(parsed[product]||{})}]));}}catch(e){}
+  try{const saved=window.localStorage.getItem(key);if(saved){const parsed=JSON.parse(saved);return Object.fromEntries((domainIntegrationProducts[type]||[]).map(product=>[product,{product,...(parsed[product]||{})}]));}}catch(e){}
   return defaultProductProvenance(type);
 }
 function saveProductMeta(type,meta){try{window.localStorage.setItem(`limas_product_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
