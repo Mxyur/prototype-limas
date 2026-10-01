@@ -1805,7 +1805,7 @@ function ProductBookingClassification({view,rows}){
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table">
-          <thead><tr><th>Record ID</th><th>Country Exposure</th><th>Booking Office</th><th>Booking Office Type</th><th>Domestic Exposure</th><th>Overseas Exposure</th><th>Needs Mapping Exposure</th></tr></thead>
+          <thead><tr><th>Record ID</th><th>Country Exposure</th>{view==="CREDIT LINE"?<><th>Commercial DN / LN</th><th>Treasury DN / LN</th></>:<><th>Booking Office</th><th>Booking Office Type</th></>}<th>Domestic Exposure</th><th>Overseas Exposure</th><th>Needs Mapping Exposure</th></tr></thead>
           <tbody>{rows.map(r=>{
             const amount=productExposureAmount(view,r);
             const type=r.bookingOfficeType==="Domestic"||r.bookingOfficeType==="Overseas"?r.bookingOfficeType:"Needs Mapping";
@@ -1816,8 +1816,7 @@ function ProductBookingClassification({view,rows}){
             return <tr key={"booking-"+r.recordId}>
               <td className="key">{r.recordId}</td>
               <td>{r.countryExposure||"—"}</td>
-              <td>{r.bookingOffice||"—"}</td>
-              <td><Status v={type}/></td>
+              {view==="CREDIT LINE"?<><td>{r.data?.["Comm DN Utilisasi"]||0} / {r.data?.["Comm LN Utilisasi"]||0}</td><td>{r.data?.["Treasury DN Utilisasi"]||0} / {r.data?.["Treasury LN Utilisasi"]||0}</td></>:<><td>{r.bookingOffice||"—"}</td><td><Status v={type}/></td></>}
               <td>{view==="CREDIT LINE"?(creditSplit.domestic||0).toLocaleString("id-ID",{maximumFractionDigits:2}):(type==="Domestic"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
               <td>{view==="CREDIT LINE"?(creditSplit.overseas||0).toLocaleString("id-ID",{maximumFractionDigits:2}):(type==="Overseas"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
               <td>{view==="CREDIT LINE"?"—":(type==="Needs Mapping"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
@@ -1892,7 +1891,8 @@ function ProductUsage({view}){
     <div>
       <div className="section-title">Data Quality</div>
       <div className="mini">Product Records <span className="chip blue">{rows.length}</span></div>
-      <div className="mini" style={{marginTop:8}}><b>Booking Office</b><div className="muted-small">{productBusinessMappingLabel(view,"booking")}</div><div className="muted-small">Classification: {bookingMapped} mapped / {bookingNeedsMapping} needs mapping</div></div>
+      {view!=="CREDIT LINE"&&<div className="mini" style={{marginTop:8}}><b>Booking Office</b><div className="muted-small">{productBusinessMappingLabel(view,"booking")}</div><div className="muted-small">Classification: {bookingMapped} mapped / {bookingNeedsMapping} needs mapping</div></div>}
+      {view==="CREDIT LINE"&&<div className="mini" style={{marginTop:8}}><b>Domestic / Overseas Source</b><div className="muted-small">Commercial Line: DN = Domestic • LN = Overseas</div><div className="muted-small">Treasury Line: DN = Domestic • LN = Overseas</div></div>}
       {productBusinessEnrichment[view]&&<div className="mini" style={{marginTop:8}}><b>Business Enrichment</b><div className="muted-small">{productBusinessEnrichment[view].join(" + ")}</div><div className="muted-small">{productBusinessEnrichmentNote[view]}</div></div>}
       <div className="mini" style={{marginTop:8}}>Unique Key <Status v="Normal"/></div>
       <div className="mini" style={{marginTop:8}}>Integration Coverage <Status v={(() => {
