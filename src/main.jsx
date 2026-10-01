@@ -38,7 +38,7 @@ function getMasterSections(type){
   const s=domains[type]?.sections||{};
   if(type==="Country") return {"Identitas":s["Identitas"]||[],"Limit & Gap":s["Limit & Gap"]||[]};
   if(type==="CCL") return {"Bank Profile":s["Bank Profile"]||[],"Risk & Capacity":s["Risk & Capacity"]||[],"Limit":(s["Limit"]||[]).filter(([f])=>f!=="Utilisasi Capacity")};
-  if(type==="MLK") return {"Profil Debitur":s["Profil Debitur"]||[],"Risk & Regulatory":s["Risk & Regulatory"]||[],"Financial & Capacity":s["Financial & Capacity"]||[],"Product Limit & Exposure":s["Product Limit & Exposure"]||[],"Master Limit":s["Master Limit"]||[]};
+  if(type==="MLK") return {"Profil Debitur":s["Profil Debitur"]||[],"Risk & Regulatory":s["Risk & Regulatory"]||[],"Financial & Capacity":s["Financial & Capacity"]||[],"Product Limit & Exposure":(s["Product Limit & Exposure"]||[]).filter(([f])=>!String(f).toLowerCase().includes("bade")),"Master Limit":s["Master Limit"]||[]};
   if(type==="CIL") return {
     "Insurance Profile":s["Insurance Profile"]||[],
     "Capacity & Threshold":s["Capacity & Threshold"]||[],
