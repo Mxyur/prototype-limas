@@ -268,39 +268,73 @@ function OverviewTable({type, onDetail}){
 }
 
 function Dashboard({nav}){
-  return <Layout screen="dashboard" onNav={nav}><Header title="Halo, Risk Management" subtitle="Executive monitoring limit Bank Mandiri Group"/>
+  const domainsList=["Country","CCL","MLK","CIL","LPG"];
+  const summary=domainsList.reduce((a,type)=>{
+    const rows=limasDemoData[type]||[];
+    return {...a,records:a.records+rows.length,normal:a.normal+rows.filter(r=>recordStatus(type,r)==="Normal").length,warning:a.warning+rows.filter(r=>recordStatus(type,r)==="Warning").length,breach:a.breach+rows.filter(r=>recordStatus(type,r)==="Breach").length,issue:a.issue+rows.filter(r=>recordStatus(type,r)==="Data Issue").length};
+  },{records:0,normal:0,warning:0,breach:0,issue:0});
+  return <Layout screen="dashboard" onNav={nav}>
+    <Header title="Halo, Risk Management" subtitle="Executive monitoring limit Bank Mandiri Group"/>
     <div className="page">
       <div className="hero">
-        <h2>Limit Management Overview</h2><p>Master limit aktif, aggregated exposure dan status monitoring periode berjalan.</p>
+        <h2>Limit Management Overview</h2>
+        <p>Master limit aktif, product utilization terintegrasi dan monitoring status periode berjalan.</p>
         <div className="hero-grid">
-          <div><div className="hero-label">Total Limit</div><div className="hero-value">Rp 125.45 T</div></div>
-          <div><div className="hero-label">Exposure</div><div className="hero-value">Rp 87.32 T</div></div>
-          <div><div className="hero-label">Utilisasi</div><div className="hero-value">69.6%</div></div>
+          <div><div className="hero-label">Master Objects</div><div className="hero-value">{summary.records}</div></div>
+          <div><div className="hero-label">Integrated Exposure Records</div><div className="hero-value">{summary.records}</div></div>
+          <div><div className="hero-label">Breach</div><div className="hero-value">{summary.breach}</div></div>
         </div>
       </div>
+
       <div className="metric-grid">
-        <DomainKpi label="Country Limit" value="73%" sub="245 monitored • 8 EWS • 2 Breach"/>
-        <DomainKpi label="Counterparty CCL" value="61%" sub="128 banks • 7 EWS • 2 Breach"/>
-        <DomainKpi label="Debtor MLK" value="82%" sub="1,245 CIF • 9 EWS • 3 Breach" accent="yellow"/>
-        <DomainKpi label="Insurance CIL" value="55%" sub="32 insurers • 3 EWS • 1 Breach"/>
-        <DomainKpi label="Portfolio LPG" value="78%" sub="96 combinations • 6 EWS • 1 Breach" accent="yellow"/>
+        {domainsList.map(type=>{
+          const rows=limasDemoData[type]||[],lim=rows.reduce((a,r)=>a+recordLimit(type,r),0),exp=rows.reduce((a,r)=>a+recordExposure(type,r),0),u=lim?exp/lim:0;
+          return <DomainKpi key={type} label={type+" Limit"} value={(u*100).toFixed(1)+"%"} sub={rows.length+" objects • "+rows.filter(r=>recordStatus(type,r)==="Warning").length+" EWS • "+rows.filter(r=>recordStatus(type,r)==="Breach").length+" Breach"} accent={u>=1?"red":u>=0.8?"yellow":""}/>;
+        })}
       </div>
+
       <div className="dash-grid">
-        <section className="card"><div className="head"><div><h2>Utilisasi per Domain</h2><p>Perbandingan limit vs exposure</p></div></div><div className="body"><div className="chart-list">{[["Country",73],["CCL",61],["MLK",82],["CIL",55],["LPG",78]].map(([a,v])=><div className="chart-row" key={a}><div className="chart-row-head"><b>{a}</b><span>{v}%</span></div><div className="chart-track"><span style={{width:`${v}%`}}></span></div></div>)}</div></div></section>
-        <section className="card"><div className="head"><div><h2>Distribusi Status</h2><p>Normal / EWS / Breach</p></div></div><div className="body"><div className="pie"></div><div className="legend"><div><i className="dot" style={{background:"#1c73e8"}}/> Normal 81%</div><div><i className="dot" style={{background:"#f2c04d"}}/> Early Warning 14%</div><div><i className="dot" style={{background:"#e45757"}}/> Breach 5%</div></div></div></section>
+        <section className="card">
+          <div className="head"><div><h2>Utilisasi per Domain</h2><p>Exposure terintegrasi dibandingkan dengan master limit domain.</p></div></div>
+          <div className="body"><div className="chart-list">
+            {domainsList.map(type=>{
+              const rows=limasDemoData[type]||[],lim=rows.reduce((a,r)=>a+recordLimit(type,r),0),exp=rows.reduce((a,r)=>a+recordExposure(type,r),0),u=lim?Math.min(exp/lim,1):0;
+              return <div className="chart-row" key={type}><div className="chart-row-head"><b>{type}</b><span>{(u*100).toFixed(1)}%</span></div><div className="chart-track"><span style={{width:(u*100)+"%"}}/></div></div>;
+            })}
+          </div></div>
+        </section>
+        <section className="card">
+          <div className="head"><div><h2>Distribusi Status</h2><p>Satu sumber data untuk dashboard, monitoring dan report.</p></div></div>
+          <div className="body">
+            <div className="legend">
+              <div><i className="dot" style={{background:"#1c73e8"}}/> Normal {summary.normal}</div>
+              <div><i className="dot" style={{background:"#f2c04d"}}/> Early Warning {summary.warning}</div>
+              <div><i className="dot" style={{background:"#e45757"}}/> Breach {summary.breach}</div>
+              <div><i className="dot" style={{background:"#8692a6"}}/> Data Issue {summary.issue}</div>
+            </div>
+          </div>
+        </section>
       </div>
+
+      <section className="card">
+        <div className="head"><div><h2>Data Lineage</h2><p>Traceability dari Master Limit sampai product utilization dan monitoring output.</p></div></div>
+        <div className="body"><div className="integration-chip-grid">
+          <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">Approved limit, parameter, effective period, version dan status.</div></div>
+          <div className="mini integration-chip"><b>2. Product Universe</b><div className="muted-small">Product source registry dan integration mapping.</div></div>
+          <div className="mini integration-chip"><b>3. Product Utilization</b><div className="muted-small">Source record → target key → aggregation → outstanding/exposure.</div></div>
+          <div className="mini integration-chip"><b>4. Monitoring / Report</b><div className="muted-small">Utilisasi → remaining → threshold → EWS/Breach → report.</div></div>
+        </div></div>
+      </section>
+
       <div className="dash-grid">
-        <section className="card"><div className="head"><div><h2>Early Warning & Breach</h2><p>Exception lintas seluruh domain</p></div><button className="btn secondary" onClick={()=>nav("warning")}>Buka EWS Center</button></div><div className="body"><div className="alert-list">
-          <div className="alert breach"><span className="bar"></span><div><b>MLK • MANDIRI GROUP SAMPLE</b><div style={{fontSize:10,color:"var(--muted)"}}>CIF 4000027711 • Utilisasi 107%</div></div><Status v="Breach"/></div>
-          <div className="alert breach"><span className="bar"></span><div><b>CCL • National Australia Bank</b><div style={{fontSize:10,color:"var(--muted)"}}>Swift NATAAU33 • Utilisasi 106%</div></div><Status v="Breach"/></div>
-          <div className="alert warning"><span className="bar"></span><div><b>Country • Singapore</b><div style={{fontSize:10,color:"var(--muted)"}}>Country Code SG • Utilisasi 85%</div></div><Status v="Warning"/></div>
-          <div className="alert warning"><span className="bar"></span><div><b>CIL • Tugu Pratama BMRI</b><div style={{fontSize:10,color:"var(--muted)"}}>EIL utilization 97%</div></div><Status v="Warning"/></div>
+        <section className="card"><div className="head"><div><h2>Early Warning & Breach</h2><p>Exception lintas domain dari canonical monitoring model.</p></div><button className="btn secondary" onClick={()=>nav("warning")}>Buka EWS Center</button></div><div className="body"><div className="alert-list">
+          {domainsList.flatMap(type=>(limasDemoData[type]||[]).map(r=>({type,r,st:recordStatus(type,r)}))).filter(x=>x.st==="Warning"||x.st==="Breach").slice(0,6).map(({type,r,st})=><div className={"alert "+(st==="Breach"?"breach":"warning")} key={type+"|"+r.key}><span className="bar"></span><div><b>{type+" • "+(r.name||r.sector)}</b><div className="muted-small">Utilisasi {(recordUtil(type,r)*100).toFixed(2)}%</div></div><Status v={st}/></div>)}
         </div></div></section>
-        <section className="card"><div className="head"><div><h2>Data Freshness</h2><p>Status pembaruan data source</p></div></div><div className="body">
-          {[["Cash Loan","08 Aug 2026 22:00","Normal"],["NCL","08 Aug 2026 22:10","Normal"],["Commercial/Treasury","08 Aug 2026 21:45","Normal"],["Bonds","31 Jul 2026","Normal"],["Nostro","08 Aug 2026 21:30","Normal"],["PA / SISM","07 Aug 2026","Warning"]].map(r=><div className="mini" style={{marginBottom:8}} key={r[0]}><b>{r[0]}</b><div style={{fontSize:10,color:"var(--muted)",marginTop:3}}>{r[1]} <span style={{float:"right"}}><Status v={r[2]}/></span></div></div>)}
+        <section className="card"><div className="head"><div><h2>Reconciliation Status</h2><p>Data issue yang memerlukan investigasi.</p></div></div><div className="body">
+          {domainsList.map(type=>(limasDemoData[type]||[]).filter(r=>recordStatus(type,r)==="Data Issue").map(r=><div className="mini" style={{marginBottom:8}} key={type+"|"+r.key}><b>{type+" • "+(r.name||r.sector)}</b><div className="muted-small">{r.dataQuality}</div></div>))}
+          {summary.issue===0&&<div className="mini">No data issue.</div>}
         </div></section>
       </div>
-      <section className="card"><div className="head"><div><h2>Top Monitoring Exceptions</h2><p>Objek dengan utilisasi tertinggi</p></div></div><div className="body"><OverviewTable type="MLK" onDetail={(t,k)=>nav("detail",{type:t,key:k})}/></div></section>
     </div>
   </Layout>
 }
