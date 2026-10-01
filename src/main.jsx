@@ -159,7 +159,7 @@ function lpgProductClassification(r){
 function lpgProductAmount(r){
   if(r.productId==="CASHLOAN")return Number(r.data?.total_bade)||0;
   if(r.productId==="NON CASH LOAN"){
-    if(r.sourceSystem==="DWH"&&r.data?.CCY==="IDR")return Number(r.data?.BALANCE)||0;
+    if(String(r.sourceSystem||"").startsWith("DWH")&&r.data?.CCY==="IDR")return Number(r.data?.BALANCE)||0;
     return (Number(r.data?.EQVIDR)||0)/1000000;
   }
   return 0;
@@ -173,12 +173,12 @@ function lpgProductApplicationsForKey(key){
       const c=lpgProductClassification(r);
       if(c.classified&&c.sector===row.sector&&c.segment===row.segment){
         const amount=lpgProductAmount(r);
-        if(amount!==0)out.push({
+        out.push({
           limitType:"LPG",key:row.key,productId,recordId:r.recordId,sourceSystem:r.sourceSystem,
           sourceData:r.data,amount,label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",
           scope:c.region||null,entity:r.data?.nm_cus||r.data?.CUSTNM||"",
           exposureField:productId==="CASHLOAN"?"total_bade":"EQVIDR",
-          transform:productId==="NON CASH LOAN"?(r.sourceSystem==="DWH"&&r.data?.CCY==="IDR"?"BALANCE / Rp Juta":"EQVIDR / 1.000.000"):"Direct / Rp Juta",
+          transform:productId==="NON CASH LOAN"?(String(r.sourceSystem||"").startsWith("DWH")&&r.data?.CCY==="IDR"?"BALANCE / Rp Juta":"EQVIDR / 1.000.000"):"Direct / Rp Juta",
           masterMatch:true
         });
       }
@@ -445,7 +445,7 @@ function Report({nav}){
     </div></section>
     {generated&&<section className="card"><div className="head"><div><h2>{cfg.title}</h2><p>{cfg.subtitle}</p><div className="report-meta"><span>{cfg.source}</span><span>Periode: {period}</span><span>Generated: {nowLabel()}</span></div></div><button className="btn ghost" onClick={()=>window.print()}>Print / PDF</button></div><div className="body">
       <div className="report-note">{cfg.note}</div>
-      <div className="metric-grid report-kpi"><DomainKpi label="Total Data" value={summary.total} sub="Canonical master/report rows"/><DomainKpi label="Normal" value={summary.normal} sub="Within monitoring threshold"/><DomainKpi label="Warning" value={summary.warning} sub="Early warning condition" accent="yellow"/><DomainKpi label="Breach" value={summary.breach} sub="Above monitoring limit" accent="red"/><DomainKpi label="Data Issue" value={summary.issue} sub="Needs review"/></div>
+      <div className="metric-grid report-kpi"><DomainKpi label="Total Data" value={summary.total} sub="Canonical master/report objects"/><DomainKpi label="Normal" value={summary.normal} sub="Within monitoring threshold"/><DomainKpi label="Warning" value={summary.warning} sub="Early warning condition" accent="yellow"/><DomainKpi label="Breach" value={summary.breach} sub="Above monitoring limit" accent="red"/><DomainKpi label="Data Issue" value={summary.issue} sub="Needs review"/></div>
       <div className="table-wrap report-table-wrap"><table className="table report-table"><thead><tr>{cfg.columns.map(([label])=><th key={label}>{label}</th>)}</tr></thead><tbody>{filtered.map((r,i)=><tr key={r.no||i}>{cfg.columns.map(([label,key])=><td key={key}>{key==="status"||key==="statusMaster"?<Status v={statusForReport(r)}/>:fmtReport(r[key])}</td>)}</tr>)}</tbody></table></div>
       <section className="card" style={{marginTop:16}}><div className="head"><div><h2>UAT Scenario Case Register</h2><p>Warning dan Breach untuk seluruh canonical limit/scope; kasus tidak mengubah current production exposure.</p></div><span className="chip blue">{uatScenarioRows.filter(c=>c.domain===type).length} cases</span></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Case ID</th><th>Unique Key</th><th>Object</th><th>Scope</th><th>Status</th><th>Limit</th><th>Scenario Exposure</th><th>Utilisasi</th></tr></thead><tbody>{uatScenarioRows.filter(c=>c.domain===type).map(c=><tr key={c.caseId}><td className="key">{c.caseId}</td><td className="key">{c.masterKey}</td><td>{c.object}</td><td>{c.scope}</td><td><Status v={c.status}/></td><td>{fmtReport(c.limit)}</td><td>{fmtReport(c.scenarioExposure)}</td><td>{(c.utilization*100).toFixed(2)}%</td></tr>)}</tbody></table></div></div></section>
       <div className="report-footer"><b>Reporting note:</b> Report prototype membaca dataset monitoring canonical yang sama dengan Dashboard/Monitoring. Karena itu Master Limit + Product Utilization + Status harus tetap tally. Field yang source-nya belum eksplisit ditandai sesuai MD.</div>
@@ -564,10 +564,10 @@ function Warning({nav}){
   const productionRows=canonicalExceptions();
   const caseRows=uatScenarioRows.map(c=>({status:c.status,domain:c.domain,key:c.masterKey,object:c.object,scope:c.scope,limit:c.limit,exposure:c.scenarioExposure,util:c.utilization,threshold:c.status==="Breach"?"100%":"80%",detail:c.source+" • "+c.reason,caseId:c.caseId,caseType:"UAT"}));
   const rows=[...productionRows.map(r=>({...r,caseType:"Production"})),...caseRows];
-  const filtered=rows.filter(r=>(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain));
-  const breach=rows.filter(r=>r.status==="Breach").length;
-  const warning=rows.filter(r=>r.status==="Warning").length;
-  const issue=rows.filter(r=>r.status==="Data Issue").length;
+  const filtered=rows.filter(r=>(viewMode==="Production + UAT"||r.caseType===viewMode)&&(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain));
+  const breach=filtered.filter(r=>r.status==="Breach").length;
+  const warning=filtered.filter(r=>r.status==="Warning").length;
+  const issue=filtered.filter(r=>r.status==="Data Issue").length;
   return <Layout screen="warning" onNav={nav}><Header title="Early Warning & Breach Center" subtitle="Exception monitoring dari canonical Master Limit + Product Utilization + reconciliation engine"/><div className="page">
     <div className="metric-grid">
       <DomainKpi label="Total Exception" value={filtered.length} sub="Hasil filter saat ini"/>
