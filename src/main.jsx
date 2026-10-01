@@ -890,7 +890,7 @@ function masterFieldValue(type,section,field,base,row,index){
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="CCL"){
-    const p=productContributionMap("CCL",row.key),total=recordExposure("CCL",row.key||row);
+    const p=productContributionMap("CCL",row.key),total=recordExposure("CCL",row);
     const bankLoan=(p.CASHLOAN||0)+(p["NON CASH LOAN"]||0),contractUtil=row.contractual?total/row.contractual:0;
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
