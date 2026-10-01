@@ -103,6 +103,15 @@ function loadMasterMeta(type){
   return {description:d.description||"",source:d.source||"",dataset:d.dataset||"",system:d.system||"",period:d.period||"",owner:d.owner||"",sourceNote:d.sourceNote||"",status:"Active",effectiveDate:d.period||"",version:1,updatedBy:"Risk Management",lastUpdated:"Belum pernah disimpan"};
 }
 function saveMasterMeta(type,meta){try{window.localStorage.setItem(`limas_master_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
+function recordMetaKey(type,recordKey){return `limas_master_record_v1_${type}||${recordKey}`;}
+function loadRecordMeta(type,recordKey){
+  const fallback={version:1,status:"Active",effectiveDate:provenanceDefaults[type]?.period||"",expiryDate:"",approvedBy:"Risk Management",lastUpdated:"Belum pernah disimpan"};
+  if(!recordKey)return fallback;
+  try{const saved=window.localStorage.getItem(recordMetaKey(type,recordKey));if(saved)return {...fallback,...JSON.parse(saved)};}catch(e){}
+  return fallback;
+}
+function saveRecordMeta(type,recordKey,meta){if(!recordKey)return;try{window.localStorage.setItem(recordMetaKey(type,recordKey),JSON.stringify(meta));}catch(e){}}
+
 function defaultProductProvenance(type){
   const info=domains[type];
   return Object.fromEntries((domainIntegrationProducts[type]||[]).map(product=>[product,{product,dataset:sourceName(product),sourceKey:sourceKey(product),exposureField:sourceExposure(product),owner:provenanceDefaults[type]?.owner||"Risk Management"}]));
@@ -211,7 +220,7 @@ function Report({nav}){
   const generate=()=>setGenerated(true);
   const summary={total:rows.length,normal:rows.filter(r=>statusForReport(r)==="Normal").length,warning:rows.filter(r=>statusForReport(r)==="Warning").length,breach:rows.filter(r=>statusForReport(r)==="Breach").length,issue:rows.filter(r=>statusForReport(r)==="Data Issue").length};
   return <Layout screen="report" onNav={nav}><Header title="Generate Monitoring Report" subtitle="Generate report monitoring dengan struktur yang mengikuti master report masing-masing limit"/><div className="page">
-    <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Pilih domain, periode dan kondisi lalu generate report.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
+    <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Generate report dari monitoring read model yang sama dengan halaman Monitoring.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
       <div className="report-controls">
         <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select></div>
         <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>Agustus 2026</option><option>Juli 2026</option><option>Juni 2026</option></select></div>
@@ -223,7 +232,7 @@ function Report({nav}){
       <div className="report-note">{cfg.note}</div>
       <div className="metric-grid report-kpi"><DomainKpi label="Total Data" value={summary.total} sub="Dummy records"/><DomainKpi label="Normal" value={summary.normal} sub="Within monitoring threshold"/><DomainKpi label="Warning" value={summary.warning} sub="Early warning condition" accent="yellow"/><DomainKpi label="Breach" value={summary.breach} sub="Above monitoring limit" accent="red"/><DomainKpi label="Data Issue" value={summary.issue} sub="Needs review"/></div>
       <div className="table-wrap report-table-wrap"><table className="table report-table"><thead><tr>{cfg.columns.map(([label])=><th key={label}>{label}</th>)}</tr></thead><tbody>{filtered.map((r,i)=><tr key={r.no||i}>{cfg.columns.map(([label,key])=><td key={key}>{key==="status"||key==="statusMaster"?<Status v={statusForReport(r)}/>:fmtReport(r[key])}</td>)}</tr>)}</tbody></table></div>
-      <div className="report-footer"><b>Reporting note:</b> Report menampilkan dummy data untuk prototype. Struktur field mengikuti master report yang tersedia; field yang belum memiliki Source pada MD tidak diisi dengan asumsi.</div>
+      <div className="report-footer"><b>Reporting note:</b> Report prototype membaca dataset monitoring canonical yang sama dengan Dashboard/Monitoring. Karena itu Master Limit + Product Utilization + Status harus tetap tally. Field yang source-nya belum eksplisit ditandai sesuai MD.</div>
     </div></section>}
     {!generated&&<section className="card"><div className="head"><div><h2>Report Preview</h2><p>Report belum di-generate. Pilih parameter lalu klik Generate Report.</p></div></div><div className="body"><div className="report-preview"><div><b>{cfg.title}</b><span>{cfg.source}</span></div><div><b>5 dummy data</b><span>Normal / Warning / Breach / Data Quality scenario</span></div><div><b>Output</b><span>Preview table + CSV + Print/PDF browser</span></div></div></div></section>}
   </div></Layout>;
@@ -459,7 +468,7 @@ function Setup({nav,setSel}){
               <td>{r.name||r.sector}</td>
               <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
               <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
-              <td>v1</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":"Active"}/></td>
+              <td>v{loadRecordMeta(type,r.key).version||1}</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":(loadRecordMeta(type,r.key).status||"Active")}/></td>
               <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
             </tr>)}</tbody>
           </table></div>
@@ -657,20 +666,21 @@ function Detail({nav,type="Country",recordKey=""}){
   const masterSections=getMasterSections(safeType);
   const [tab,setTab]=useState(()=>Object.keys(masterSections)[0]);
   const [meta,setMeta]=useState(()=>loadMasterMeta(safeType));
+  const [recordMeta,setRecordMeta]=useState(()=>loadRecordMeta(safeType,recordKey));
   const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(safeType));
   const [editing,setEditing]=useState(false);
   const [savedAt,setSavedAt]=useState("");
   const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
-  const startEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
-  const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
-  const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const next={...meta,version:Number(meta.version||1)+1,lastUpdated:nowLabel(),updatedBy:"Risk Management"};saveMasterMeta(safeType,next);setMeta(next);setEditing(false);setSavedAt(next.lastUpdated);};
+  const startEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
+  const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
+  const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const nextRecord={...recordMeta,version:Number(recordMeta.version||1)+1,lastUpdated:nowLabel(),approvedBy:"Risk Management"};saveRecordMeta(safeType,recordKey,nextRecord);setRecordMeta(nextRecord);setEditing(false);setSavedAt(nextRecord.lastUpdated);};
   const linkedProducts=domainIntegrationProducts[safeType]||[];
   return <Layout screen="detail" onNav={nav}>
     <Header title={`${safeType} • Master Limit Detail`} subtitle="Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."/>
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{selectedRecord?.name||selectedRecord?.sector||sampleName(safeType)}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{meta.version||1}</span></p></div>
+          <div><h2>{selectedRecord?.name||selectedRecord?.sector||sampleName(safeType)}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span></p></div>
           <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
@@ -696,8 +706,8 @@ function Detail({nav,type="Country",recordKey=""}){
         <div className="body"><div className="provenance-grid">
           <div className="provenance-box"><span>Sumber Utama</span><b>{meta.source||"—"}</b><small>{meta.dataset||"Dataset / report belum diisi"}</small></div>
           <div className="provenance-box"><span>Source System</span><b>{meta.system||"—"}</b><small>Periode: {meta.period||"—"}</small></div>
-          <div className="provenance-box"><span>Data Owner</span><b>{meta.owner||"—"}</b><small>Updated by: {meta.updatedBy||"—"}</small></div>
-          <div className="provenance-box"><span>Last Updated</span><b>{meta.lastUpdated||"—"}</b><small>Version master: v{meta.version||1}</small></div>
+          <div className="provenance-box"><span>Data Owner</span><b>{meta.owner||"—"}</b><small>Approved by: {recordMeta.approvedBy||"—"}</small></div>
+          <div className="provenance-box"><span>Last Updated</span><b>{meta.lastUpdated||"—"}</b><small>Version master: v{recordMeta.version||1}</small></div>
         </div><div className="source-note"><b>Konteks Source</b><div>{meta.sourceNote||"Belum ada catatan source."}</div></div></div>
       </section>
     </div>
@@ -912,7 +922,7 @@ function ProductCatalog(){
   return <section className="card">
     <div className="head">
       <div><h2>Product Universe</h2><p>Registry universe produk/source untuk integration. Ini bukan repository Master Limit dan tidak menyimpan current utilization.</p></div>
-      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Master Data</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
+      {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Product Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <div className="body">
       <div className="table-wrap product-master-wrap">
@@ -921,14 +931,14 @@ function ProductCatalog(){
           <tbody>{productMasterCatalog.map(item=>{
             const m=draft[item.id]||{};
             return <tr key={item.id}>
-              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{productIntegratedDomains(item.id).join(" / ")||"—"}</td><td>{item.exposure}</td>
+              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{productIntegratedDomains(item.id).join(" / ")|| (item.id==="Investment Line"?"Future / Scoped":"—")}</td><td>{item.exposure}</td>
               <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
               <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
             </tr>
           })}</tbody>
         </table>
       </div>
-      <div className="field-help">Product Universe menjadi registry source/integration. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; nilai utilization aktual tetap merupakan data inbound/integrated, bukan master limit.</div>
+      <div className="field-help">Product Universe menjadi registry source/integration. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; Investment Line masih Future / Scoped. Nilai utilization aktual tetap merupakan data inbound/integrated, bukan master limit.</div>
     </div>
   </section>;
 }
