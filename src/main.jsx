@@ -210,7 +210,7 @@ const limasDemoData={
   ],
   LPG:[
     {key:"BATUBARA|TOTAL SEKTOR",sector:"BATUBARA",segment:"TOTAL SEKTOR",
-      limits:{Bankwide:105381,"Region I":446,"Region II":1203,"Region III":1251,"Region IV":697,"Region V":2045,"Region VI":230,"Region VII":20,"Region VIII":382,"Region IX":6812,"Region X":142,""Region XI":17,"Region XII":0,"KP + OVS":92135},
+      limits:{Bankwide:105381,"Region I":446,"Region II":1203,"Region III":1251,"Region IV":697,"Region V":2045,"Region VI":230,"Region VII":20,"Region VIII":382,"Region IX":6812,"Region X":142,"Region XI":17,"Region XII":0,"KP + OVS":92135},
       outstandingSeed:{Bankwide:65828,"Region I":120,"Region II":457,"Region III":652,"Region IV":52,"Region V":1556,"Region VI":23,"Region VII":9,"Region VIII":72,"Region IX":1578,"Region X":0,"Region XI":0,"Region XII":0,"KP + OVS":61309},
       dataQuality:"Normal",sourceMode:"Provided LPG sample snapshot",hierarchy:"Sector Total"},
     {key:"BATUBARA|Corporate",sector:"BATUBARA",segment:"Corporate",
