@@ -211,3 +211,7 @@
   .product-field-table{min-width:1000px}
   .product-field-toolbar{width:100%}
 }
+
+
+/* Status semantic fix */
+.dataissue{background:#e8edf3;color:#4c596b}
