@@ -1570,7 +1570,7 @@ function reconciliationIssues(){
     (r.applied||[]).forEach(a=>{
       const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
       if(!master){
-        const amount=Number(a.amount)||0;
+        const amount=Number(a.normalizedAmount??a.amount)||0;
         if(productId==="BONDS"&&String(a.key)==="ID"&&amount===0){
           push({status:"Excluded",issueType:"EXCLUDED",productId,recordId:r.recordId,limitType:a.limitType,key:a.key,object:"Indonesia",detail:"Domestic issuer tidak menjadi Country Limit exposure pada canonical model.",amount:0});
         }else if(amount!==0){
@@ -1606,6 +1606,17 @@ function canonicalExceptions(){
     }
   }));
   reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>rows.push({status:"Data Issue",domain:x.limitType,key:x.key,object:x.object,limit:"—",exposure:x.amount,util:0,threshold:"—",detail:x.issueType+" • "+x.detail+" • "+x.recordId}));
+  canonicalProductQualityIssues().forEach(x=>rows.push({
+    status:"Data Issue",
+    domain:x.limitType||"Product Database",
+    key:x.key||x.recordId,
+    object:x.productId,
+    limit:"—",
+    exposure:0,
+    util:0,
+    threshold:"—",
+    detail:x.type+" • "+x.detail+" • "+x.recordId
+  }));
   return rows;
 }
 function productContributionMap(type,key){
@@ -1622,17 +1633,35 @@ function productContributionDetail(type,key){return Object.entries(productContri
 function canonicalProductQualityIssues(){
   const issues=[];
   Object.entries(productDatabase).forEach(([productId,rows])=>{
+    const seenRecordIds=new Set();
     rows.forEach(r=>{
       const d=r.data||{};
+      if(seenRecordIds.has(String(r.recordId)))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"DUPLICATE_RECORD_ID",detail:"Product record ID is duplicated."});
+      seenRecordIds.add(String(r.recordId));
+
       if(productId==="CASHLOAN"&&(!d.no_cus||!d.no_rek))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_IDENTIFIER",detail:"Cash Loan requires customer/account identifier."});
       if(productId==="NON CASH LOAN"&&(!d.CUSTID||!d["Country Code"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"NCL requires CUSTID and Country Code for canonical mapping."});
       if(productId==="CREDIT LINE"){
         const audit=creditLineAuditRows([r])[0];
         if(audit.status==="Data Issue")issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"CREDIT_LINE_RECONCILIATION",detail:audit.issues.join(" • ")});
       }
-      if(productId==="BONDS"&&(!d["Securities Name"]||!d["Issuer Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Bonds requires Security and Issuer Country."});
+      if(productId==="BONDS"){
+        if(!d["Securities Name"]||!d["Issuer Country"])issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Bonds requires Security and Issuer Country."});
+        const nominal=Number(String(d.Amount??"").replace(/,/g,""))||0;
+        const eq=Number(String(d["Amount Eq. IDR Juta"]??"").replace(/,/g,""))||0;
+        if(nominal&&eq&&Math.abs(nominal/1000000-eq)>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"BONDS_EQ_IDR_MISMATCH",detail:"Amount does not reconcile to Amount Eq. IDR Juta."});
+      }
       if(productId==="NOSTRO"&&(!d.SwfitCode||!d["Bank Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Nostro requires Swift identifier and Bank Country."});
+      if(productId==="Nostro"&&d.Balance!==undefined)void d.Balance;
       if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
+
+      (r.applied||[]).forEach(a=>{
+        const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
+        if(!master&&Number(a.amount||0)!==0&&!(productId==="BONDS"&&a.limitType==="Country"&&String(a.key)==="ID")) {
+          issues.push({layer:"Integration / Read Model",productId,recordId:r.recordId,type:"MASTER_NOT_FOUND",detail:a.limitType+" / "+a.key+" has no target master."});
+        }
+        if(Number(a.amount||0)<0)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NEGATIVE_EXPOSURE",detail:"Applied exposure cannot be negative in canonical utilization feed."});
+      });
     });
   });
   return issues;
@@ -1665,7 +1694,7 @@ function masterCanonicalQualityIssues(){
 function canonicalPipelineControls(){
   const masterIssues=masterCanonicalQualityIssues();
   const productIssues=canonicalProductQualityIssues();
-  const reconIssues=reconciliationIssues().filter(x=>x.status==="Data Issue");
+  const reconIssues=[...reconciliationIssues().filter(x=>x.status==="Data Issue"),...canonicalProductQualityIssues()];
   return [
     {layer:"1. Master Limit",status:masterIssues.length?"Data Issue":"Normal",count:masterIssues.length,detail:masterIssues.length?masterIssues.slice(0,3).map(x=>x.type+" • "+(x.domain||"")).join(" ; "):"Master keys, capacity/product allocation and master formulas reconcile."},
     {layer:"2. Product Dictionary",status:"Normal",count:0,detail:"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
@@ -1836,7 +1865,7 @@ function ProductDictionaryBusinessMapping({tab}){
   const items=[
     ["Country Exposure",m.countryExposureField?m.countryExposureField+" → "+m.countryExposureLabel:(m.countryExposureLabel||"—")],
     ["Booking Office",m.bookingOfficeField?m.bookingOfficeField+" → "+m.bookingOfficeLabel:(m.bookingOfficeLabel||"—")],
-    ["Booking Office Type",enrichment.includes("Booking Office Type")?"Business Enrichment / Reference":"Derived / Reference"],
+    ["Booking Office Type",tab==="CREDIT LINE"?"DN/LN source — not required":(enrichment.includes("Booking Office Type")?"Business Enrichment / Reference":"Derived / Reference")],
     ["Exposure",m.exposureField?m.exposureField+" → "+m.exposureLabel:(m.exposureLabel||"—")]
   ];
   return <div className="product-dictionary-summary">
