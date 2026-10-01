@@ -241,11 +241,11 @@ const limasDemoData={
     {key:"AT",name:"Austria",statusMaster:"Exist",masterLimit:35259.186470317814,formulasi:300,diputus:509391,dataQuality:"Normal"},
     {key:"BE",name:"Belgium",statusMaster:"Exist",masterLimit:43116.7740055139,formulasi:250,diputus:396193,dataQuality:"Normal"},
     {key:"CN",name:"China",statusMaster:"Exist",masterLimit:260032.3771028455,formulasi:"New",diputus:"New",dataQuality:"Normal"},
-    {key:"HK",name:"Hong Kong",statusMaster:"Exist",masterLimit:40000,formulasi:"UAT",diputus:"UAT",dataQuality:"Normal",recordOrigin:"UAT normalized master"}
+    {key:"HK",name:"Hong Kong",statusMaster:"Exist",masterLimit:40000,formulasi:"New",diputus:"New",dataQuality:"Normal"}
   ],
   CCL:[
     {key:"ANZBAU3M",name:"Australia and New Zealand Banking Group Limited",category:"Asing",country:"Australia",countryRating:"A+",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:0.9023,inhouse:68498,tier1:403594,capacity:200289.57641,adjusted:68498,globalParent:"—",top200:"—",ccl:500,contractual:500.026,dataQuality:"Normal"},
-    {key:"ABNANL2A",name:"ABN Amro Bank NV",category:"Asing",country:"Netherlands",countryRating:"AAA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:0.9023,inhouse:68498,tier1:403594,capacity:200289.57641,adjusted:68498,globalParent:"—",top200:"—",ccl:500,contractual:500.026,dataQuality:"Normal",recordOrigin:"UAT normalized master"},
+    {key:"ABNANL2A",name:"ABN Amro Bank NV",category:"Asing",country:"Netherlands",countryRating:"AAA",bobot:0.55,rating:"AA-",position:"31/12/2023",ratingIndex:0.9023,inhouse:68498,tier1:403594,capacity:200289.57641,adjusted:68498,globalParent:"—",top200:"—",ccl:500,contractual:500.026,dataQuality:"Normal"},
     {key:"ADCB",name:"Abu Dhabi Commercial Bank PJSC",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:269633,capacity:137398.235975,adjusted:68498,globalParent:"—",top200:"—",ccl:49,contractual:25.04,dataQuality:"Normal"},
     {key:"ADIB",name:"Abu Dhabi Islamic",category:"Asing",country:"UAE",countryRating:"AA",bobot:0.55,rating:"BBB",position:"31/12/2022",ratingIndex:0.7882,inhouse:68498,tier1:105885,capacity:45902.20635,adjusted:45902.20635,globalParent:"—",top200:"—",ccl:0,contractual:0,dataQuality:"Normal"},
     {key:"AGRICN",name:"Agricultural Bank of China Limited",category:"Asing",country:"China",countryRating:"A+",bobot:0.55,rating:"AA",position:"31/12/2023",ratingIndex:0.9265,inhouse:68498,tier1:6853801,capacity:3492525.644575,adjusted:68498,globalParent:"—",top200:"—",ccl:2000,contractual:1700.1335294117648,dataQuality:"Normal"},
@@ -254,7 +254,7 @@ const limasDemoData={
   MLK:[
     {key:"4000264485",name:"DJARUM",group:"DJARUM GROUP",entity:"BMRI",tier:"B",masterLimit:5818,dataQuality:"Normal"},
     {key:"1000145694",name:"ANEKA TAMBANG",group:"ANTAM GROUP",entity:"BMRI",tier:"A",masterLimit:13280,dataQuality:"Normal"},
-    {key:"1000145695",name:"ANTAM RESOURCINDO",group:"ANTAM GROUP",entity:"BMRI",tier:"A",masterLimit:20,dataQuality:"Normal",recordOrigin:"UAT normalized CIF"},
+    {key:"1000145695",name:"ANTAM RESOURCINDO",group:"ANTAM GROUP",entity:"BMRI",tier:"A",masterLimit:20,dataQuality:"Normal"},
     {key:"16000486963",name:"TUNAS MOBILINDO PERKASA",group:"ASTRA GROUP",entity:"BMRI",tier:"A",masterLimit:314,dataQuality:"Normal"},
     {key:"20000474637",name:"TUNAS RIDEAN",group:"ASTRA GROUP",entity:"BMRI",tier:"A",masterLimit:1035,dataQuality:"Normal"}
   ],
@@ -456,7 +456,7 @@ function Report({nav}){
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
 function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
-function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development / UAT</div></div></div>}
+function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development Environment</div></div></div>}
 
 function DomainKpi({label,value,sub,accent=""}){return <div className="metric"><div className="label">{label}</div><div className="value" style={accent?{color:`var(--${accent})`}:{}}>{value}</div><div className="sub">{sub}</div></div>}
 
