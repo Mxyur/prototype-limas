@@ -658,7 +658,11 @@ const creditLineSamples={
   "Commercial Line":productSample["COMMERCIAL LINE (CRDT)"]||{},
   "Treasury Line":productSample["TREASURY LINE (CRDT)"]||{}
 };
-const creditLineFields=[...new Set([...creditLineGroups["Commercial Line"],...creditLineGroups["Treasury Line"]])];
+const creditLineFields=creditLineGroups["Commercial Line"];
+const creditLineTreasuryOnly=new Set(["Treasury DN","Treasury DN Utilisasi","Treasury LN","Treasury LN Utilisasi","Treasury Line Total","Treasury Line Total Utilisasi","TDN","TDN Utilisasi","TLN","TLN Utilisasi","Treasury Line","Total Utilisasi","CDN","CDN Utilisasi","CLN","CLN Utilisasi"]);
+const creditLineCommercialOnly=new Set(["Comm DN","Comm DN Utilisasi","Comm LN","Comm LN Utilisasi","Comm Line Total","Comm Line Total Utilisasi"]);
+const creditLineCommonOnly=new Set(["No","Nama","Swift Code","Swift Code Vlookup","Code","Aging Schedule RM","Negara","Bank","RM","Dept.","BMFIR","Fitch","Moody's","S&P","Corporate Card","Credit Line Total","Credit Line Total Utilisasi"]);
+
 
 const productTabSource={
   "CASHLOAN":"CASHLOAN","NON CASH LOAN":"NON CASH LOAN","CREDIT LINE":"Credit Line (CommLine and TL)",
@@ -763,22 +767,29 @@ function CreditLineFieldTable(){
   const update=(f,key,value)=>setDraft(m=>({...m,[f]:{...(m[f]||{}),[key]:value}}));
   const save=()=>{fields.forEach(f=>saveProductFieldMeta("CREDIT LINE","Combined",f,draft[f]||{}));setEditing(false)};
   const cancel=()=>{setDraft(buildDraft());setEditing(false)};
+  const sample=(f,side)=>{
+    const source=creditLineSamples["Commercial Line"]||{};
+    const value=source[f];
+    if(creditLineTreasuryOnly.has(f)) return side==="treasury" ? (value===0?0:(value||"—")) : "—";
+    if(creditLineCommercialOnly.has(f)) return side==="commercial" ? (value===0?0:(value||"—")) : "—";
+    if(creditLineCommonOnly.has(f)) return side==="commercial" ? (value===0?0:(value||"—")) : "—";
+    if(side==="commercial") return value===0?0:(value||"—");
+    return "—";
+  };
   return <div className="product-field-block">
     <div className="product-field-toolbar">
-      <div><b>Credit Line • Source Fields Lengkap</b><span>Commercial Line + Treasury Line dalam satu tabel dari source sheet Credit Line (CommLine and TL)</span></div>
+      <div><b>Credit Line • Source Fields Lengkap</b><span>Satu tabel dari source sheet Credit Line (CommLine and TL). Nilai yang sudah ada dipisahkan ke Commercial Line atau Treasury Line tanpa menulis ulang field Treasury Line.</span></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <div className="table-wrap product-field-wrap">
       <table className="table field-table product-credit-table">
         <thead><tr><th>Field</th><th>Commercial Line</th><th>Treasury Line</th><th>Source Data</th><th>Keterangan</th></tr></thead>
         <tbody>{fields.map(f=>{
-          const cHas=creditLineGroups["Commercial Line"].includes(f);
-          const tHas=creditLineGroups["Treasury Line"].includes(f);
           const m=draft[f]||{};
           return <tr key={f}>
             <td><b>{f}</b></td>
-            <td>{cHas?(creditLineSamples["Commercial Line"][f]===0?0:(creditLineSamples["Commercial Line"][f]||"—")):"—"}</td>
-            <td>{tHas?(creditLineSamples["Treasury Line"][f]===0?0:(creditLineSamples["Treasury Line"][f]||"—")):"—"}</td>
+            <td>{sample(f,"commercial")}</td>
+            <td>{sample(f,"treasury")}</td>
             <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(f,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
             <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(f,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
           </tr>
@@ -886,7 +897,7 @@ function Products({nav}){
         <div className="body">
           {view==="CREDIT LINE"
             ? <CreditLineFieldTable/>
-            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}/>}
+            : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
           }
           <ProductUsage view={view}/>
         </div>
