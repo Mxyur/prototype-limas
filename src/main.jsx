@@ -584,7 +584,7 @@ function LPGMonitor({nav}){
             {LPG_SCOPES.flatMap(scope=><React.Fragment key={scope}><td>{money(lpgScopeLimit(r,scope))}</td><td>{money(lpgScopeExposure(r,scope))}</td><td>{scopeStatus(r,scope)}</td></React.Fragment>)}
             <td><Status v={recordStatus("LPG",r)}/></td>
             <td className="muted-small">{(()=>{const x=lpgCrosscheck(r);return x.status+(x.variance!==null?" • Δ "+money(x.variance):"")+(x.mode==="Reference Snapshot"?" • snapshot":"")})()}</td>
-            <td className="muted-small">{(()=>{const c=lpgSourceCoverage(r);return c.bankwideMapped?"BW product feed • ":"BW product data belum ada • "}{c.regionalMapped}/{c.totalRegional} regional product feed"})()}</td>
+            <td className="muted-small">{(()=>{const c=lpgSourceCoverage(r);return (c.bankwideMapped?"BW product feed • ":"BW product data belum ada • ")+c.regionalMapped+"/"+c.totalRegional+" regional product feed"})()}</td>
           </tr>)}</tbody>
         </table></div></div>
       </section>
