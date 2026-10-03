@@ -297,20 +297,20 @@ const fillDemoProductData=()=>{
 };
 fillDemoProductData();
 
-const sourceSpec=(r,recordId,integration=[])=>{
+const sourceSpec=(r,recordId)=>{
   const meta={...(r.meta||{}),recordId};
-  // Product Database keeps source provenance only. Booking/country mapping metadata
-  // is derived later by the integration layer from source fields.
+  // Product Database stores only source data and provenance metadata.
+  // Integration mappings are rebuilt from source fields by the runtime mapping engine.
   delete meta.bookingOffice;
   delete meta.bookingOfficeType;
   delete meta.bookingOfficeStatus;
   delete meta.countryExposure;
   return {
     data:JSON.parse(JSON.stringify(r.data||{})),
-    integration:JSON.parse(JSON.stringify(integration||[])),
     meta
   };
 };
+
 
 const rebuildSourceOnlyProductData=()=>{
   const out={
