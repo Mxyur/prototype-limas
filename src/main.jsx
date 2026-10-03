@@ -1442,7 +1442,6 @@ function installE2EDummyDataset(){
         const sourceKey=canonical?.source||f;
         return [f,spec.data?.[f]??spec.data?.[sourceKey]??''];
       }));
-      record.applied=[];
       return record;
     });
     if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
@@ -1603,7 +1602,12 @@ function buildProductIntegrationMappings(){
 
   (productDatabase["Nominal Pertanggungan"]||[]).forEach(r=>{
     const d=r.data||{},insurer=String(d["Perusahaan Asuransi"]||"").trim(),entity=String(d.Entitas||"").trim();
-    if(insurer)addIntegrationMapping("Nominal Pertanggungan",r,{limitType:"CIL",key:insurer,entity,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity -> CIL master"});
+    const master=(limasDemoData.CIL||[]).find(m=>String(m.name||"").trim().toLowerCase()===insurer.toLowerCase());
+    const targetKey=master?.key||insurer;
+    if(insurer)addIntegrationMapping("Nominal Pertanggungan",r,{
+      limitType:"CIL",key:targetKey,entity,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",
+      sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity -> CIL master key"
+    });
   });
 
   ["CASHLOAN","NON CASH LOAN"].forEach(productId=>{
@@ -1757,6 +1761,13 @@ function reconciliationIssues(){
       const masterName=String(master.name||"").trim().toLowerCase();
       if(sourceNameValue&&masterName&&sourceNameValue!==masterName){
         issues.push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:a.recordId,limitType:"CCL",key:a.key,object:master.name,detail:"Nama product tidak sama dengan nama master untuk CCL mapping.",amount:0});
+      }
+    }
+    if(productId==="Nominal Pertanggungan"&&a.limitType==="CIL"&&master&&row){
+      const sourceName=String(row.data?.["Perusahaan Asuransi"]||"").trim().toLowerCase();
+      const masterName=String(master.name||"").trim().toLowerCase();
+      if(sourceName&&masterName&&sourceName!==masterName){
+        issues.push({status:"Data Issue",issueType:"CIL_IDENTITY_REVIEW",productId,recordId:a.recordId,limitType:"CIL",key:a.key,object:master.name,detail:"Nama insurer source dan master perlu identity cross-check.",amount:0});
       }
     }
   }));
