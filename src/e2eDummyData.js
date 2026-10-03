@@ -164,9 +164,9 @@ const fillDemoProductData=()=>{
     // REPORTTYPE / TRXTYPE / FINTYPE / SERV* are actual NCL classifications,
     // not generic "NON CASH LOAN / BG / GUARANTEE" placeholders.
     const nclTemplates=[
-      {module:"EXCO",reportType:"Export Collection Financing",trxType:"D/A",finType:"DISCOUNT/REDISCOUNT",servCode:"77106",servNm:"Trade Operation Export",sof:"T",intrt:"6.97"},
-      {module:"EXCO",reportType:"Export Collection Financing",trxType:"D/A",finType:"DISCOUNT/REDISCOUNT",servCode:"77106",servNm:"Trade Operation Export",sof:"T",intrt:"6.97"},
-      {module:"EXCO",reportType:"Export Collection Financing",trxType:"D/A",finType:"DISCOUNT/REDISCOUNT",servCode:"77106",servNm:"Trade Operation Export",sof:"T",intrt:"7.67"}
+      {module:"EXCO",reportType:"Export Collection Financing",trxRef:"XC77126002607",custId:"16000005630",custNm:"PT. PABRIK KERTAS TJIWI KIMIA TBK",cpnm:"KENSINGTON INTERNATIONAL LIMITED",country:"HK",countryName:"Hong Kong",trxType:"D/A",ccy:"USD",amount:"14978.87",balance:"14978.87",exchangeRate:"17310",eqvidr:"259284240",finType:"DISCOUNT/REDISCOUNT",trxDate:"07/04/2026",dueDate:"02/10/2026",servCode:"77106",servNm:"Trade Operation Export",pccd:"77106",pcnm:"Trade Operation Export",sof:"T",intrt:"6.97"},
+      {module:"EXCO",reportType:"Export Collection Financing",trxRef:"XC77126002602",custId:"16000005628",custNm:"PT. PINDO DELI PULP AND PAPER MILLS",cpnm:"ROCKDALE CAPITAL PTE LTD",country:"SG",countryName:"Singapore",trxType:"D/A",ccy:"USD",amount:"141162.38",balance:"141162.38",exchangeRate:"17310",eqvidr:"2443520798",finType:"DISCOUNT/REDISCOUNT",trxDate:"07/04/2026",dueDate:"25/09/2026",servCode:"77106",servNm:"Trade Operation Export",pccd:"77106",pcnm:"Trade Operation Export",sof:"T",intrt:"6.97"},
+      {module:"EXCO",reportType:"Export Collection Financing",trxRef:"XC77126002609",custId:"16000005628",custNm:"PT. PINDO DELI PULP AND PAPER MILLS",cpnm:"PG PAPER COMPANY LIMITED",country:"GB",countryName:"United Kingdom",trxType:"D/A",ccy:"EUR",amount:"30308.4",balance:"30308.4",exchangeRate:"20218.08",eqvidr:"612777656",finType:"DISCOUNT/REDISCOUNT",trxDate:"07/04/2026",dueDate:"22/05/2026",servCode:"77106",servNm:"Trade Operation Export",pccd:"77106",pcnm:"Trade Operation Export",sof:"T",intrt:"7.67"}
     ];
     const tpl=nclTemplates[i%3];
     d["Swift Code"]=d["Swift Code"]||("BMRI"+country+"E2E"+String(i+1).padStart(3,"0"));
@@ -181,6 +181,33 @@ const fillDemoProductData=()=>{
     d["Type of Judgment"]=d["Type of Judgment"]||"CPNM";
     d.TRXTYPE=d.TRXTYPE||tpl.trxType;
     d.CCY=d.CCY||"USD";
+    if(i<3){
+      d.NO=String(i+1);
+      d.MODULE=tpl.module;
+      d.REPORTTYPE=tpl.reportType;
+      d.TRXREF=tpl.trxRef;
+      d.CUSTID=tpl.custId;
+      d.CUSTNM=tpl.custNm;
+      d.CPNM=tpl.cpnm;
+      d["Country Code"]=tpl.country;
+      d["Country Name"]=tpl.countryName;
+      d.TRXTYPE=tpl.trxType;
+      d.CCY=tpl.ccy;
+      d.AMOUNT=tpl.amount;
+      d.BALANCE=tpl.balance;
+      d.EXCHANGERT=tpl.exchangeRate;
+      d.EQVIDR=tpl.eqvidr;
+      d.FINTYPE=tpl.finType;
+      d.TRXDATE=tpl.trxDate;
+      d.DUEDATE=tpl.dueDate;
+      d.SERVCODE=tpl.servCode;
+      d.SERVNM=tpl.servNm;
+      d.PCCD=tpl.pccd;
+      d.PCNM=tpl.pcnm;
+      d.SOF=tpl.sof;
+      d.INTRT=tpl.intrt;
+      if(r.applied?.[0]) r.applied[0].amount=Number(tpl.eqvidr);
+    }
     const eqvidr=Number(d.EQVIDR||0);
     d.AMOUNT=d.AMOUNT||String(eqvidr?eqvidr/(Number(d.EXCHANGERT||17310)):0);
     d.BALANCE=d.BALANCE||d.AMOUNT;
