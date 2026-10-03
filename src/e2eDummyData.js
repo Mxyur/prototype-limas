@@ -325,16 +325,15 @@ const rebuildSourceOnlyProductData=()=>{
 
   // Cash Loan source universe: retain actual debtor/facility records only.
   // Country/CCL/LPG fixture rows are removed from Product Database.
-  const cashRows=p.CASHLOAN.filter((r,i)=>i===0 || /^CL-MLK-/.test(String(r.meta?.recordId||"")));
+  const cashRows=p.CASHLOAN.filter(r=>/^CL-MLK-/.test(String(r.meta?.recordId||"")));
   cashRows.forEach((r,i)=>{
-    const d=r.data||{};
-    const integration=[];
-    if(i===0 && E2E_MASTER_DATA.Country.some(x=>String(x.key)===String(d.code))){
-      integration.push({limitType:"Country",key:String(d.code),amount:Number(d.total_bade||0),label:"Cash Loan"});
-    }else if(E2E_MASTER_DATA.MLK.some(x=>String(x.key)===String(d.no_cus))){
-      integration.push({limitType:"MLK",key:String(d.no_cus),amount:Number(d.total_bade||0),label:"Cash Loan"});
-    }
-    out.CASHLOAN.push(sourceSpec(r,"CL-"+String(i+1).padStart(3,"0"),integration));
+    const d={...(r.data||{})};
+    // Remove fixture-specific account naming from the source sample.
+    d.no_rek=String(d.no_rek||"").replace(/^MLK-CL-/,"ACC-");
+    const integration=E2E_MASTER_DATA.MLK.some(x=>String(x.key)===String(d.no_cus))
+      ?[{limitType:"MLK",key:String(d.no_cus),amount:Number(d.total_bade||0),label:"Cash Loan"}]
+      :[];
+    out.CASHLOAN.push(sourceSpec({...r,data:d},"CL-"+String(i+1).padStart(3,"0"),integration));
   });
 
   // NCL golden sample: keep exactly the source fields/values confirmed by the user.
