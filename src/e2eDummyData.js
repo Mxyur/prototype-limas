@@ -138,7 +138,7 @@ const fillDemoProductData=()=>{
   products.CASHLOAN.forEach((r,i)=>{
     const d=r.data||{}, country=String(d.code||"ID").toUpperCase(), office=officeByCountry[country]||offices[i%offices.length];
     const mlk=E2E_MASTER_DATA.MLK.find(x=>String(x.key)===String(d.no_cus));
-    const officeCode=String(d.kd_cab||((i%5===0)?"60900":(i%5===1?"60200":(i%5===2?"60600":"60100")));
+    const officeCode=String(d.kd_cab||((i%5===0)?"60900":(i%5===1?"60200":(i%5===2?"60600":"60100"))));
     d.kd_cab=officeCode;
     d.nm_cab=d.nm_cab||office[0];
     d.gas_reporting=d.gas_reporting||"WHOLESALE BANKING";
