@@ -777,9 +777,10 @@ function Warning({nav}){
   </div></Layout>;
 }
 
-function DataRemediation({nav}){
+function DataRemediation({nav,initialIssueId=""}){
   const [layer,setLayer]=useState("All Layers"),[filter,setFilter]=useState("All"),[selectedId,setSelectedId]=useState(""),[field,setField]=useState(""),[value,setValue]=useState(""),[bookingOffice,setBookingOffice]=useState(""),[bookingType,setBookingType]=useState(""),[reason,setReason]=useState(""),[refresh,setRefresh]=useState(0);
   const all=dataQualityRegisterRows();
+  React.useEffect(()=>{if(initialIssueId&&all.some(x=>x.id===initialIssueId))setSelectedId(initialIssueId)},[initialIssueId,refresh]);
   const rows=all.filter(r=>(r.action?.status!=="Closed")&&(layer==="All Layers"||r.layer===layer)&&(filter==="All"||r.issueType===filter));
   const selected=rows.find(r=>r.id===selectedId)||all.find(r=>r.id===selectedId)||null;
   const sourceRow=selected?.productId&&selected?.recordId ? (productDatabase[selected.productId]||[]).find(r=>String(r.recordId)===String(selected.recordId)) : null;
@@ -819,19 +820,19 @@ function DataRemediation({nav}){
     try{
       const note=window.prompt("Catatan resolution:", "");
       if(note===null)return;
-      setExceptionAction(dataQualityActionRef(selected),"Resolved",note,{requireClear:true});
+      setExceptionAction(effectiveDataQualityActionRef(selected),"Resolved",note,{requireClear:true});
       setRefresh(x=>x+1);
     }catch(e){alert(e?.message||String(e));}
   };
   const close=()=>{
     if(!selected)return;
     try{
-      setExceptionAction(dataQualityActionRef(selected),"Closed",selected.action?.notes||"",{requireClear:true});
+      setExceptionAction(effectiveDataQualityActionRef(selected),"Closed",selected.action?.notes||"",{requireClear:true});
       setRefresh(x=>x+1);
     }catch(e){alert(e?.message||String(e));}
   };
   const issueTypes=[...new Set(all.map(x=>x.issueType))].sort();
-  const currentAction=selected?getExceptionAction(dataQualityActionRef(selected)):null;
+  const currentAction=selected?(selected.action||getExceptionAction(effectiveDataQualityActionRef(selected))):null;
   const rem=getSourceRemediation(selected?.productId,selected?.recordId);
   const mapRem=isBookingMapping?getMappingRemediation(selected.productId,selected.recordId,selected.domain,selected.key):null;
   return <Layout screen="remediation" onNav={nav}>
@@ -889,7 +890,12 @@ function DataRemediation({nav}){
             <div className="field-help"><b>Current:</b> {String(sourceRow.data?.[field]??"—")} • Source correction tersimpan sebagai audit dan diterapkan ke runtime source record. Source field name tidak di-rename.</div>
           </div>}
 
+          <div className="mini" style={{marginTop:12}}>
+            <b>Revalidation</b>
+            <div className="muted-small">{dataQualityIssueStillPresent(selected)?"Issue masih terdeteksi oleh validator — belum clear.":"Validator clear — tidak ada issue aktif dengan reference yang sama."}</div>
+          </div>
           {!isMaster&&!isBookingMapping&&sourceRow&&rem&&<div className="field-help" style={{marginTop:8}}><b>Last correction:</b> {rem.appliedAt} by {rem.appliedBy} • {rem.reason}</div>}
+          {!isMaster&&!isBookingMapping&&sourceRow&&rem?.history?.length>0&&<div className="table-wrap" style={{marginTop:8}}><table className="table"><thead><tr><th>Time</th><th>By</th><th>Reason</th><th>Changed Fields</th></tr></thead><tbody>{rem.history.slice().reverse().map((h,i)=><tr key={"src-history-"+i}><td>{h.at}</td><td>{h.by}</td><td>{h.reason}</td><td className="muted-small">{Object.entries(h.changes||{}).map(([k,v])=>k+" → "+String(v)).join(" • ")}</td></tr>)}</tbody></table></div>}
 
           {!isMaster&&isBookingMapping&&<div style={{marginTop:12}}>
             <div className="section-title">Booking Office Enrichment</div>
@@ -899,6 +905,7 @@ function DataRemediation({nav}){
             </div>
             <div className="field-help">Untuk issue MISSING_BOOKING_MAPPING, correction berada di integration/enrichment layer. Source Product Database tidak diubah.</div>
             {mapRem&&<div className="field-help" style={{marginTop:8}}><b>Last mapping fix:</b> {mapRem.appliedAt} by {mapRem.appliedBy} • {mapRem.reason}</div>}
+            {mapRem?.history?.length>0&&<div className="table-wrap" style={{marginTop:8}}><table className="table"><thead><tr><th>Time</th><th>By</th><th>Reason</th><th>Change</th></tr></thead><tbody>{mapRem.history.slice().reverse().map((h,i)=><tr key={"map-history-"+i}><td>{h.at}</td><td>{h.by}</td><td>{h.reason}</td><td className="muted-small">Booking Office: {h.changes?.bookingOffice||"—"} • Type: {h.changes?.bookingOfficeType||"—"}</td></tr>)}</tbody></table></div>}
           </div>}
 
           {!isMaster&&<div style={{marginTop:12}}>
@@ -909,9 +916,13 @@ function DataRemediation({nav}){
               {currentAction?.status==="In Progress"&&<button className="btn secondary" onClick={resolve}>Resolve After Recheck</button>}
               {currentAction?.status==="Resolved"&&<button className="btn secondary" onClick={close}>Close</button>}
               {currentAction?.status==="Open"&&<button className="btn secondary" onClick={()=>{
-                try{setExceptionAction(dataQualityActionRef(selected),"In Progress","",{requireClear:false});setRefresh(x=>x+1);}catch(e){alert(e?.message||String(e));}
+                try{setExceptionAction(effectiveDataQualityActionRef(selected),"In Progress","",{requireClear:false});setRefresh(x=>x+1);}catch(e){alert(e?.message||String(e));}
               }}>Start Action</button>}
             </div>
+          </div>}
+          {currentAction?.history?.length>0&&<div style={{marginTop:14}}>
+            <div className="section-title">Action History</div>
+            <div className="table-wrap"><table className="table"><thead><tr><th>Time</th><th>Status</th><th>By</th><th>Notes</th></tr></thead><tbody>{currentAction.history.slice().reverse().map((h,i)=><tr key={"action-history-"+i}><td>{h.at}</td><td>{h.from+" → "+h.to}</td><td>{h.by}</td><td className="muted-small">{h.notes||"—"}</td></tr>)}</tbody></table></div>
           </div>}
         </div>
       </section>}
@@ -931,7 +942,7 @@ function DataQuality({nav}){
     try{
       const note=(next==="Resolved"||next==="Closed")?window.prompt("Catatan action / resolution:",row.action.notes||""):(row.action.notes||"");
       if((next==="Resolved"||next==="Closed")&&note===null)return;
-      setExceptionAction(dataQualityActionRef(row),next,note||"",{requireClear:true});
+      setExceptionAction(effectiveDataQualityActionRef(row),next,note||"",{requireClear:true});
       setRefresh(x=>x+1);
     }catch(e){alert(e?.message||String(e));}
   };
@@ -959,7 +970,7 @@ function DataQuality({nav}){
         <thead><tr><th>Layer</th><th>Issue Type</th><th>Domain</th><th>Key</th><th>Object</th><th>Detail</th><th>Action</th><th>Owner</th><th>Updated</th><th>Route</th><th>Aksi</th></tr></thead>
         <tbody>{rows.map((r,i)=>{
           const next=r.action.status==="Open"?"In Progress":r.action.status==="In Progress"?"Resolved":r.action.status==="Resolved"?"Closed":null;
-          return <tr key={r.id+"|"+i}><td>{r.layer}</td><td><b>{r.issueType}</b></td><td>{r.domain}</td><td className="key">{r.key}</td><td>{r.object}</td><td className="muted-small">{r.detail}{r.action.notes&&<div>Note: {r.action.notes}</div>}</td><td><span className="chip blue">{r.action.status}</span></td><td>{r.action.owner}</td><td className="muted-small">{r.action.updatedAt||"—"}</td><td><button className="btn ghost" onClick={()=>nav("remediation",{type:r.domain,key:r.key})}>Remediate</button></td><td>{next?<button className="btn ghost" onClick={()=>runAction(r,next)}>{next==="Resolved"?"Resolve":next==="Closed"?"Close":"Start Action"}</button>:<span className="muted-small">Completed</span>}</td></tr>;
+          return <tr key={r.id+"|"+i}><td>{r.layer}</td><td><b>{r.issueType}</b></td><td>{r.domain}</td><td className="key">{r.key}</td><td>{r.object}</td><td className="muted-small">{r.detail}{r.action.notes&&<div>Note: {r.action.notes}</div>}</td><td><span className="chip blue">{r.action.status}</span></td><td>{r.action.owner}</td><td className="muted-small">{r.action.updatedAt||"—"}</td><td><button className="btn ghost" onClick={()=>nav("remediation",{type:r.domain,key:r.key,issueId:r.id})}>Remediate</button></td><td>{next?<button className="btn ghost" onClick={()=>runAction(r,next)}>{next==="Resolved"?"Resolve":next==="Closed"?"Close":"Start Action"}</button>:<span className="muted-small">Completed</span>}</td></tr>;
         })}</tbody>
       </table></div></div>
     </section>
@@ -2605,7 +2616,9 @@ function setExceptionAction(row,nextStatus,notes="",options={}){
   if(nextStatus==="Resolved"&&options.requireClear&&dataQualityIssueStillPresent(row))throw new Error("Issue masih terdeteksi validator. Lakukan remediation lalu Run Check sebelum Resolve.");
   if(nextStatus==="In Progress"&&current.status==="Closed")throw new Error("Issue yang sudah Closed tidak dapat dibuka kembali dari flow ini.");
   const stamp=nowLabel();
-  const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp,rowRef:{domain:row.domain||"—",key:row.key||"—",detail:row.detail||"—",layer:row.layer||"",issueType:row.issueType||"",productId:row.productId||null,recordId:row.recordId||null,object:row.object||"—"}};
+  const rowRef={domain:row.domain||"—",key:row.key||"—",detail:row.detail||"—",layer:row.layer||"",issueType:row.issueType||"",productId:row.productId||null,recordId:row.recordId||null,object:row.object||"—"};
+  const event={at:stamp,from:current.status||"Open",to:nextStatus,by:current.owner||"Risk Management",notes:String(notes??current.notes??"").trim()};
+  const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp,rowRef,history:[...(current.history||[]),event]};
   if(nextStatus==="Resolved")next.resolvedAt=stamp;
   if(nextStatus==="Closed")next.closedAt=stamp;
   if(nextStatus==="Open"&&previous>0)throw new Error("Re-open manual belum tersedia. Gunakan governance review untuk reopen.");
@@ -2618,6 +2631,9 @@ function enrichExceptionRows(rows){
 }
 function dataQualityActionRef(row){
   return {domain:row.domain,key:row.key,detail:row.issueType+" • "+row.detail+(row.recordId?" • "+row.recordId:""),layer:row.layer||"",issueType:row.issueType||"",productId:row.productId||null,recordId:row.recordId||null,object:row.object||"—"};
+}
+function effectiveDataQualityActionRef(row){
+  return row?.action?.rowRef?.issueType ? row.action.rowRef : dataQualityActionRef(row);
 }
 function dataQualityIssueRows(){
   const out=[];
@@ -2636,7 +2652,7 @@ function dataQualityIssueRows(){
     .map(x=>({...x,id:exceptionKey(dataQualityActionRef(x)),action:getExceptionAction(dataQualityActionRef(x))}));
 }
 function dataQualityIssueStillPresent(row){
-  const ref=dataQualityActionRef(row);
+  const ref=effectiveDataQualityActionRef(row);
   const target=exceptionKey(ref);
   return dataQualityIssueRows().some(x=>exceptionKey(dataQualityActionRef(x))===target);
 }
@@ -3393,7 +3409,9 @@ function App(){
   const [screen,setScreen]=useState("dashboard");
   const [sel,setSel]=useState("Country");
   const [selKey,setSelKey]=useState("");
+  const [navPayload,setNavPayload]=useState(null);
   const nav=(id,payload)=>{
+    setNavPayload(payload||null);
     if(payload && payload.type){setSel(payload.type); setSelKey(payload.key||"");}
     setScreen(id);
   };
@@ -3406,7 +3424,7 @@ function App(){
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
   if(screen==="quality") return <DataQuality nav={nav}/>;
-  if(screen==="remediation") return <DataRemediation nav={nav}/>;
+  if(screen==="remediation") return <DataRemediation nav={nav} initialIssueId={navPayload?.issueId||""}/>;
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
