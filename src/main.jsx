@@ -2271,8 +2271,8 @@ function addIntegrationMapping(productId,row,config){
     sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
     scope:config.scope||null,entity:config.entity||null,masterMatch:Boolean(master),
     masterObject:master?.name||master?.sector||master?.key||"—",
-    bookingOffice:override?.bookingOffice||config.bookingOffice??booking.bookingOffice,
-    bookingOfficeType:override?.bookingOfficeType||config.bookingOfficeType??booking.bookingOfficeType,
+    bookingOffice:(override?.bookingOffice||config.bookingOffice||booking.bookingOffice),
+    bookingOfficeType:(override?.bookingOfficeType||config.bookingOfficeType||booking.bookingOfficeType),
     bookingOfficeStatus:override?.status==="Applied"?"Remediated":(config.bookingOfficeStatus??booking.bookingOfficeStatus),
     countryExposure:config.countryExposure??(config.limitType==="Country"?key:"—"),
     sourceSystem:row.sourceSystem,asOfDate:row.asOfDate
