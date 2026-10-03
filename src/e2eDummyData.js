@@ -16,9 +16,9 @@ const nostro=(data,key,amount,meta={})=>rec("NOSTRO",data,[apply("Country",key,a
 
 export const E2E_MASTER_DATA={
 Country:[
-{key:"ID",name:"Indonesia",statusMaster:"Exist",capacityLimit:120000,capacityDistribution:{domesticLimit:55000,overseasLimit:65000},productAllocations:{CASHLOAN:{domesticLimit:20000,overseasLimit:20000,total:40000},"NON CASH LOAN":{domesticLimit:10000,overseasLimit:15000,total:25000},"CREDIT LINE":{domesticLimit:10000,overseasLimit:10000,total:20000},BONDS:{domesticLimit:0,overseasLimit:20000,total:20000},NOSTRO:{domesticLimit:5000,overseasLimit:10000,total:15000}}},
+{key:"ID",name:"Indonesia",statusMaster:"Exist",capacityLimit:120000,capacityDistribution:{domesticLimit:55000,overseasLimit:65000},productAllocations:{CASHLOAN:{domesticLimit:20000,overseasLimit:20000,total:40000},"NON CASH LOAN":{domesticLimit:10000,overseasLimit:15000,total:25000},"CREDIT LINE":{domesticLimit:10000,overseasLimit:10000,total:20000},BONDS:{domesticLimit:10000,overseasLimit:10000,total:20000},NOSTRO:{domesticLimit:5000,overseasLimit:10000,total:15000}}},
 {key:"SG",name:"Singapore",statusMaster:"Exist",capacityLimit:80000,capacityDistribution:{domesticLimit:35000,overseasLimit:45000},productAllocations:{CASHLOAN:{domesticLimit:15000,overseasLimit:10000,total:25000},"NON CASH LOAN":{domesticLimit:5000,overseasLimit:10000,total:15000},"CREDIT LINE":{domesticLimit:5000,overseasLimit:10000,total:15000},BONDS:{domesticLimit:5000,overseasLimit:10000,total:15000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}},
-{key:"CN",name:"China",statusMaster:"Exist",capacityLimit:100000,capacityDistribution:{domesticLimit:30000,overseasLimit:70000},productAllocations:{CASHLOAN:{domesticLimit:5000,overseasLimit:25000,total:30000},"NON CASH LOAN":{domesticLimit:2000,overseasLimit:18000,total:20000},"CREDIT LINE":{domesticLimit:4000,overseasLimit:16000,total:20000},BONDS:{domesticLimit:0,overseasLimit:20000,total:20000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}},
+{key:"CN",name:"China",statusMaster:"Exist",capacityLimit:100000,capacityDistribution:{domesticLimit:30000,overseasLimit:70000},productAllocations:{CASHLOAN:{domesticLimit:5000,overseasLimit:25000,total:30000},"NON CASH LOAN":{domesticLimit:2000,overseasLimit:18000,total:20000},"CREDIT LINE":{domesticLimit:4000,overseasLimit:16000,total:20000},BONDS:{domesticLimit:14000,overseasLimit:6000,total:20000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}},
 {key:"AU",name:"Australia",statusMaster:"Exist",capacityLimit:90000,capacityDistribution:{domesticLimit:40000,overseasLimit:50000},productAllocations:{CASHLOAN:{domesticLimit:15000,overseasLimit:15000,total:30000},"NON CASH LOAN":{domesticLimit:10000,overseasLimit:10000,total:20000},"CREDIT LINE":{domesticLimit:5000,overseasLimit:10000,total:15000},BONDS:{domesticLimit:5000,overseasLimit:10000,total:15000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}}
 ],
 CCL:[
@@ -102,11 +102,11 @@ cilSpecs.forEach(([key,insurer,ents])=>ents.forEach(([entity,amount],i)=>p["Nomi
 
 // LPG: BATUBARA Commercial has full 13-scope coverage; Corporate is bankwide-only to demonstrate partial coverage.
 const scopes=["Region I","Region II","Region III","Region IV","Region V","Region VI","Region VII","Region VIII","Region IX","Region X","Region XI","Region XII","KP + OVS"];
-const amounts=[500,800,1000,1200,1500,1800,2000,2200,2300,2500,1500,1000,5700];
+const amounts=[2500,2500,2500,2500,2500,2500,2500,2500,2500,2500,0,0,5000];
 scopes.forEach((scope,i)=>{
   const total=amounts[i],clAmt=total*.6,nclAmt=total*.4;
   p.CASHLOAN.push(rec("CASHLOAN",{no_cus:"LPG-CL-"+i,nm_cus:"LPG Commercial CL "+scope,no_rek:"LPG-"+i,total_limit:String(total),total_bade:String(clAmt),project_location:"Indonesia",code:"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:"Commercial",region_lpg:scope},[],{recordId:"CL-LPG-COM-"+(i+1),sourceSystem:"DWH"}));
-  p["NON CASH LOAN"].push(rec("NON CASH LOAN",{NO:String(200+i),MODULE:"EPLC",TRXREF:"LPG-NCL-"+i,CUSTID:"LPG-"+i,CUSTNM:"LPG Commercial NCL "+scope,CCY:"IDR",BALANCE:String(nclAmt),EQVIDR:String(nclAmt*1000000),"Country Code":"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:i===10?"Sme":"Commercial",region_lpg:scope},[],{recordId:"NCL-LPG-COM-"+(i+1),sourceSystem:"DWH"}));
+  p["NON CASH LOAN"].push(rec("NON CASH LOAN",{NO:String(200+i),MODULE:"EPLC",TRXREF:"LPG-NCL-"+i,CUSTID:"LPG-"+i,CUSTNM:"LPG Commercial NCL "+scope,CCY:"IDR",BALANCE:String(nclAmt),EQVIDR:String(nclAmt*1000000),"Country Code":"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:"Commercial",region_lpg:scope},[],{recordId:"NCL-LPG-COM-"+(i+1),sourceSystem:"DWH"}));
 });
 p.CASHLOAN.push(rec("CASHLOAN",{no_cus:"LPG-CORP",nm_cus:"LPG Corporate Bankwide",no_rek:"LPG-CORP",total_limit:"50000",total_bade:"42000",project_location:"Indonesia",code:"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:"Corporate",region_lpg:"KP + OVS"},[],{recordId:"CL-LPG-CORP",sourceSystem:"DWH"}));
 
