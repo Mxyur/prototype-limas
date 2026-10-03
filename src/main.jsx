@@ -2363,7 +2363,7 @@ function CanonicalReadModelPreview(){
         <DomainKpi label="Mapped" value={mapped} sub="Valid master linkage"/>
         <DomainKpi label="Read Model Issue" value={issues} sub="Mapping / data integrity"/>
         <DomainKpi label="No Product Data" value={noData} sub="Master without source feed"/>
-        <DomainKpi label="EWS / Breach" value={rows.filter(r=>r.status==="Warning"||r.status==="Breach").length} sub="Master-level exception rows" accent={rows.some(r=>r.status==="Breach")?"red":"yellow"}/>
+        <DomainKpi label="EWS / Breach Masters" value={canonicalExceptions().filter(r=>r.status==="Warning"||r.status==="Breach").length} sub="Unique master-level exceptions" accent={canonicalExceptions().some(r=>r.status==="Breach")?"red":"yellow"}/>
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table">
