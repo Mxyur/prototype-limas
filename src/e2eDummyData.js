@@ -156,33 +156,57 @@ const fillDemoProductData=()=>{
     r.meta={...r.meta,bookingOffice:r.meta.bookingOffice||d.nm_cab,bookingOfficeType:r.meta.bookingOfficeType||office[1],countryExposure:r.meta.countryExposure||country,asOfDate:r.meta.asOfDate||E2E_DUMMY_META.asOfDate};
   });
   products["NON CASH LOAN"].forEach((r,i)=>{
-    const d=r.data||{}, country=String(d["Country Code"]||"ID").toUpperCase(), office=officeByCountry[country]||offices[i%offices.length];
+    const d=r.data||{};
+    const country=String(d["Country Code"]||"ID").toUpperCase();
+    const office=officeByCountry[country]||offices[i%offices.length];
+
+    // NCL source fidelity: keep the user-confirmed source semantics.
+    // REPORTTYPE / TRXTYPE / FINTYPE / SERV* are actual NCL classifications,
+    // not generic "NON CASH LOAN / BG / GUARANTEE" placeholders.
+    const nclTemplates=[
+      {module:"EXCO",reportType:"Export Collection Financing",trxType:"D/A",finType:"DISCOUNT/REDISCOUNT",servCode:"77106",servNm:"Trade Operation Export",sof:"T",intrt:"6.97"},
+      {module:"EXCO",reportType:"Export Collection Financing",trxType:"D/A",finType:"DISCOUNT/REDISCOUNT",servCode:"77106",servNm:"Trade Operation Export",sof:"T",intrt:"6.97"},
+      {module:"EXCO",reportType:"Export Collection Financing",trxType:"D/A",finType:"DISCOUNT/REDISCOUNT",servCode:"77106",servNm:"Trade Operation Export",sof:"T",intrt:"7.67"}
+    ];
+    const tpl=nclTemplates[i%3];
     d["Swift Code"]=d["Swift Code"]||("BMRI"+country+"E2E"+String(i+1).padStart(3,"0"));
-    d.REPORTTYPE=d.REPORTTYPE||"NON CASH LOAN";
+    d.MODULE=d.MODULE||tpl.module;
+    d.REPORTTYPE=d.REPORTTYPE||tpl.reportType;
     d.RELREF=d.RELREF||("REL-"+String(r.meta?.recordId||"NCL-"+i));
     d.CPNM=d.CPNM||"Mandiri Counterparty "+country;
     d.CPCNTY=d.CPCNTY||country;
     d.CPBK=d.CPBK||office[2];
     d.BKCNTRY=d.BKCNTRY||country;
     d["Country Name"]=d["Country Name"]||({ID:"Indonesia",SG:"Singapore",CN:"China",AU:"Australia",JP:"Japan"}[country]||country);
-    d["Type of Judgment"]=d["Type of Judgment"]||"STANDARD";
-    d.TRXTYPE=d.TRXTYPE||"BG";
-    d.AMOUNT=d.AMOUNT||String(Math.max(Number(d.EQVIDR||0)*0.7,1));
-    d.EXCHANGERT=d.EXCHANGERT||"1";
-    d.FINTYPE=d.FINTYPE||"GUARANTEE";
-    d.TRXDATE=d.TRXDATE||"2026-09-30";
-    d.DUEDATE=d.DUEDATE||"2027-09-30";
-    d.SERVCODE=d.SERVCODE||"NCL-GUARANTEE";
-    d.SERVNM=d.SERVNM||"Bank Guarantee";
-    d.PCCD=d.PCCD||"BMRI";
-    d.PCNM=d.PCNM||"Bank Mandiri";
-    d.BUCD=d.BUCD||"WHOLESALE";
-    d.SOF=d.SOF||"TRADE";
-    d.INTRT=d.INTRT||"0";
+    d["Type of Judgment"]=d["Type of Judgment"]||"CPNM";
+    d.TRXTYPE=d.TRXTYPE||tpl.trxType;
+    d.CCY=d.CCY||"USD";
+    const eqvidr=Number(d.EQVIDR||0);
+    d.AMOUNT=d.AMOUNT||String(eqvidr?eqvidr/(Number(d.EXCHANGERT||17310)):0);
+    d.BALANCE=d.BALANCE||d.AMOUNT;
+    d.EXCHANGERT=d.EXCHANGERT||"17310";
+    d.FINTYPE=d.FINTYPE||tpl.finType;
+    d.TRXDATE=d.TRXDATE||"07/04/2026";
+    d.DUEDATE=d.DUEDATE||"02/10/2026";
+    d.SERVCODE=d.SERVCODE||tpl.servCode;
+    d.SERVNM=d.SERVNM||tpl.servNm;
+    d.PCCD=d.PCCD||tpl.servCode;
+    d.PCNM=d.PCNM||tpl.servNm;
+    d.BUCD=d.BUCD||"";
+    d.SOF=d.SOF||tpl.sof;
+    d.INTRT=d.INTRT||tpl.intrt;
     d.ecosystem_lpg=d.ecosystem_lpg||"GENERAL";
     d.segmen_lpg=d.segmen_lpg||"Corporate";
     d.region_lpg=d.region_lpg||(country==="ID"?"KP + OVS":office[2]);
-    r.meta={...r.meta,bookingOffice:r.meta.bookingOffice||office[0],bookingOfficeType:r.meta.bookingOfficeType||office[1],countryExposure:r.meta.countryExposure||country,asOfDate:r.meta.asOfDate||E2E_DUMMY_META.asOfDate};
+
+    r.meta={
+      ...r.meta,
+      // Booking office is an enrichment/reference, not a native NCL source field.
+      bookingOffice:r.meta?.bookingOffice||office[0],
+      bookingOfficeType:r.meta?.bookingOfficeType||office[1],
+      countryExposure:r.meta?.countryExposure||country,
+      asOfDate:r.meta?.asOfDate||E2E_DUMMY_META.asOfDate
+    };
   });
   products["CREDIT LINE"].forEach((r,i)=>{
     const d=r.data||{};
