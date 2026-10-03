@@ -105,7 +105,7 @@ const scopes=["Region I","Region II","Region III","Region IV","Region V","Region
 const amounts=[500,800,1000,1200,1500,1800,2000,2200,2300,2500,1500,1000,5700];
 scopes.forEach((scope,i)=>{
   const total=amounts[i],clAmt=total*.6,nclAmt=total*.4;
-  p.CASHLOAN.push(rec("CASHLOAN",{no_cus:"LPG-CL-"+i,nm_cus:"LPG Commercial CL "+scope,no_rek:"LPG-"+i,total_limit:String(total),total_bade:String(clAmt),project_location:"Indonesia",code:"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:i===10?"Sme":"Commercial",region_lpg:scope},[],{recordId:"CL-LPG-COM-"+(i+1),sourceSystem:"DWH"}));
+  p.CASHLOAN.push(rec("CASHLOAN",{no_cus:"LPG-CL-"+i,nm_cus:"LPG Commercial CL "+scope,no_rek:"LPG-"+i,total_limit:String(total),total_bade:String(clAmt),project_location:"Indonesia",code:"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:"Commercial",region_lpg:scope},[],{recordId:"CL-LPG-COM-"+(i+1),sourceSystem:"DWH"}));
   p["NON CASH LOAN"].push(rec("NON CASH LOAN",{NO:String(200+i),MODULE:"EPLC",TRXREF:"LPG-NCL-"+i,CUSTID:"LPG-"+i,CUSTNM:"LPG Commercial NCL "+scope,CCY:"IDR",BALANCE:String(nclAmt),EQVIDR:String(nclAmt*1000000),"Country Code":"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:i===10?"Sme":"Commercial",region_lpg:scope},[],{recordId:"NCL-LPG-COM-"+(i+1),sourceSystem:"DWH"}));
 });
 p.CASHLOAN.push(rec("CASHLOAN",{no_cus:"LPG-CORP",nm_cus:"LPG Corporate Bankwide",no_rek:"LPG-CORP",total_limit:"50000",total_bade:"42000",project_location:"Indonesia",code:"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:"Corporate",region_lpg:"KP + OVS"},[],{recordId:"CL-LPG-CORP",sourceSystem:"DWH"}));
