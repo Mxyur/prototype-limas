@@ -869,36 +869,189 @@ function Monitor({type,nav}){
   </Layout>;
 }
 
+
+function csvEscape(value){
+  const s=String(value??"");
+  return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function downloadCsv(filename,headers,rows){
+  const csv=[headers.map(csvEscape).join(","),...rows.map(row=>headers.map(h=>csvEscape(row[h])).join(","))].join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+function masterTemplate(type){
+  const rows=limasDemoData[type]||[];
+  if(type==="Country")return {
+    headers:["key","name","capacityLimit","domesticCapacity","overseasCapacity"],
+    rows:rows.map(r=>({key:r.key,name:r.name,capacityLimit:r.capacityLimit,domesticCapacity:r.capacityDistribution?.domesticLimit??"",overseasCapacity:r.capacityDistribution?.overseasLimit??""}))
+  };
+  if(type==="CCL")return {
+    headers:["key","name","category","country","ccl","contractual"],
+    rows:rows.map(r=>({key:r.key,name:r.name,category:r.category,country:r.country,ccl:r.ccl,contractual:r.contractual}))
+  };
+  if(type==="MLK")return {
+    headers:["key","name","group","entity","masterLimitSetting"],
+    rows:rows.map(r=>({key:r.key,name:r.name,group:r.group,entity:r.entity,masterLimitSetting:r.masterLimitSetting}))
+  };
+  if(type==="CIL")return {
+    headers:["key","name","type","ic","multiplier","cit","cil"],
+    rows:rows.map(r=>({key:r.key,name:r.name,type:r.type,ic:r.ic,multiplier:r.multiplier,cit:r.cit,cil:r.cil}))
+  };
+  return {
+    headers:["key","sector","segment","Bankwide",...LPG_REGIONAL_SCOPES],
+    rows:rows.map(r=>({key:r.key,sector:r.sector,segment:r.segment,Bankwide:r.limits?.Bankwide??"",...Object.fromEntries(LPG_REGIONAL_SCOPES.map(s=>[s,r.limits?.[s]??""]))}))
+  };
+}
+function parseCsv(text){
+  const rows=[];let row=[],cell="",quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i],next=text[i+1];
+    if(ch==='"'){
+      if(quoted&&next==='"'){cell+='"';i++;}
+      else quoted=!quoted;
+    }else if(ch===","&&!quoted){row.push(cell);cell="";}
+    else if((ch==="\n"||ch==="\r")&&!quoted){
+      if(ch==="\r"&&next==="\n")i++;
+      row.push(cell);cell="";
+      if(row.some(v=>String(v).trim()!==""))rows.push(row);
+      row=[];
+    }else cell+=ch;
+  }
+  if(cell!==""||row.length){row.push(cell);if(row.some(v=>String(v).trim()!==""))rows.push(row);}
+  if(!rows.length)return [];
+  const headers=rows[0].map(x=>String(x).trim());
+  return rows.slice(1).map(r=>Object.fromEntries(headers.map((h,i)=>[h,String(r[i]??"").trim()])));
+}
+function parseNumberOrKeep(v){
+  if(v===undefined||v===null||v==="")return v;
+  const n=Number(String(v).replace(/,/g,""));
+  return Number.isFinite(n)?n:v;
+}
+function applyMasterCsv(type,records){
+  const target=limasDemoData[type]||[];
+  const byKey=new Map(target.map(r=>[String(r.key),r]));
+  records.forEach(input=>{
+    const key=String(input.key||"").trim();
+    if(!key)return;
+    const row=byKey.get(key);
+    if(!row)return;
+    if(type==="Country"){
+      if(input.name!==undefined)row.name=input.name;
+      if(input.capacityLimit!=="")row.capacityLimit=parseNumberOrKeep(input.capacityLimit);
+      row.capacityDistribution=row.capacityDistribution||{};
+      if(input.domesticCapacity!=="")row.capacityDistribution.domesticLimit=parseNumberOrKeep(input.domesticCapacity);
+      if(input.overseasCapacity!=="")row.capacityDistribution.overseasLimit=parseNumberOrKeep(input.overseasCapacity);
+    }else if(type==="CCL"){
+      ["name","category","country"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=input[f];});
+      ["ccl","contractual"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=parseNumberOrKeep(input[f]);});
+    }else if(type==="MLK"){
+      ["name","group","entity"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=input[f];});
+      if(input.masterLimitSetting!=="")row.masterLimitSetting=parseNumberOrKeep(input.masterLimitSetting);
+    }else if(type==="CIL"){
+      ["name","type"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=input[f];});
+      ["ic","multiplier","cit","cil"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=parseNumberOrKeep(input[f]);});
+    }else if(type==="LPG"){
+      if(input.sector!==undefined&&input.sector!=="")row.sector=input.sector;
+      if(input.segment!==undefined&&input.segment!=="")row.segment=normalizeLpgSegment(input.segment);
+      row.limits=row.limits||{};
+      ["Bankwide",...LPG_REGIONAL_SCOPES].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row.limits[f]=parseNumberOrKeep(input[f]);});
+    }
+  });
+  cleanseMasterData();
+  buildProductIntegrationMappings();
+}
+function ProductIntegrationTable({view}){
+  const mappings=productIntegrationMappings[view]||[];
+  return <section className="card" style={{marginTop:16}}>
+    <div className="head">
+      <div><h2>Integration Mapping</h2><p>Mapping layer terpisah dari Product Database: source record → target master key → normalized utilization.</p></div>
+      <span className="chip blue">{mappings.length} mappings</span>
+    </div>
+    <div className="body">
+      {mappings.length===0
+        ? <div className="mini">Belum ada mapping aktif. Product ini tetap disimpan sebagai source-only/scoped.</div>
+        : <div className="table-wrap"><table className="table product-master-table">
+            <thead><tr><th>Domain</th><th>Source Record</th><th>Source Field</th><th>Source Value</th><th>Target Master</th><th>Amount Source</th><th>Normalized</th><th>Scope</th><th>Booking Type</th><th>Mapping Rule</th><th>Status</th></tr></thead>
+            <tbody>{mappings.map((a,i)=>{
+              const row=(productDatabase[view]||[]).find(x=>String(x.recordId)===String(a.recordId));
+              const normalized=row?normalizeAppliedAmount(a.limitType,view,a.amount,row):{amount:a.amount,targetUnit:"Rp Juta"};
+              return <tr key={view+"-map-"+a.recordId+"-"+a.limitType+"-"+a.key+"-"+i}>
+                <td><b>{a.limitType}</b></td><td className="key">{a.recordId}</td><td>{a.sourceField||"—"}</td><td>{a.sourceValue||"—"}</td>
+                <td>{a.masterObject||a.key||"—"}<div className="muted-small">{a.key||"—"}</div></td>
+                <td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+                <td>{Number(normalized.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})} {normalized.targetUnit}</td>
+                <td>{a.scope||"—"}</td><td>{a.limitType==="Country"?(a.bookingOfficeType||"Needs Mapping"):"—"}</td>
+                <td className="muted-small">{a.mappingRule||"—"}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/></td>
+              </tr>;
+            })}</tbody>
+          </table></div>
+      }
+      <div className="field-help">Mapping count mencerminkan edge dari source record ke domain master, bukan jumlah source records. Satu source record dapat memiliki lebih dari satu mapping domain tanpa menggandakan row Product Database.</div>
+    </div>
+  </section>;
+}
+
+
 function Setup({nav,setSel}){
-  const [type,setType]=useState("Country");
-  const info=domains[type], linkedProducts=domainIntegrationProducts[type]||[], rows=limasDemoData[type]||[];
+  const [type,setType]=useState("Country"),[query,setQuery]=useState(""),[status,setStatus]=useState("Active");
+  const [,forceRefresh]=useState(0);
+  const info=domains[type],linkedProducts=domainIntegrationProducts[type]||[],rows=limasDemoData[type]||[];
+  const q=query.trim().toLowerCase();
+  const filtered=rows.filter(r=>{
+    const hay=type==="LPG" ? String(r.sector||"")+" "+String(r.segment||"")+" "+String(r.key||"") : String(r.key||"")+" "+String(r.name||"");
+    const st=loadRecordMeta(type,r.key).status||"Active";
+    return (!q||hay.toLowerCase().includes(q))&&(status==="All"||st===status);
+  });
+  const template=masterTemplate(type);
+  const doDownload=()=>downloadCsv("LIMAS_"+type.replaceAll(" ","_")+"_Master_Template.csv",template.headers,template.rows);
+  const doUpload=e=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const records=parseCsv(String(reader.result||""));
+        applyMasterCsv(type,records);
+        forceRefresh(x=>x+1);
+        alert(String(records.length)+" row upload diproses untuk "+type+".");
+      }catch(err){alert("Upload gagal: "+(err?.message||err));}
+    };
+    reader.readAsText(file);
+    e.target.value="";
+  };
   return <Layout screen="setup" onNav={nav}>
     <Header title="Master Limit Setup" subtitle="Repository master limit per domain • utilization product diintegrasikan terpisah"/>
-    <div className="page">
-      <section className="card">
-        <div className="head">
-          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • hanya approved master limit dan parameter yang disimpan. {type==="LPG"?"Outstanding Bankwide/Region dihitung dari product debtor records.":""}</p></div>
-          <div className="toolbar"><button className="btn secondary">Download Template</button><button className="btn primary">Upload Master Limit</button></div>
+    <div className="page"><section className="card">
+      <div className="head">
+        <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • hanya approved master limit dan parameter yang disimpan. {type==="LPG"?"Outstanding Bankwide/Region dihitung dari product debtor records.":""}</p></div>
+        <div className="toolbar">
+          <button className="btn secondary" onClick={doDownload}>Download Template</button>
+          <label className="btn primary" style={{display:"inline-flex",alignItems:"center",cursor:"pointer"}}>Upload Master Limit<input type="file" accept=".csv,text/csv" onChange={doUpload} style={{display:"none"}}/></label>
         </div>
-        <div className="body">
-          <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>setType(d)}>{d}</button>)}</div>
-          <div className="toolbar" style={{marginBottom:14}}><input className="input" placeholder={"Cari "+info.key}/><select className="select"><option>Active</option><option>Inactive</option><option>All</option></select><button className="btn ghost">Filter</button></div>
-          <div className="table-wrap"><table className="table">
-            <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
-            <tbody>{rows.map((r,i)=><tr key={String(r.key)+i}>
-              <td className="key">{r.key}</td>
-              <td>{type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector)}</td>
-              <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
-              <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
-              <td>v{loadRecordMeta(type,r.key).version||1}</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":(loadRecordMeta(type,r.key).status||"Active")}/></td>
-              <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
-            </tr>)}</tbody>
-          </table></div>
-          <div className="field-help">Master Limit menyimpan limit/parameter. Outstanding, utilization dan EWS berasal dari Product Utilization Integration.</div>
+      </div>
+      <div className="body">
+        <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>{setType(d);setQuery("");setStatus("Active");}}>{d}</button>)}</div>
+        <div className="toolbar" style={{marginBottom:14}}>
+          <input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder={"Cari "+info.key}/>
+          <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>Active</option><option>Inactive</option><option>All</option></select>
+          <button className="btn ghost" onClick={()=>{setQuery("");setStatus("Active");}}>Reset</button>
+          <span className="muted-small">{filtered.length+" / "+rows.length+" records"}</span>
         </div>
-      </section>
-    </div>
-  </Layout>
+        <div className="table-wrap"><table className="table">
+          <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
+          <tbody>{filtered.map((r,i)=><tr key={String(r.key)+i}>
+            <td className="key">{r.key}</td><td>{type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector)}</td>
+            <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+            <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
+            <td>v{loadRecordMeta(type,r.key).version||1}</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":(loadRecordMeta(type,r.key).status||"Active")}/></td>
+            <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
+          </tr>)}</tbody>
+        </table></div>
+        <div className="field-help">Master Limit menyimpan limit/parameter. Outstanding, utilization dan EWS berasal dari Product Utilization Integration. Upload CSV pada prototype ini hanya memperbarui master key yang sudah ada; record baru tidak dibuat.</div>
+      </div>
+    </section></div>
+  </Layout>;
 }
 
 function sampleKey(t){const m={Country:'AE',CCL:'ANZBAU3M',MLK:'4000264485',CIL:'TUGU + BMRI',LPG:'BATUBARA + Corporate'};return m[t]}
@@ -1153,10 +1306,10 @@ function masterFieldValue(type,section,field,base,row,index){
   if(type==="MLK"){
     const p=productContributionMap("MLK",row.key);
     const clLimit=mlkNum(row.clLimit),nclLimit=mlkNum(row.nclLimit),treasuryLine=mlkNum(row.treasuryLine)??0;
-    const clBade=mlkNum(row.clBade)??mlkNum(p.CASHLOAN)??0,nclBade=mlkNum(row.nclBade)??mlkNum(p["NON CASH LOAN"])??0;
-    const badeTreasuryLine=mlkNum(row.badeTreasuryLine)??mlkNum(p["CREDIT LINE|Treasury"])??0;
+    const clBade=mlkNum(p.CASHLOAN)??0,nclBade=mlkNum(p["NON CASH LOAN"])??0;
+    const badeTreasuryLine=mlkNum(p["CREDIT LINE|Treasury"])??0;
     const totalLimitExisting=mlkNum(row.totalLimitExisting) ?? (clLimit!==null&&nclLimit!==null?clLimit+nclLimit+treasuryLine:null);
-    const totalBadeExisting=mlkNum(row.totalBadeExisting) ?? (clBade+nclBade+badeTreasuryLine);
+    const totalBadeExisting=clBade+nclBade+badeTreasuryLine;
     const map={"Entitas":row.entity,"CIF":row.key,"Nama Debitur":row.name,"Group Usaha":row.groupUsahaHolding||row.group,
       "Unit Kerja Pengelola":row.unitKerja,"Group":row.subGroup||row.group,"BUMN/Swasta Flag":row.bumnSwasta,"Tier":row.tier,
       "BMPK Konsol":row.bmpkKonsol,"Inhouse Limit Konsol":row.inhouseLimitKonsol,"BMPK/BMPP/BMPD Entitas":row.bmpkEntitas,"Inhouse Limit Entitas":row.inhouseLimitEntitas,
@@ -1232,7 +1385,7 @@ function Detail({nav,type="Country",recordKey=""}){
       <section className="card">
         <div className="head">
           <div><h2>{safeType==="LPG"?(selectedRecord?.sector+" / "+selectedRecord?.segment):(selectedRecord?.name||selectedRecord?.sector||sampleName(safeType))}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span></p></div>
-          <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Field Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
+          <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Provenance Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
         </div>
         <div className="body">
           <div className="tabs">{Object.keys(masterSections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
@@ -2279,7 +2432,10 @@ function ProductBookingClassification({view,rows}){
   if(!countryIntegratedProductIds.includes(view)) return null;
   const split=productBookingSplit(view,rows);
   const isCreditLine=view==="CREDIT LINE";
-  const mapped=rows.filter(r=>["Domestic","Overseas"].includes(r.bookingOfficeType)).length;
+  const mapped=rows.filter(r=>{
+    const m=(productIntegrationMappings[view]||[]).find(a=>a.limitType==="Country"&&String(a.recordId)===String(r.recordId));
+    return ["Domestic","Overseas"].includes(m?.bookingOfficeType);
+  }).length;
   const needs=rows.length-mapped;
   const exposureField={
     "NON CASH LOAN":"EQVIDR / 1.000.000",
@@ -2461,7 +2617,7 @@ function Products({nav}){
             ? <CreditLineFieldTable/>
             : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
           }
-          <ProductUsage view={view}/>{view!=="catalog"&&<ProductDatabaseTable view={view}/>}
+          <ProductUsage view={view}/><ProductIntegrationTable view={view}/>{view!=="catalog"&&<ProductDatabaseTable view={view}/>
         </div>
       </section>}
     </div>
