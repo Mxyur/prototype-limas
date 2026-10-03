@@ -3,6 +3,7 @@
 export const E2E_DUMMY_META={
   datasetId:"LIMAS-E2E-DUMMY-V1",
   period:"Oktober 2026 • E2E Dummy Snapshot",
+  asOfDate:"2026-09-30",
   status:"SYNTHETIC / DEMO ONLY",
   description:"Master -> Product -> Mapping -> Normalization -> Aggregation -> Reconciliation -> EWS/Monitoring -> Report."
 };
@@ -90,7 +91,19 @@ mlkRows.forEach(([cif,name,clAmt,nclAmt,tlAmt],i)=>{
 
 // Bonds / Nostro.
 [["ID","FR0090","40000","Menara Mandiri Jakarta","Domestic"],["SG","SG-GB-01","9000","Bank Mandiri Singapore","Overseas"],["CN","CN-CORP-01","20500","Bank Mandiri Shanghai","Overseas"],["AU","AU-GB-01","4000","Bank Mandiri (Europe) Limited London","Overseas"]].forEach(([country,sec,eq,branch,type])=>p.BONDS.push(bond({Date:"30-Sep-26",Branch:branch,"Securities Type":"Fixed Rate","Securities Name":sec,"Issuer Name":country+" Dummy Issuer","Issuer Country":country,"Issuer Type":"Government",Portfolio:"Banking Book",CCY:"IDR",Amount:String(Number(eq)*1000000),"Amount Eq. IDR Juta":eq,"Maturity Date":"15-Sep-2030",Coupon:"5.00%"},country,Number(eq),{recordId:"BOND-COUNTRY-"+country,sourceSystem:"Market Risk/Treasury",bookingOffice:branch,bookingOfficeType:type,countryExposure:country})));
-[["ID","FABIIDJA","4000"],["SG","DBSSSGSG","5000"],["CN","CITI-CN","6000"],["AU","ANZ-AU","2000"]].forEach(([country,swift,bal])=>p.NOSTRO.push(nostro({Year:"Sep-26",Branch:"Menara Mandiri Jakarta",SwfitCode:swift,"Bank Name":country+" Correspondent","Bank Country":country,Balance:bal},country,Number(bal),{recordId:"NOSTRO-COUNTRY-"+country,sourceSystem:"Internal Mandiri",bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic",countryExposure:country})));
+[
+  ["ID","FABIIDJA","4000000","IDR",1,"2026-09-30"],
+  ["SG","DBSSSGSG","5000000","SGD",12500,"2026-09-30"],
+  ["CN","CITI-CN","6000000","CNY",2300,"2026-09-30"],
+  ["AU","ANZ-AU","2000000","AUD",11000,"2026-09-30"]
+].forEach(([country,swift,bal,ccy,fxRate,fxDate])=>{
+  const balanceIdr=Number(bal)*Number(fxRate);
+  p.NOSTRO.push(nostro(
+    {Year:"Sep-26",Branch:"Menara Mandiri Jakarta",SwfitCode:swift,"Bank Name":country+" Correspondent","Bank Country":country,CCY:ccy,Balance:String(bal),"FX Rate to IDR":String(fxRate),"FX Rate Date":fxDate,"Balance IDR":String(balanceIdr)},
+    country,Number(bal),
+    {recordId:"NOSTRO-COUNTRY-"+country,sourceSystem:"Internal Mandiri",bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic",countryExposure:country,asOfDate:fxDate}
+  ));
+});
 
 // CIL utilization.
 const cilSpecs=[
