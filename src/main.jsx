@@ -616,7 +616,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
 function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -730,29 +730,45 @@ function exceptionEntity(r){
   return "BMRI";
 }
 function Warning({nav}){
-  const [status,setStatus]=useState("All"),[domain,setDomain]=useState("All"),[entity,setEntity]=useState("All Entity"),[snapshot,setSnapshot]=useState("Latest Canonical Snapshot");
-  const rows=canonicalExceptions().map(r=>({...r,entity:exceptionEntity(r),snapshot:E2E_DUMMY_META.datasetId,period:E2E_DUMMY_META.period}));
-  const filtered=rows.filter(r=>(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain)&&(entity==="All Entity"||r.entity===entity)&&(snapshot==="Latest Canonical Snapshot"||r.snapshot===snapshot));
+  const [status,setStatus]=useState("All"),[domain,setDomain]=useState("All"),[entity,setEntity]=useState("All Entity"),[snapshot,setSnapshot]=useState("Latest Canonical Snapshot"),[actionStatus,setActionStatus]=useState("All Actions");
+  const [version,setVersion]=useState(0);
+  const rows=enrichExceptionRows(canonicalExceptions()).map(r=>({...r,entity:exceptionEntity(r),snapshot:E2E_DUMMY_META.datasetId,period:E2E_DUMMY_META.period}));
+  const filtered=rows.filter(r=>(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain)&&(entity==="All Entity"||r.entity===entity)&&(snapshot==="Latest Canonical Snapshot"||r.snapshot===snapshot)&&(actionStatus==="All Actions"||r.action.status===actionStatus));
   const breach=filtered.filter(r=>r.status==="Breach").length,warning=filtered.filter(r=>r.status==="Warning").length,issue=filtered.filter(r=>r.status==="Data Issue").length;
-  const actionPending=filtered.length;
+  const actionPending=filtered.filter(r=>exceptionActionPending(r.action.status)).length;
   const entityOptions=[...new Set(rows.map(r=>r.entity).filter(Boolean))];
-  return <Layout screen="warning" onNav={nav}><Header title="Early Warning & Breach Center" subtitle="Exception monitoring dari canonical Master Limit + Product Utilization + reconciliation engine"/><div className="page">
+  const runAction=(row,next)=>{
+    try{
+      const note=(next==="Resolved"||next==="Closed")?window.prompt("Catatan action / resolution:",row.action.notes||""):(row.action.notes||"");
+      if((next==="Resolved"||next==="Closed")&&note===null)return;
+      setExceptionAction(row,next,note||"");
+      setVersion(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  return <Layout screen="warning" onNav={nav}><Header title="Early Warning & Breach Center" subtitle="Exception monitoring + operational data issue management dari canonical Master Limit + Product Utilization + reconciliation engine"/><div className="page">
     <div className="metric-grid">
       <DomainKpi label="Total Exception" value={filtered.length} sub="Hasil filter saat ini"/>
       <DomainKpi label="Breach" value={breach} sub="Utilisasi ≥ 100%" accent="red"/>
       <DomainKpi label="Early Warning" value={warning} sub="80% ≤ utilisasi < 100%" accent="yellow"/>
       <DomainKpi label="Data Issue" value={issue} sub="Master / mapping / identity"/>
-      <DomainKpi label="Action Pending" value={actionPending} sub="Exception yang perlu review" accent="yellow"/>
+      <DomainKpi label="Action Pending" value={actionPending} sub="Open / In Progress" accent="yellow"/>
     </div>
-    <section className="card"><div className="head"><div><h2>Filter Exception</h2><p>Semua exception berasal dari canonical monitoring dan reconciliation engine.</p></div></div><div className="body"><div className="toolbar">
+    <section className="card"><div className="head"><div><h2>Exception Filter</h2><p>Risk status dan operational action status dipisahkan. Status exception berasal dari canonical engine; action status tersimpan sebagai workflow operasional.</p></div><button className="btn secondary" onClick={()=>nav("quality")}>Open Data Quality</button></div><div className="body"><div className="toolbar">
       <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select>
       <select className="select" value={domain} onChange={e=>setDomain(e.target.value)}><option>All</option><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select>
       <select className="select" value={entity} onChange={e=>setEntity(e.target.value)}><option>All Entity</option>{entityOptions.map(x=><option key={x}>{x}</option>)}</select>
       <select className="select" value={snapshot} onChange={e=>setSnapshot(e.target.value)}><option>Latest Canonical Snapshot</option><option value={E2E_DUMMY_META.datasetId}>{E2E_DUMMY_META.datasetId}</option></select>
+      <select className="select" value={actionStatus} onChange={e=>setActionStatus(e.target.value)}><option>All Actions</option>{EXCEPTION_ACTION_STATUSES.map(x=><option key={x}>{x}</option>)}</select>
     </div></div></section>
-    <section className="card"><div className="head"><div><h2>Exception Register</h2><p>Drill-down menuju master, product source dan reconciliation detail.</p></div></div><div className="body"><div className="table-wrap"><table className="table">
-      <thead><tr><th>Status</th><th>Domain</th><th>Entity</th><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Threshold</th><th>Snapshot</th><th>Detail</th><th>Aksi</th></tr></thead>
-      <tbody>{filtered.map((r,i)=><tr key={r.domain+"|"+r.key+"|"+i}><td><Status v={r.status}/></td><td><b>{r.domain}</b></td><td>{r.entity}</td><td><span className="key">{r.key}</span></td><td>{r.object}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.exposure)}</td><td>{r.util?((r.util*100).toFixed(2)+"%"):"—"}</td><td>{r.threshold}</td><td className="muted-small">{r.period}</td><td className="muted-small">{r.detail}</td><td><button className="btn ghost" onClick={()=>domains[r.domain]?nav("detail",{type:r.domain,key:r.key}):nav("products")}>{domains[r.domain]?"Detail":"Product"}</button></td></tr>)}</tbody>
+    <section className="card"><div className="head"><div><h2>Exception Register</h2><p>Setiap exception dapat dikelola melalui Open → In Progress → Resolved → Closed. Issue yang closed tetap tersimpan sebagai history dan tidak menghilang dari canonical source.</p></div></div><div className="body"><div className="table-wrap"><table className="table">
+      <thead><tr><th>Status</th><th>Action</th><th>Domain</th><th>Entity</th><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Detail</th><th>Owner</th><th>Updated</th><th>Aksi</th></tr></thead>
+      <tbody>{filtered.map((r,i)=>{
+        const next=r.action.status==="Open"?"In Progress":r.action.status==="In Progress"?"Resolved":r.action.status==="Resolved"?"Closed":null;
+        return <tr key={r.domain+"|"+r.key+"|"+r.detail+"|"+i}>
+          <td><Status v={r.status}/></td><td><span className="chip blue">{exceptionActionLabel(r.action.status)}</span></td><td><b>{r.domain}</b></td><td>{r.entity}</td><td><span className="key">{r.key}</span></td><td>{r.object}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.exposure)}</td><td>{r.util?((r.util*100).toFixed(2)+"%"):"—"}</td><td className="muted-small">{r.detail}<div>{r.action.notes&&<span>Note: {r.action.notes}</span>}</div></td><td>{r.action.owner}</td><td className="muted-small">{r.action.updatedAt||"—"}</td>
+          <td>{next?<button className="btn ghost" onClick={()=>runAction(r,next)}>{next==="Resolved"?"Resolve":next==="Closed"?"Close":"Start Action"}</button>:<span className="muted-small">Completed</span>}</td>
+        </tr>;
+      })}</tbody>
     </table></div></div></section>
     <div className="dash-grid">
       <section className="card"><div className="head"><div><h2>Exception by Domain</h2><p>Canonical warning, breach dan reconciliation issue.</p></div></div><div className="body"><div className="heatmap">{["Country","CCL","MLK","CIL","LPG"].map(d=>{const n=rows.filter(r=>r.domain===d).length;return <div className={"heat "+(n>=3?"high":n>=1?"warn":"low")} key={d}><div>{d}</div><div style={{fontSize:18,marginTop:8}}>{n}</div></div>})}</div></div></section>
@@ -760,6 +776,51 @@ function Warning({nav}){
     </div>
   </div></Layout>;
 }
+function DataQuality({nav}){
+  const [filter,setFilter]=useState("All"),[layer,setLayer]=useState("All Layers"),[action,setAction]=useState("All Actions"),[refresh,setRefresh]=useState(0);
+  const summary=dataQualitySummary();
+  const rows=summary.rows.filter(r=>(filter==="All"||r.issueType===filter)&&(layer==="All Layers"||r.layer===layer)&&(action==="All Actions"||r.action.status===action));
+  const issueTypes=[...new Set(summary.rows.map(r=>r.issueType))].sort();
+  const exportIssues=()=>downloadCsv("LIMAS_Data_Quality_Issues.csv",["Layer","Domain","Key","Object","Issue Type","Detail","Action Status","Owner","Notes","Updated At"],rows.map(r=>({Layer:r.layer,Domain:r.domain,Key:r.key,Object:r.object,"Issue Type":r.issueType,Detail:r.detail,"Action Status":r.action.status,Owner:r.action.owner,Notes:r.action.notes,"Updated At":r.action.updatedAt})));
+  const runAction=(row,next)=>{
+    try{
+      const note=(next==="Resolved"||next==="Closed")?window.prompt("Catatan action / resolution:",row.action.notes||""):(row.action.notes||"");
+      if((next==="Resolved"||next==="Closed")&&note===null)return;
+      setExceptionAction({domain:row.domain,key:row.key,detail:row.issueType+" • "+row.detail+(row.recordId?" • "+row.recordId:"")},next,note||"");
+      setRefresh(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  return <Layout screen="quality" onNav={nav}><Header title="Data Quality & Exception Management" subtitle="Operational issue management sebelum data dianggap siap sebagai canonical monitoring output"/><div className="page">
+    <div className="metric-grid">
+      <DomainKpi label="Open / In Progress" value={summary.actionPending} sub="Issue yang masih perlu action" accent="yellow"/>
+      <DomainKpi label="Resolved" value={summary.resolved} sub="Resolution dicatat"/>
+      <DomainKpi label="Closed" value={summary.closed} sub="Action lifecycle completed"/>
+      <DomainKpi label="Total DQ Issues" value={summary.rows.length} sub="Master + Product + Mapping"/>
+      <DomainKpi label="Pipeline Issues" value={canonicalPipelineControls().reduce((n,x)=>n+(x.status==="Data Issue"?1:0),0)} sub="Canonical layers with issue"/>
+    </div>
+    <section className="card"><div className="head"><div><h2>Data Quality Controls</h2><p>Issue detection tetap berasal dari canonical validators; workflow action disimpan terpisah agar tidak mengubah source data.</p></div><div className="toolbar"><button className="btn secondary" onClick={exportIssues}>Export Issues CSV</button><button className="btn ghost" onClick={()=>setRefresh(x=>x+1)}>Run Check</button><button className="btn ghost" onClick={()=>nav("warning")}>EWS Center</button></div></div>
+      <div className="body"><div className="toolbar">
+        <select className="select" value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option>{issueTypes.map(x=><option key={x}>{x}</option>)}</select>
+        <select className="select" value={layer} onChange={e=>setLayer(e.target.value)}><option>All Layers</option><option>Master Limit</option><option>Product Database</option><option>Integration / Mapping</option></select>
+        <select className="select" value={action} onChange={e=>setAction(e.target.value)}><option>All Actions</option>{EXCEPTION_ACTION_STATUSES.map(x=><option key={x}>{x}</option>)}</select>
+      </div></div>
+    </section>
+    <div className="dash-grid">
+      <section className="card"><div className="head"><div><h2>Issues by Layer</h2><p>Jumlah issue hasil validator aktif.</p></div></div><div className="body">{["Master Limit","Product Database","Integration / Mapping"].map(x=><div className="mini" style={{marginBottom:8}} key={x}><b>{x}</b><span style={{float:"right"}}>{summary.byLayer[x]||0}</span></div>)}</div></section>
+      <section className="card"><div className="head"><div><h2>Issue Type</h2><p>Fokus issue yang paling sering muncul.</p></div></div><div className="body">{Object.entries(summary.byType).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=><div className="mini" style={{marginBottom:8}} key={k}><b>{k}</b><span style={{float:"right"}}>{v}</span></div>)}{!summary.rows.length&&<div className="mini">No data quality issue.</div>}</div></section>
+    </div>
+    <section className="card"><div className="head"><div><h2>Data Quality Register</h2><p>Resolution workflow tidak memodifikasi Product Database atau Master Limit secara langsung.</p></div><span className="chip blue">{rows.length} visible</span></div>
+      <div className="body"><div className="table-wrap"><table className="table">
+        <thead><tr><th>Layer</th><th>Issue Type</th><th>Domain</th><th>Key</th><th>Object</th><th>Detail</th><th>Action</th><th>Owner</th><th>Updated</th><th>Aksi</th></tr></thead>
+        <tbody>{rows.map((r,i)=>{
+          const next=r.action.status==="Open"?"In Progress":r.action.status==="In Progress"?"Resolved":r.action.status==="Resolved"?"Closed":null;
+          return <tr key={r.id+"|"+i}><td>{r.layer}</td><td><b>{r.issueType}</b></td><td>{r.domain}</td><td className="key">{r.key}</td><td>{r.object}</td><td className="muted-small">{r.detail}{r.action.notes&&<div>Note: {r.action.notes}</div>}</td><td><span className="chip blue">{r.action.status}</span></td><td>{r.action.owner}</td><td className="muted-small">{r.action.updatedAt||"—"}</td><td>{next?<button className="btn ghost" onClick={()=>runAction(r,next)}>{next==="Resolved"?"Resolve":next==="Closed"?"Close":"Start Action"}</button>:<span className="muted-small">Completed</span>}</td></tr>;
+        })}</tbody>
+      </table></div></div>
+    </section>
+  </div></Layout>;
+}
+
 function LPGMonitor({nav}){
   const rows=lpgDisplayRows(),leaf=lpgLeafRows();
   const totalLimit=leaf.reduce((a,r)=>a+(Number(lpgScopeLimit(r,LPG_BANK_SCOPE))||0),0);
@@ -2291,6 +2352,69 @@ function reconciliationIssues(){
   }));
   return issues;
 }
+const EXCEPTION_ACTION_STORE_KEY="limas_exception_actions_v1";
+const EXCEPTION_ACTION_STATUSES=["Open","In Progress","Resolved","Closed"];
+
+function exceptionKey(row){
+  return [row.domain||"—",row.key||"—",row.detail||"—"].join("||");
+}
+function loadExceptionActions(){
+  try{const raw=window.localStorage.getItem(EXCEPTION_ACTION_STORE_KEY);return raw?JSON.parse(raw):{};}catch(e){return {};}
+}
+function saveExceptionActions(store){try{window.localStorage.setItem(EXCEPTION_ACTION_STORE_KEY,JSON.stringify(store));}catch(e){}}
+function getExceptionAction(row){
+  const key=exceptionKey(row),store=loadExceptionActions();
+  return store[key]||{status:"Open",owner:"Risk Management",notes:"",updatedAt:"",resolvedAt:"",closedAt:""};
+}
+function setExceptionAction(row,nextStatus,notes=""){
+  const key=exceptionKey(row),store=loadExceptionActions(),current=store[key]||{status:"Open",owner:"Risk Management",notes:"",updatedAt:"",resolvedAt:"",closedAt:""};
+  const order=EXCEPTION_ACTION_STATUSES.indexOf(nextStatus);
+  const previous=EXCEPTION_ACTION_STATUSES.indexOf(current.status||"Open");
+  if(order<0)throw new Error("Exception action status tidak valid.");
+  if(nextStatus==="Closed"&&current.status!=="Resolved")throw new Error("Issue hanya dapat di-close setelah berstatus Resolved.");
+  if(nextStatus==="Resolved"&&!String(notes||current.notes||"").trim())throw new Error("Catatan penyelesaian wajib diisi sebelum Resolve.");
+  if(nextStatus==="In Progress"&&current.status==="Closed")throw new Error("Issue yang sudah Closed tidak dapat dibuka kembali dari flow ini.");
+  const stamp=nowLabel();
+  const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp};
+  if(nextStatus==="Resolved")next.resolvedAt=stamp;
+  if(nextStatus==="Closed")next.closedAt=stamp;
+  if(nextStatus==="Open"&&previous>0)throw new Error("Re-open manual belum tersedia. Gunakan governance review untuk reopen.");
+  store[key]=next;saveExceptionActions(store);return next;
+}
+function exceptionActionLabel(status){return status==="Closed"?"Closed":status==="Resolved"?"Resolved":status==="In Progress"?"In Progress":"Open";}
+function exceptionActionPending(status){return status==="Open"||status==="In Progress";}
+function enrichExceptionRows(rows){
+  return rows.map(r=>({...r,action:getExceptionAction(r)}));
+}
+function dataQualityIssueRows(){
+  const out=[];
+  masterCanonicalQualityIssues().forEach(x=>out.push({
+    id:exceptionKey({domain:x.domain||"Master Limit",key:x.key,detail:x.type+" • "+x.detail}),
+    layer:"Master Limit",domain:x.domain||"Master Limit",key:x.key||"—",object:x.key||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue"
+  }));
+  canonicalProductQualityIssues().forEach(x=>out.push({
+    id:exceptionKey({domain:"Product Database",key:x.recordId,detail:x.type+" • "+x.detail}),
+    layer:"Product Database",domain:"Product Database",key:x.recordId||"—",object:x.productId||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue"
+  }));
+  reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>out.push({
+    id:exceptionKey({domain:x.limitType||"Integration",key:x.key||x.recordId,detail:x.issueType+" • "+x.detail+" • "+x.recordId}),
+    layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId,object:x.object||x.productId||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
+  }));
+  const seen=new Set();
+  return out.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;}).map(x=>({...x,action:getExceptionAction({domain:x.domain,key:x.key,detail:x.issueType+" • "+x.detail+(x.recordId?" • "+x.recordId:"")})}));
+}
+function dataQualitySummary(){
+  const rows=dataQualityIssueRows();
+  const byLayer={};
+  rows.forEach(r=>{byLayer[r.layer]=(byLayer[r.layer]||0)+1;});
+  const byType={};
+  rows.forEach(r=>{byType[r.issueType]=(byType[r.issueType]||0)+1;});
+  const actionPending=rows.filter(r=>exceptionActionPending(r.action?.status)).length;
+  const resolved=rows.filter(r=>r.action?.status==="Resolved").length;
+  const closed=rows.filter(r=>r.action?.status==="Closed").length;
+  return {rows,byLayer,byType,actionPending,resolved,closed};
+}
+
 function canonicalExceptions(){
   const rows=[];
   Object.keys(limasDemoData).forEach(type=>(limasDemoData[type]||[]).forEach(r=>{
@@ -3018,6 +3142,7 @@ function App(){
   if(screen==="products") return <Products nav={nav}/>;
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
+  if(screen==="quality") return <DataQuality nav={nav}/>;
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
