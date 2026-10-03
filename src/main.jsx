@@ -1581,7 +1581,7 @@ function cleanseMasterData(){
 function productApplicationsFor(type,key){
   if(type==="LPG")return lpgProductApplicationsForKey(key);
   const out=[];
-  const exposureField=(productId,scope,row)=>{
+  const exposureField=(domain,productId,scope,row)=>{
     if(productId==="CASHLOAN")return "total_bade";
     if(productId==="NON CASH LOAN")return "EQVIDR / BALANCE";
     if(productId==="CREDIT LINE"){
@@ -1613,7 +1613,7 @@ function productApplicationsFor(type,key){
       const normalized=normalizeAppliedAmount(type,r.productId,a.amount,r);
       out.push({
         ...a,productId:r.productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
-        exposureField:exposureField(r.productId,a.scope,r),transform:transform(r.productId,a.scope,r),
+        exposureField:exposureField(type,r.productId,a.scope,r),transform:transform(r.productId,a.scope,r),
         sourceUnit:normalized.sourceUnit,targetUnit:normalized.targetUnit,normalizationFactor:normalized.factor,
         normalizedAmount:normalized.amount,
         masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)),
