@@ -779,8 +779,8 @@ function Warning({nav}){
 
 function DataRemediation({nav}){
   const [layer,setLayer]=useState("All Layers"),[filter,setFilter]=useState("All"),[selectedId,setSelectedId]=useState(""),[field,setField]=useState(""),[value,setValue]=useState(""),[bookingOffice,setBookingOffice]=useState(""),[bookingType,setBookingType]=useState(""),[reason,setReason]=useState(""),[refresh,setRefresh]=useState(0);
-  const all=dataQualityIssueRows();
-  const rows=all.filter(r=>(layer==="All Layers"||r.layer===layer)&&(filter==="All"||r.issueType===filter));
+  const all=dataQualityRegisterRows();
+  const rows=all.filter(r=>(r.action?.status!=="Closed")&&(layer==="All Layers"||r.layer===layer)&&(filter==="All"||r.issueType===filter));
   const selected=rows.find(r=>r.id===selectedId)||all.find(r=>r.id===selectedId)||null;
   const sourceRow=selected?.productId&&selected?.recordId ? (productDatabase[selected.productId]||[]).find(r=>String(r.recordId)===String(selected.recordId)) : null;
   const fields=sourceRow ? (productSchemaFields[selected.productId]||[]) : [];
@@ -799,8 +799,9 @@ function DataRemediation({nav}){
     const map=r.productId&&r.recordId?getMappingRemediation(r.productId,r.recordId,r.domain,r.key):null;
     if(map){setBookingOffice(map.bookingOffice||"");setBookingType(map.bookingOfficeType||"");}
   };
+  const canEdit=selected&&(currentAction?.status==="Open"||currentAction?.status==="In Progress");
   const apply=()=>{
-    if(!selected) return;
+    if(!selected||!canEdit) return;
     try{
       if(isMaster){nav("detail",{type:selected.domain,key:selected.key});return;}
       if(isBookingMapping){
@@ -880,10 +881,10 @@ function DataRemediation({nav}){
           {!isMaster&&!isBookingMapping&&sourceRow&&<div style={{marginTop:12}}>
             <div className="section-title">Source Correction</div>
             <div className="toolbar">
-              <select className="select" value={field} onChange={e=>{setField(e.target.value);setValue(String(sourceRow.data?.[e.target.value]??""));}}>
+              <select className="select" disabled={!canEdit} value={field} onChange={e=>{setField(e.target.value);setValue(String(sourceRow.data?.[e.target.value]??""));}}>
                 {(fields||[]).map(f=><option key={f} value={f}>{f}</option>)}
               </select>
-              <input className="input" value={value} onChange={e=>setValue(e.target.value)} placeholder="Corrected source value"/>
+              <input className="input" disabled={!canEdit} value={value} onChange={e=>setValue(e.target.value)} placeholder="Corrected source value"/>
             </div>
             <div className="field-help"><b>Current:</b> {String(sourceRow.data?.[field]??"—")} • Source correction tersimpan sebagai audit dan diterapkan ke runtime source record. Source field name tidak di-rename.</div>
           </div>}
@@ -893,8 +894,8 @@ function DataRemediation({nav}){
           {!isMaster&&isBookingMapping&&<div style={{marginTop:12}}>
             <div className="section-title">Booking Office Enrichment</div>
             <div className="toolbar">
-              <input className="input" value={bookingOffice} onChange={e=>setBookingOffice(e.target.value)} placeholder="Booking Office"/>
-              <select className="select" value={bookingType} onChange={e=>setBookingType(e.target.value)}><option value="">Select Booking Office Type</option><option>Domestic</option><option>Overseas</option></select>
+              <input className="input" disabled={!canEdit} value={bookingOffice} onChange={e=>setBookingOffice(e.target.value)} placeholder="Booking Office"/>
+              <select className="select" disabled={!canEdit} value={bookingType} onChange={e=>setBookingType(e.target.value)}><option value="">Select Booking Office Type</option><option>Domestic</option><option>Overseas</option></select>
             </div>
             <div className="field-help">Untuk issue MISSING_BOOKING_MAPPING, correction berada di integration/enrichment layer. Source Product Database tidak diubah.</div>
             {mapRem&&<div className="field-help" style={{marginTop:8}}><b>Last mapping fix:</b> {mapRem.appliedAt} by {mapRem.appliedBy} • {mapRem.reason}</div>}
@@ -904,7 +905,7 @@ function DataRemediation({nav}){
             <label className="muted-small">Reason / remediation note</label>
             <textarea className="textarea compact-area" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Jelaskan koreksi / evidence / reference"></textarea>
             <div className="toolbar" style={{marginTop:10}}>
-              <button className="btn primary" onClick={apply}>{isBookingMapping?"Apply Enrichment Fix":"Apply Source Correction"}</button>
+              {canEdit&&<button className="btn primary" onClick={apply}>{isBookingMapping?"Apply Enrichment Fix":"Apply Source Correction"}</button>}
               {currentAction?.status==="In Progress"&&<button className="btn secondary" onClick={resolve}>Resolve After Recheck</button>}
               {currentAction?.status==="Resolved"&&<button className="btn secondary" onClick={close}>Close</button>}
               {currentAction?.status==="Open"&&<button className="btn secondary" onClick={()=>{
@@ -923,8 +924,8 @@ function DataRemediation({nav}){
 function DataQuality({nav}){
   const [filter,setFilter]=useState("All"),[layer,setLayer]=useState("All Layers"),[action,setAction]=useState("All Actions"),[refresh,setRefresh]=useState(0);
   const summary=dataQualitySummary();
-  const rows=summary.rows.filter(r=>(filter==="All"||r.issueType===filter)&&(layer==="All Layers"||r.layer===layer)&&(action==="All Actions"||r.action.status===action));
-  const issueTypes=[...new Set(summary.rows.map(r=>r.issueType))].sort();
+  const rows=summary.registerRows.filter(r=>(filter==="All"||r.issueType===filter)&&(layer==="All Layers"||r.layer===layer)&&(action==="All Actions"||r.action.status===action));
+  const issueTypes=[...new Set(summary.registerRows.map(r=>r.issueType))].sort();
   const exportIssues=()=>downloadCsv("LIMAS_Data_Quality_Issues.csv",["Layer","Domain","Key","Object","Issue Type","Detail","Action Status","Owner","Notes","Updated At"],rows.map(r=>({Layer:r.layer,Domain:r.domain,Key:r.key,Object:r.object,"Issue Type":r.issueType,Detail:r.detail,"Action Status":r.action.status,Owner:r.action.owner,Notes:r.action.notes,"Updated At":r.action.updatedAt})));
   const runAction=(row,next)=>{
     try{
@@ -953,7 +954,7 @@ function DataQuality({nav}){
       <section className="card"><div className="head"><div><h2>Issues by Layer</h2><p>Jumlah issue hasil validator aktif.</p></div></div><div className="body">{["Master Limit","Product Database","Integration / Mapping"].map(x=><div className="mini" style={{marginBottom:8}} key={x}><b>{x}</b><span style={{float:"right"}}>{summary.byLayer[x]||0}</span></div>)}</div></section>
       <section className="card"><div className="head"><div><h2>Issue Type</h2><p>Fokus issue yang paling sering muncul.</p></div></div><div className="body">{Object.entries(summary.byType).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=><div className="mini" style={{marginBottom:8}} key={k}><b>{k}</b><span style={{float:"right"}}>{v}</span></div>)}{!summary.rows.length&&<div className="mini">No data quality issue.</div>}</div></section>
     </div>
-    <section className="card"><div className="head"><div><h2>Data Quality Register</h2><p>Resolution workflow tidak memodifikasi Product Database atau Master Limit secara langsung.</p></div><span className="chip blue">{rows.length} visible</span></div>
+    <section className="card"><div className="head"><div><h2>Data Quality Register</h2><p>Register mencakup issue aktif dan history Resolved/Closed. Resolution tidak mengubah source tanpa explicit remediation.</p></div><span className="chip blue">{rows.length} visible</span></div>
       <div className="body"><div className="table-wrap"><table className="table">
         <thead><tr><th>Layer</th><th>Issue Type</th><th>Domain</th><th>Key</th><th>Object</th><th>Detail</th><th>Action</th><th>Owner</th><th>Updated</th><th>Route</th><th>Aksi</th></tr></thead>
         <tbody>{rows.map((r,i)=>{
@@ -2599,11 +2600,12 @@ function setExceptionAction(row,nextStatus,notes="",options={}){
   const previous=EXCEPTION_ACTION_STATUSES.indexOf(current.status||"Open");
   if(order<0)throw new Error("Exception action status tidak valid.");
   if(nextStatus==="Closed"&&current.status!=="Resolved")throw new Error("Issue hanya dapat di-close setelah berstatus Resolved.");
+  if(nextStatus==="Closed"&&options.requireClear&&dataQualityIssueStillPresent(row))throw new Error("Issue masih terdeteksi validator. Close hanya setelah validator clear.");
   if(nextStatus==="Resolved"&&!String(notes||current.notes||"").trim())throw new Error("Catatan penyelesaian wajib diisi sebelum Resolve.");
   if(nextStatus==="Resolved"&&options.requireClear&&dataQualityIssueStillPresent(row))throw new Error("Issue masih terdeteksi validator. Lakukan remediation lalu Run Check sebelum Resolve.");
   if(nextStatus==="In Progress"&&current.status==="Closed")throw new Error("Issue yang sudah Closed tidak dapat dibuka kembali dari flow ini.");
   const stamp=nowLabel();
-  const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp};
+  const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp,rowRef:{domain:row.domain||"—",key:row.key||"—",detail:row.detail||"—",layer:row.layer||"",issueType:row.issueType||"",productId:row.productId||null,recordId:row.recordId||null,object:row.object||"—"}};
   if(nextStatus==="Resolved")next.resolvedAt=stamp;
   if(nextStatus==="Closed")next.closedAt=stamp;
   if(nextStatus==="Open"&&previous>0)throw new Error("Re-open manual belum tersedia. Gunakan governance review untuk reopen.");
@@ -2615,7 +2617,7 @@ function enrichExceptionRows(rows){
   return rows.map(r=>({...r,action:getExceptionAction(r)}));
 }
 function dataQualityActionRef(row){
-  return {domain:row.domain,key:row.key,detail:row.issueType+" • "+row.detail+(row.recordId?" • "+row.recordId:"")};
+  return {domain:row.domain,key:row.key,detail:row.issueType+" • "+row.detail+(row.recordId?" • "+row.recordId:""),layer:row.layer||"",issueType:row.issueType||"",productId:row.productId||null,recordId:row.recordId||null,object:row.object||"—"};
 }
 function dataQualityIssueRows(){
   const out=[];
@@ -2638,16 +2640,42 @@ function dataQualityIssueStillPresent(row){
   const target=exceptionKey(ref);
   return dataQualityIssueRows().some(x=>exceptionKey(dataQualityActionRef(x))===target);
 }
+function dataQualityRegisterRows(activeRows=dataQualityIssueRows()){
+  const active=activeRows||[];
+  const activeIds=new Set(active.map(x=>exceptionKey(dataQualityActionRef(x))));
+  const history=Object.entries(loadExceptionActions())
+    .filter(([,action])=>["Resolved","Closed"].includes(action?.status)&&action?.rowRef?.issueType)
+    .map(([id,action])=>{
+      if(activeIds.has(id))return null;
+      const ref=action.rowRef;
+      return {
+        id,
+        layer:ref.layer||"Data Quality",
+        domain:ref.domain||"—",
+        key:ref.key||"—",
+        object:ref.object||ref.productId||"—",
+        issueType:ref.issueType||"—",
+        detail:ref.detail||"—",
+        sourceStatus:"History",
+        productId:ref.productId||null,
+        recordId:ref.recordId||null,
+        action
+      };
+    })
+    .filter(Boolean);
+  return [...active,...history];
+}
+
 function dataQualitySummary(){
-  const rows=dataQualityIssueRows();
+  const rows=dataQualityIssueRows(),registerRows=dataQualityRegisterRows(rows);
   const byLayer={};
   rows.forEach(r=>{byLayer[r.layer]=(byLayer[r.layer]||0)+1;});
   const byType={};
   rows.forEach(r=>{byType[r.issueType]=(byType[r.issueType]||0)+1;});
   const actionPending=rows.filter(r=>exceptionActionPending(r.action?.status)).length;
-  const resolved=rows.filter(r=>r.action?.status==="Resolved").length;
-  const closed=rows.filter(r=>r.action?.status==="Closed").length;
-  return {rows,byLayer,byType,actionPending,resolved,closed};
+  const resolved=registerRows.filter(r=>r.action?.status==="Resolved").length;
+  const closed=registerRows.filter(r=>r.action?.status==="Closed").length;
+  return {rows,registerRows,byLayer,byType,actionPending,resolved,closed};
 }
 
 function canonicalExceptions(){
