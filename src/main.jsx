@@ -2,6 +2,7 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
+import {E2E_DUMMY_META,E2E_MASTER_DATA,E2E_DUMMY_PRODUCT_DATA} from './e2eDummyData';
 const LPG_BANK_SCOPE="Bankwide";
 const LPG_REGIONAL_SCOPES=["Region I","Region II","Region III","Region IV","Region V","Region VI","Region VII","Region VIII","Region IX","Region X","Region XI","Region XII","KP + OVS"];
 const LPG_SCOPES=[LPG_BANK_SCOPE,...LPG_REGIONAL_SCOPES];
@@ -112,11 +113,11 @@ function integrationLabel(id){
   return item?.label||id;
 }
 const provenanceDefaults={
-  Country:{description:"Master limit negara untuk monitoring exposure lintas produk.",source:"CPR / Risk Management",dataset:"COUNTRY_MONITORING",system:"LIMAS Working Data",period:"Agustus 2026",owner:"CPR Risk Management",sourceNote:"Approved country limit dan data exposure hasil konsolidasi source product."},
-  CCL:{description:"Master CCL dan contractual limit untuk monitoring counterparty serta exposure BMRI/PA.",source:"FIB Group + SISM Group",dataset:"CCL_MONITORING",system:"LIMAS Working Data",period:"Agustus 2026",owner:"FIB / SISM",sourceNote:"BMRI data berasal dari FIB Group; data PA dikompilasi SISM sebelum monitoring."},
-  MLK:{description:"Master Limit Kredit untuk monitoring CIF, Group Usaha dan konsolidasi entitas.",source:"CRA / SISM Group",dataset:"MLK_Master + MLK_Monitor",system:"LIMAS Working Data",period:"Agustus 2026",owner:"CRA / SISM",sourceNote:"Master debtor data dan monitoring hierarchy dipisahkan. Master Limit Setting dan Master Limit Final adalah field berbeda; Limit Fasilitas dan Bade berasal dari facility/utilization aggregation. MLK konsolidasi adalah report-level metric dan tidak disamakan dengan debtor Master Limit."},
-  CIL:{description:"Master CIL/EIL/CIT untuk monitoring kapasitas dan nominal pertanggungan asuransi.",source:"Risk Management / SISM",dataset:"CIL_Master",system:"LIMAS Working Data",period:"Agustus 2026",owner:"Risk Management / SISM",sourceNote:"Insurance capacity, EIL, CIT dan exposure disimpan sebagai reference/provenance untuk monitoring."},
-  LPG:{description:"Master LPG untuk monitoring konsentrasi sektor, segmen dan region.",source:"Risk Management / Business Unit",dataset:"LPG_Loanportfolio",system:"LIMAS Working Data",period:"Agustus 2026",owner:"Risk Management",sourceNote:"Approved LPG limit disimpan per sektor × segmen dengan Bankwide, Region I–XII dan KP + OVS. Outstanding berasal dari CL/NCL pada level debitur; Bankwide diperlakukan sebagai aggregate/reconciliation value dan tidak dijumlahkan dengan regional."}
+  Country:{description:"Master limit negara untuk monitoring exposure lintas produk.",source:"CPR / Risk Management",dataset:"COUNTRY_MONITORING",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"CPR Risk Management",sourceNote:"Approved country limit dan data exposure hasil konsolidasi source product."},
+  CCL:{description:"Master CCL dan contractual limit untuk monitoring counterparty serta exposure BMRI/PA.",source:"FIB Group + SISM Group",dataset:"CCL_MONITORING",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"FIB / SISM",sourceNote:"BMRI data berasal dari FIB Group; data PA dikompilasi SISM sebelum monitoring."},
+  MLK:{description:"Master Limit Kredit untuk monitoring CIF, Group Usaha dan konsolidasi entitas.",source:"CRA / SISM Group",dataset:"MLK_Master + MLK_Monitor",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"CRA / SISM",sourceNote:"Master debtor data dan monitoring hierarchy dipisahkan. Master Limit Setting dan Master Limit Final adalah field berbeda; Limit Fasilitas dan Bade berasal dari facility/utilization aggregation. MLK konsolidasi adalah report-level metric dan tidak disamakan dengan debtor Master Limit."},
+  CIL:{description:"Master CIL/EIL/CIT untuk monitoring kapasitas dan nominal pertanggungan asuransi.",source:"Risk Management / SISM",dataset:"CIL_Master",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"Risk Management / SISM",sourceNote:"Insurance capacity, EIL, CIT dan exposure disimpan sebagai reference/provenance untuk monitoring."},
+  LPG:{description:"Master LPG untuk monitoring konsentrasi sektor, segmen dan region.",source:"Risk Management / Business Unit",dataset:"LPG_Loanportfolio",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"Risk Management",sourceNote:"Approved LPG limit disimpan per sektor × segmen dengan Bankwide, Region I–XII dan KP + OVS. Outstanding berasal dari CL/NCL pada level debitur; Bankwide diperlakukan sebagai aggregate/reconciliation value dan tidak dijumlahkan dengan regional."}
 };
 function loadMasterMeta(type){
   const key=`limas_master_meta_v1_${type}`;
@@ -521,7 +522,7 @@ function downloadReportCsv(type,rows){
   setTimeout(()=>URL.revokeObjectURL(url),500);
 }
 function Report({nav}){
-  const [type,setType]=useState("Country"),[period,setPeriod]=useState("Agustus 2026 • Canonical Snapshot"),[status,setStatus]=useState("All"),[generated,setGenerated]=useState(false);
+  const [type,setType]=useState("Country"),[period,setPeriod]=useState(E2E_DUMMY_META.period),[status,setStatus]=useState("All"),[generated,setGenerated]=useState(false);
   const rows=reportDummy[type]||[],filtered=rows.filter(r=>status==="All"||statusForReport(r)===status),cfg=reportConfig[type];
   const generate=()=>setGenerated(true);
   const summary={total:rows.length,normal:rows.filter(r=>statusForReport(r)==="Normal").length,warning:rows.filter(r=>statusForReport(r)==="Warning").length,breach:rows.filter(r=>statusForReport(r)==="Breach").length,issue:rows.filter(r=>statusForReport(r)==="Data Issue").length};
@@ -1447,6 +1448,32 @@ const productDatabase={
 };
 
 
+function installE2EDummyDataset(){
+  Object.keys(limasDemoData).forEach(k=>delete limasDemoData[k]);
+  Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{
+    limasDemoData[type]=JSON.parse(JSON.stringify(rows));
+  });
+  Object.keys(productDatabase).forEach(k=>delete productDatabase[k]);
+  Object.entries(E2E_DUMMY_PRODUCT_DATA).forEach(([productId,specs])=>{
+    productDatabase[productId]=specs.map(spec=>{
+      const record=makeProductRecord(productId,spec.data||{},spec.applied||[],spec.meta||{});
+      const fields=productSchemaFields[productId]||[];
+      record.data=Object.fromEntries(fields.map(f=>[f,spec.data?.[f]??'']));
+      return record;
+    });
+    if(productDatabase[productId]?.[0]) productSample[productId]={...productDatabase[productId][0].data};
+  });
+  // Country Credit Line is one source row; split is read from source-native DN/LN fields.
+  (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
+    if(String(r.recordId).startsWith("CRL-COUNTRY-")){
+      const total=Number(String(r.data?.["Credit Line Total Utilisasi"]??"").replace(/,/g,""))||0;
+      const key=String(r.data?.Code||"").trim().toUpperCase();
+      r.applied=[{limitType:"Country",key,amount:total,label:"Credit Line"}];
+    }
+  });
+}
+installE2EDummyDataset();
+
 const DOMAIN_CANONICAL_UNITS={
   Country:"Rp Juta",
   CCL:"Rp Miliar",
@@ -1455,18 +1482,24 @@ const DOMAIN_CANONICAL_UNITS={
   LPG:"Rp Juta"
 };
 const productCanonicalTransform=(domain,productId,row)=>{
-  if(domain==="CCL"&&["NON CASH LOAN","CREDIT LINE","CASHLOAN","BONDS"].includes(productId)){
+  if(productId==="NON CASH LOAN"){
+    const d=row?.data||{};
+    const dwhIdr=String(row?.sourceSystem||"").startsWith("DWH")&&String(d.CCY||"").toUpperCase()==="IDR";
+    if(dwhIdr){
+      return domain==="CCL"
+        ? {sourceUnit:"Rp Juta",targetUnit:"Rp Miliar",factor:0.001,description:"DWH IDR context: use BALANCE (Rp Juta), then convert to CCL Rp Miliar."}
+        : {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"DWH IDR context: use BALANCE as canonical outstanding."};
+    }
+    return domain==="CCL"
+      ? {sourceUnit:"Rp",targetUnit:"Rp Miliar",factor:0.000000001,description:"Normalize EQVIDR from Rp to Rp Juta, then to CCL Rp Miliar."}
+      : {sourceUnit:"Rp",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:0.000001,description:"Normalize EQVIDR from Rp to Rp Juta."};
+  }
+  if(domain==="CCL"&&["CREDIT LINE","CASHLOAN","BONDS"].includes(productId)){
     return {sourceUnit:"Rp Juta",targetUnit:"Rp Miliar",factor:0.001,description:"Normalize source exposure from Rp Juta to CCL canonical Rp Miliar."};
   }
-  if(productId==="NON CASH LOAN"&&String(row?.sourceSystem||"").startsWith("DWH")&&row?.data?.CCY==="IDR"){
-    return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use BALANCE as DWH IDR outstanding."};
-  }
-  if(productId==="NON CASH LOAN"){
-    return {sourceUnit:"Rp",targetUnit:"Rp Juta",factor:0.000001,description:"Normalize EQVIDR from Rp to Rp Juta."};
-  }
   if(productId==="BONDS")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Use Amount Eq. IDR Juta as canonical exposure."};
-  if(productId==="NOSTRO")return {sourceUnit:"Source Currency",targetUnit:"Rp Juta",factor:1,description:"Demo balance retained; FX normalization reference remains required before production consolidation."};
-  if(productId==="CREDIT LINE")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Credit Line source is already canonical component currency/unit for demo."};
+  if(productId==="NOSTRO")return {sourceUnit:"Source Currency",targetUnit:"Rp Juta",factor:1,description:"Demo balance retained; production FX normalization requires authoritative currency/rate/as-of definition."};
+  if(productId==="CREDIT LINE")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Credit Line source is already in the demo domain unit; DN/LN semantics remain source-native."};
   if(productId==="CASHLOAN")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Use Total BADE as canonical exposure."};
   if(productId==="Nominal Pertanggungan")return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use Nominal Pertanggungan as canonical exposure."};
   return {sourceUnit:DOMAIN_CANONICAL_UNITS[domain]||"Source Unit",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Source Unit",factor:1,description:"Direct / source unit."};
@@ -1569,6 +1602,38 @@ function productApplicationsFor(type,key){
     }
   })));
   return out;
+}
+
+function canonicalReadModelRows(){
+  const rows=[];
+  Object.entries(domainDataContract).forEach(([domain,cfg])=>{
+    (limasDemoData[domain]||[]).forEach(master=>{
+      const apps=productApplicationsFor(domain,master.key);
+      if(!apps.length){
+        rows.push({
+          domain,masterKey:master.key,masterObject:master.name||master.sector||master.key,
+          product:"—",recordId:"—",sourceSystem:"—",sourceField:"—",sourceAmount:null,
+          sourceUnit:"—",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"—",normalizedExposure:null,
+          bookingOffice:"—",bookingOfficeType:"—",scope:"—",
+          mappingStatus:"No Product Data",utilization:recordUtil(domain,master),status:recordStatus(domain,master)
+        });
+      }else{
+        apps.forEach(a=>{
+          const mappingStatus=!a.masterMatch?"Master Not Found":
+            (domain==="Country"&&a.bookingOfficeType==="Needs Mapping"?"Needs Booking Mapping":"Mapped");
+          rows.push({
+            domain,masterKey:master.key,masterObject:master.name||master.sector||master.key,
+            product:demoProductLabel(a.productId),recordId:a.recordId,sourceSystem:a.sourceSystem,
+            sourceField:a.exposureField,sourceAmount:a.amount,sourceUnit:a.sourceUnit,
+            targetUnit:a.targetUnit,normalizedExposure:a.normalizedAmount,
+            bookingOffice:a.bookingOffice,bookingOfficeType:a.bookingOfficeType,scope:a.scope||"—",
+            mappingStatus,utilization:recordUtil(domain,master),status:recordStatus(domain,master)
+          });
+        });
+      }
+    });
+  });
+  return rows;
 }
 
 function reconciliationIssues(){
@@ -2249,6 +2314,48 @@ function ProductUsage({view}){
   </div>;
 }
 
+function CanonicalReadModelPreview(){
+  const rows=canonicalReadModelRows();
+  const mapped=rows.filter(r=>r.mappingStatus==="Mapped").length;
+  const issues=rows.filter(r=>r.status==="Data Issue"||r.mappingStatus!=="Mapped"&&r.mappingStatus!=="No Product Data").length;
+  const noData=rows.filter(r=>r.mappingStatus==="No Product Data").length;
+  const sample=rows.filter(r=>r.product!=="—").slice(0,20);
+  return <section className="card" style={{marginTop:16}}>
+    <div className="head">
+      <div><h2>Canonical Read Model — E2E Dummy</h2><p>Output integrasi setelah Master + Product Source + Mapping + Normalization. Read model inilah yang dikonsumsi Monitoring, EWS dan Report.</p></div>
+      <span className="chip blue">{E2E_DUMMY_META.datasetId}</span>
+    </div>
+    <div className="body">
+      <div className="integration-chip-grid">
+        <div className="mini integration-chip"><b>1. Master</b><div className="muted-small">Approved limit / capacity / regulatory context</div></div>
+        <div className="mini integration-chip"><b>2. Product</b><div className="muted-small">{Object.values(productDatabase).reduce((n,x)=>n+x.length,0)} source records</div></div>
+        <div className="mini integration-chip"><b>3. Mapping</b><div className="muted-small">{mapped} mapped rows</div></div>
+        <div className="mini integration-chip"><b>4. Normalize</b><div className="muted-small">Source unit → target domain unit</div></div>
+        <div className="mini integration-chip"><b>5. Reconcile</b><div className="muted-small">{canonicalPipelineControls()[3].count} issue(s)</div></div>
+        <div className="mini integration-chip"><b>6. Monitor</b><div className="muted-small">Utilization → EWS / Breach / Data Issue</div></div>
+      </div>
+      <div className="metric-grid" style={{marginTop:12}}>
+        <DomainKpi label="Read Model Rows" value={rows.length} sub={E2E_DUMMY_META.period}/>
+        <DomainKpi label="Mapped" value={mapped} sub="Valid master linkage"/>
+        <DomainKpi label="Read Model Issue" value={issues} sub="Mapping / data integrity"/>
+        <DomainKpi label="No Product Data" value={noData} sub="Master without source feed"/>
+        <DomainKpi label="EWS / Breach" value={rows.filter(r=>r.status==="Warning"||r.status==="Breach").length} sub="Master-level exception rows" accent={rows.some(r=>r.status==="Breach")?"red":"yellow"}/>
+      </div>
+      <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table">
+          <thead><tr><th>Domain</th><th>Master Key</th><th>Product</th><th>Source Record</th><th>Source</th><th>Source Amount</th><th>Normalized</th><th>Mapping</th><th>Status</th></tr></thead>
+          <tbody>{sample.map((r,i)=><tr key={"crm-"+r.domain+"-"+r.recordId+"-"+i}>
+            <td>{r.domain}</td><td className="key">{r.masterKey}</td><td>{r.product}</td><td className="key">{r.recordId}</td><td>{r.sourceSystem}</td>
+            <td>{fmtReport(r.sourceAmount)}</td><td>{fmtReport(r.normalizedExposure)} {r.targetUnit}</td>
+            <td><Status v={r.mappingStatus==="Mapped"?"Normal":"Data Issue"}/></td><td><Status v={r.status}/></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <div className="field-help"><b>Lineage:</b> Source Record → Source Field → Source Amount / Unit → Normalized Exposure → Target Master Key → Monitoring Grain → Utilization → Status. This is a generated demo read model, not a persistent production database.</div>
+    </div>
+  </section>;
+}
+
 function Products({nav}){
   const [view,setView]=useState("catalog");
   const limitTabs=[
@@ -2279,6 +2386,7 @@ function Products({nav}){
         </div>
       </section>}
     </div>
+    <CanonicalReadModelPreview/>
   </Layout>;
 }
 
