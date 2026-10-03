@@ -1660,38 +1660,27 @@ function canonicalReadModelRows(){
 
 function reconciliationIssues(){
   const issues=[];
-  const push=(issue)=>issues.push(issue);
-  Object.entries(productDatabase).forEach(([productId,rows])=>rows.forEach(r=>{
-    (r.applied||[]).forEach(a=>{
-      const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
-      if(!master){
-        const amount=Number(a.normalizedAmount??a.amount)||0;
-        if(productId==="BONDS"&&String(a.key)==="ID"&&amount===0){
-          push({status:"Excluded",issueType:"EXCLUDED",productId,recordId:r.recordId,limitType:a.limitType,key:a.key,object:"Indonesia",detail:"Domestic issuer tidak menjadi Country Limit exposure pada canonical model.",amount:0});
-        }else if(amount!==0){
-          push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:r.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Applied Limit menunjuk master key yang belum tersedia.",amount});
-        }
-      }
-    });
-    if(productId==="CREDIT LINE"){
-      const hasCclMapping=(r.applied||[]).some(a=>a.limitType==="CCL");
-      const v=String(r.data?.["Swift Code Vlookup"]||"").trim();
-      if(hasCclMapping&&v){
-        const master=(limasDemoData.CCL||[]).find(m=>String(m.key).toUpperCase()===v.toUpperCase());
-        if(!master){
-          push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:r.recordId,limitType:"CCL",key:v,object:"—",detail:"Swift Code Vlookup untuk CCL tidak memiliki master reference.",amount:0});
-        }else{
-          const sourceNameValue=String(r.data?.Nama||"").trim().toLowerCase();
-          const masterName=String(master.name||"").trim().toLowerCase();
-          if(sourceNameValue&&masterName&&sourceNameValue!==masterName){
-            push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:r.recordId,limitType:"CCL",key:v,object:master.name,detail:"Nama product tidak sama dengan nama master untuk CCL mapping.",amount:0});
-          }
-        }
+  Object.entries(productIntegrationMappings).forEach(([productId,mappings])=>(mappings||[]).forEach(a=>{
+    const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
+    const row=(productDatabase[productId]||[]).find(r=>String(r.recordId)===String(a.recordId));
+    const normalized=row?normalizeAppliedAmount(a.limitType,productId,a.amount,row).amount:(Number(a.amount)||0);
+    if(!master&&normalized!==0){
+      issues.push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Integration mapping menunjuk master key yang belum tersedia.",amount:normalized});
+    }
+    if(Number(a.amount||0)<0){
+      issues.push({status:"Data Issue",issueType:"NEGATIVE_EXPOSURE",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Integration exposure cannot be negative.",amount:Number(a.amount)||0});
+    }
+    if(productId==="CREDIT LINE"&&a.limitType==="CCL"&&master&&row){
+      const sourceNameValue=String(row.data?.Nama||"").trim().toLowerCase();
+      const masterName=String(master.name||"").trim().toLowerCase();
+      if(sourceNameValue&&masterName&&sourceNameValue!==masterName){
+        issues.push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:a.recordId,limitType:"CCL",key:a.key,object:master.name,detail:"Nama product tidak sama dengan nama master untuk CCL mapping.",amount:0});
       }
     }
   }));
   return issues;
 }
+
 function canonicalExceptions(){
   const rows=[];
   Object.keys(limasDemoData).forEach(type=>(limasDemoData[type]||[]).forEach(r=>{
@@ -1728,35 +1717,25 @@ function canonicalProductQualityIssues(){
       const d=r.data||{};
       if(seenRecordIds.has(String(r.recordId)))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"DUPLICATE_RECORD_ID",detail:"Product record ID is duplicated."});
       seenRecordIds.add(String(r.recordId));
-
       if(productId==="CASHLOAN"&&(!d.no_cus||!d.no_rek))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_IDENTIFIER",detail:"Cash Loan requires customer/account identifier."});
-      if(productId==="NON CASH LOAN"&&(!d.CUSTID||!d["Country Code"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"NCL requires CUSTID and Country Code for canonical mapping."});
+      if(productId==="NON CASH LOAN"&&(!d.CUSTID||!d.TRXREF))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_IDENTIFIER",detail:"NCL requires CUSTID and TRXREF."});
       if(productId==="CREDIT LINE"){
         const audit=creditLineAuditRows([r])[0];
         if(audit.status==="Data Issue")issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"CREDIT_LINE_RECONCILIATION",detail:audit.issues.join(" • ")});
       }
       if(productId==="BONDS"){
         if(!d["Securities Name"]||!d["Issuer Country"])issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Bonds requires Security and Issuer Country."});
-        const nominal=Number(String(d.Amount??"").replace(/,/g,""))||0;
-        const eq=Number(String(d["Amount Eq. IDR Juta"]??"").replace(/,/g,""))||0;
+        const nominal=Number(String(d.Amount??"").replace(/,/g,""))||0,eq=Number(String(d["Amount Eq. IDR Juta"]??"").replace(/,/g,""))||0;
         if(nominal&&eq&&Math.abs(nominal/1000000-eq)>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"BONDS_EQ_IDR_MISMATCH",detail:"Amount does not reconcile to Amount Eq. IDR Juta."});
       }
       if(productId==="NOSTRO"&&(!d.SwfitCode||!d["Bank Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Nostro requires Swift identifier and Bank Country."});
       if(productId==="NOSTRO"&&(!d.CCY||!(Number(d["FX Rate to IDR"])>0)||!d["FX Rate Date"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_FX_METADATA",detail:"Nostro canonical IDR utilization requires CCY, positive FX Rate to IDR, and FX Rate Date."});
-      if(productId==="Nostro"&&d.Balance!==undefined)void d.Balance;
       if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
-
-      (r.applied||[]).forEach(a=>{
-        const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
-        if(!master&&Number(a.amount||0)!==0&&!(productId==="BONDS"&&a.limitType==="Country"&&String(a.key)==="ID")) {
-          issues.push({layer:"Integration / Read Model",productId,recordId:r.recordId,type:"MASTER_NOT_FOUND",detail:a.limitType+" / "+a.key+" has no target master."});
-        }
-        if(Number(a.amount||0)<0)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NEGATIVE_EXPOSURE",detail:"Applied exposure cannot be negative in canonical utilization feed."});
-      });
     });
   });
   return issues;
 }
+
 function masterCanonicalQualityIssues(){
   const issues=[];
   Object.entries(limasDemoData).forEach(([type,rows])=>{
