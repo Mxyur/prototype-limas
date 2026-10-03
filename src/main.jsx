@@ -1585,9 +1585,11 @@ function productApplicationsFor(type,key){
     if(productId==="CASHLOAN")return "total_bade";
     if(productId==="NON CASH LOAN")return "EQVIDR / BALANCE";
     if(productId==="CREDIT LINE"){
-      return scope==="Commercial"
-        ?"Comm Line Total Utilisasi"
-        :(row.data?.["Bade Treasury Line"]!==undefined?"Bade Treasury Line":"Treasury Line Total Utilisasi");
+      if(domain==="CCL") return "Credit Line Total Utilisasi";
+      if(domain==="MLK" && row.data?.["Bade Treasury Line"]!==undefined) return "Bade Treasury Line";
+      if(scope==="Commercial") return "Comm Line Total Utilisasi";
+      if(scope==="Treasury") return "Treasury Line Total Utilisasi";
+      return "Credit Line Total Utilisasi";
     }
     if(productId==="BONDS")return "Amount Eq. IDR Juta";
     if(productId==="NOSTRO")return "Balance";
