@@ -146,6 +146,36 @@ function loadProductMeta(type){
 }
 function saveProductMeta(type,meta){try{window.localStorage.setItem(`limas_product_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
 function nowLabel(){return new Intl.DateTimeFormat('id-ID',{dateStyle:'medium',timeStyle:'short'}).format(new Date());}
+function todayIso(){return new Date().toISOString().slice(0,10);}
+function dateOnlyValue(value){
+  const raw=String(value??"").trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  const match=raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return match?match.slice(1).join("-"):"";
+}
+function lifecycleStatus(meta){
+  const status=meta?.status||"Active";
+  const today=todayIso();
+  const effective=dateOnlyValue(meta?.effectiveDate);
+  const expiry=dateOnlyValue(meta?.expiryDate);
+  if(expiry&&today>expiry)return "Expired";
+  if(effective&&today<effective)return "Scheduled";
+  return status;
+}
+function masterDiff(type,row,pendingValues){
+  return masterEditableFields(type).map(def=>{
+    const before=getPathValue(row,def.path);
+    const after=pendingValues?.[def.field];
+    return {field:def.field,before:before??"",after:after??"",changed:JSON.stringify(before)!==JSON.stringify(after)};
+  }).filter(x=>x.changed);
+}
+function lifecycleDiff(meta,draft){
+  return [
+    ["Lifecycle",meta?.status||"Active",draft?.status||"Active"],
+    ["Effective Date",dateOnlyValue(meta?.effectiveDate)||"—",dateOnlyValue(draft?.effectiveDate)||"—"],
+    ["Expiry Date",dateOnlyValue(meta?.expiryDate)||"—",dateOnlyValue(draft?.expiryDate)||"—"]
+  ].filter(x=>String(x[1])!==String(x[2]));
+}
 
 function lpgLeafRows(rows=limasDemoData?.LPG||[]){return rows;}
 function lpgSectorTotalRows(){
@@ -1048,7 +1078,7 @@ function Setup({nav,setSel}){
   const q=query.trim().toLowerCase();
   const filtered=rows.filter(r=>{
     const hay=type==="LPG" ? String(r.sector||"")+" "+String(r.segment||"")+" "+String(r.key||"") : String(r.key||"")+" "+String(r.name||"");
-    const st=loadRecordMeta(type,r.key).status||"Active";
+    const st=lifecycleStatus(loadRecordMeta(type,r.key));
     return (!q||hay.toLowerCase().includes(q))&&(status==="All"||st===status);
   });
   const template=masterTemplate(type);
@@ -1084,7 +1114,7 @@ function Setup({nav,setSel}){
           <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>{setType(d);setQuery("");setStatus("Active");setCreating(false);}}>{d}</button>)}</div>
           <div className="toolbar" style={{marginBottom:14}}>
             <input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder={"Cari "+info.key}/>
-            <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>Active</option><option>Inactive</option><option>All</option></select>
+            <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>Active</option><option>Inactive</option><option>Scheduled</option><option>Expired</option><option>All</option></select>
             <button className="btn ghost" onClick={()=>{setQuery("");setStatus("Active");}}>Reset</button>
             <span className="muted-small">{filtered.length+" / "+rows.length+" records"}</span>
           </div>
@@ -1103,7 +1133,7 @@ function Setup({nav,setSel}){
                 <td className="key">{r.key}</td><td>{type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector)}</td>
                 <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
                 <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
-                <td>v{gov.version||1}</td><td><Status v={gov.status||"Active"}/></td>
+                <td>v{gov.version||1}</td><td><Status v={lifecycleStatus(gov)}/></td>
                 <td><span className="chip blue">{gov.approvalStatus||"Approved"}</span>{gov.pendingValues&&<div className="muted-small">Draft perubahan tersimpan</div>}</td>
                 <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
               </tr>;
@@ -1434,17 +1464,24 @@ function masterAuditFor(type,key){
 function masterReferenceCount(type,key){
   return Object.values(productIntegrationMappings||{}).flat().filter(a=>a.limitType===type&&String(a.key)===String(key)).length;
 }
-function saveMasterDraft(type,key,draft){
+function saveMasterDraft(type,key,draft,lifecycle={}){
   const current=loadRecordMeta(type,key);
   const next={
     ...current,
     version:Math.max(1,Number(current.version||1))+1,
     approvalStatus:"Pending Approval",
     pendingValues:draft,
+    pendingLifecycle:{
+      status:lifecycle.status||current.status||"Active",
+      effectiveDate:dateOnlyValue(lifecycle.effectiveDate)||dateOnlyValue(current.effectiveDate)||todayIso(),
+      expiryDate:dateOnlyValue(lifecycle.expiryDate)||dateOnlyValue(current.expiryDate)||""
+    },
+    submittedBy:"Maker (Risk Management)",
+    submittedAt:nowLabel(),
     lastUpdated:nowLabel()
   };
   saveRecordMeta(type,key,next);
-  appendMasterAudit({type,key,action:"UPDATE_SUBMITTED",version:next.version,approvalStatus:next.approvalStatus});
+  appendMasterAudit({type,key,action:"UPDATE_SUBMITTED",version:next.version,approvalStatus:next.approvalStatus,submittedBy:next.submittedBy});
   return next;
 }
 function approveMasterDraft(type,key){
@@ -1457,10 +1494,21 @@ function approveMasterDraft(type,key){
   buildProductIntegrationMappings();
   saveApprovedMasterSnapshot(type,row);
   const now=nowLabel();
-  const next={...current,approvalStatus:"Approved",approvedBy:"Risk Management",approvedAt:now,lastUpdated:now};
+  const lifecycle=current.pendingLifecycle||{};
+  const next={
+    ...current,
+    status:lifecycle.status||current.status||"Active",
+    effectiveDate:dateOnlyValue(lifecycle.effectiveDate)||dateOnlyValue(current.effectiveDate)||todayIso(),
+    expiryDate:dateOnlyValue(lifecycle.expiryDate)||dateOnlyValue(current.expiryDate)||"",
+    approvalStatus:"Approved",
+    approvedBy:"Checker (Risk Management)",
+    approvedAt:now,
+    lastUpdated:now
+  };
   delete next.pendingValues;
+  delete next.pendingLifecycle;
   saveRecordMeta(type,key,next);
-  appendMasterAudit({type,key,action:"APPROVED",version:next.version,approvalStatus:"Approved"});
+  appendMasterAudit({type,key,action:"APPROVED",version:next.version,approvalStatus:"Approved",approvedBy:next.approvedBy,status:next.status,effectiveDate:next.effectiveDate,expiryDate:next.expiryDate});
   return next;
 }
 function rejectMasterDraft(type,key){
@@ -1468,6 +1516,7 @@ function rejectMasterDraft(type,key){
   if(!current.pendingValues)return current;
   const next={...current,approvalStatus:"Approved",lastUpdated:nowLabel()};
   delete next.pendingValues;
+  delete next.pendingLifecycle;
   saveRecordMeta(type,key,next);
   appendMasterAudit({type,key,action:"REJECTED",version:current.version,approvalStatus:"Approved"});
   return next;
@@ -1648,16 +1697,17 @@ function Detail({nav,type="Country",recordKey=""}){
   const [editing,setEditing]=useState(false);
   const [editingMaster,setEditingMaster]=useState(false);
   const [masterDraft,setMasterDraft]=useState(()=>masterDraftFromRow(safeType,selectedRecord||{}));
+  const [lifecycleDraft,setLifecycleDraft]=useState(()=>{const g=loadRecordMeta(safeType,recordKey);return {status:g.status||"Active",effectiveDate:dateOnlyValue(g.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(g.expiryDate)||""};});
   const [savedAt,setSavedAt]=useState("");
   const [,refresh]=useState(0);
   const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
   const startEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
   const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
-  const startMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setEditingMaster(true);};
-  const cancelMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setEditingMaster(false);};
-  const saveMasterDraftChanges=()=>{try{const next=saveMasterDraft(safeType,recordKey,masterDraft);setRecordMeta(next);setEditingMaster(false);setSavedAt(next.lastUpdated);refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
-  const approvePending=()=>{if(window.confirm("Approve perubahan master ini? Perubahan akan menjadi approved dan mempengaruhi monitoring.")){const next=approveMasterDraft(safeType,recordKey);setRecordMeta(next||loadRecordMeta(safeType,recordKey));setMasterDraft(masterDraftFromRow(safeType,selectedRecord));setSavedAt(next?.lastUpdated||nowLabel());refresh(x=>x+1);}};
-  const rejectPending=()=>{if(window.confirm("Reject draft perubahan master?")){const next=rejectMasterDraft(safeType,recordKey);setRecordMeta(next);setMasterDraft(masterDraftFromRow(safeType,selectedRecord));refresh(x=>x+1);}};
+  const startMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setLifecycleDraft(gov.pendingLifecycle||{status:gov.status||"Active",effectiveDate:dateOnlyValue(gov.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(gov.expiryDate)||""});setEditingMaster(true);};
+  const cancelMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setLifecycleDraft(gov.pendingLifecycle||{status:gov.status||"Active",effectiveDate:dateOnlyValue(gov.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(gov.expiryDate)||""});setEditingMaster(false);};
+  const saveMasterDraftChanges=()=>{try{if(lifecycleDraft.expiryDate&&lifecycleDraft.effectiveDate&&lifecycleDraft.expiryDate<lifecycleDraft.effectiveDate)throw new Error("Expiry Date tidak boleh sebelum Effective Date.");const next=saveMasterDraft(safeType,recordKey,masterDraft,lifecycleDraft);setRecordMeta(next);setEditingMaster(false);setSavedAt(next.lastUpdated);refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
+  const approvePending=()=>{if(window.confirm("Approve perubahan master ini? Perubahan akan menjadi approved dan mempengaruhi monitoring.")){const next=approveMasterDraft(safeType,recordKey);setRecordMeta(next||loadRecordMeta(safeType,recordKey));setMasterDraft(masterDraftFromRow(safeType,selectedRecord));setLifecycleDraft({status:next?.status||"Active",effectiveDate:dateOnlyValue(next?.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(next?.expiryDate)||""});setSavedAt(next?.lastUpdated||nowLabel());refresh(x=>x+1);}};
+  const rejectPending=()=>{if(window.confirm("Reject draft perubahan master?")){const next=rejectMasterDraft(safeType,recordKey);setRecordMeta(next);setMasterDraft(masterDraftFromRow(safeType,selectedRecord));setLifecycleDraft({status:next?.status||"Active",effectiveDate:dateOnlyValue(next?.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(next?.expiryDate)||""});refresh(x=>x+1);}};
   const deleteRecord=()=>{try{if(window.confirm("Hapus master record ini? Hanya bisa bila tidak ada integration mapping.")){deleteMasterRecord(safeType,recordKey);nav("setup");}}catch(e){alert(e?.message||String(e));}};
   const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const nextRecord={...recordMeta,lastUpdated:nowLabel()};saveRecordMeta(safeType,recordKey,nextRecord);setRecordMeta(nextRecord);setEditing(false);setSavedAt(nextRecord.lastUpdated);};
   const linkedProducts=domainIntegrationProducts[safeType]||[];
@@ -1666,7 +1716,7 @@ function Detail({nav,type="Country",recordKey=""}){
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{safeType==="LPG"?(selectedRecord?.sector+" / "+selectedRecord?.segment):(selectedRecord?.name||selectedRecord?.sector||sampleName(safeType))}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span> <span className="chip blue" style={{marginLeft:6}}>{recordMeta.approvalStatus||"Approved"}</span></p></div>
+          <div><h2>{safeType==="LPG"?(selectedRecord?.sector+" / "+selectedRecord?.segment):(selectedRecord?.name||selectedRecord?.sector||sampleName(safeType))}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span> <span className="chip blue" style={{marginLeft:6}}>{recordMeta.approvalStatus||"Approved"}</span> <span className="chip blue" style={{marginLeft:6}}>{lifecycleStatus(recordMeta)}</span></p></div>
           <div className="toolbar">
             {!editing&&!editingMaster&&<><button className="btn primary" onClick={startMasterEdit}>Edit Master Limit</button><button className="btn secondary" onClick={startEdit}>Edit Provenance Metadata</button><button className="btn ghost" onClick={deleteRecord}>Hapus Master</button></>}
             {editingMaster&&<><button className="btn ghost" onClick={cancelMasterEdit}>Batal</button><button className="btn primary" onClick={saveMasterDraftChanges}>Simpan Draft</button></>}
@@ -1706,12 +1756,19 @@ function Detail({nav,type="Country",recordKey=""}){
       <section className="card" style={{marginTop:16}}>
         <div className="head"><div><h2>Master Governance</h2><p>Lifecycle perubahan value master: draft → approval → effective. Active monitoring hanya memakai approved values.</p></div><div className="toolbar">{recordMeta.effectiveDate&&<span className="chip blue">Effective {recordMeta.effectiveDate}</span>}{recordMeta.approvedBy&&<span className="chip blue">Approved by {recordMeta.approvedBy}</span>}</div></div>
         <div className="body">
+          {editingMaster&&<div className="mini" style={{marginBottom:10}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+              <div><label className="muted-small">Lifecycle</label><select className="select" value={lifecycleDraft.status} onChange={e=>setLifecycleDraft(x=>({...x,status:e.target.value}))}><option>Active</option><option>Inactive</option></select></div>
+              <div><label className="muted-small">Effective Date</label><input className="input compact" type="date" value={lifecycleDraft.effectiveDate||""} onChange={e=>setLifecycleDraft(x=>({...x,effectiveDate:e.target.value}))}/></div>
+              <div><label className="muted-small">Expiry Date</label><input className="input compact" type="date" value={lifecycleDraft.expiryDate||""} onChange={e=>setLifecycleDraft(x=>({...x,expiryDate:e.target.value}))}/></div>
+            </div>
+          </div>}
           {recordMeta.pendingValues&&<div className="mini" style={{marginBottom:10}}><b>Pending Approval</b><div className="muted-small">Draft version v{recordMeta.version} tersimpan dan belum diaplikasikan ke monitoring sampai di-approve.</div></div>}
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Timestamp</th><th>Action</th><th>Version</th><th>Approval</th></tr></thead>
-            <tbody>{masterAuditFor(safeType,selectedRecord?.key||recordKey).map(a=><tr key={a.id}><td>{a.timestamp}</td><td>{a.action}</td><td>v{a.version||1}</td><td>{a.approvalStatus||"—"}</td></tr>)}{masterAuditFor(safeType,selectedRecord?.key||recordKey).length===0&&<tr><td colSpan="4" className="muted-small">Belum ada audit event.</td></tr>}</tbody>
+            <thead><tr><th>Timestamp</th><th>Action</th><th>Version</th><th>Approval</th><th>Maker / Checker</th><th>Lifecycle</th></tr></thead>
+            <tbody>{masterAuditFor(safeType,selectedRecord?.key||recordKey).map(a=><tr key={a.id}><td>{a.timestamp}</td><td>{a.action}</td><td>v{a.version||1}</td><td>{a.approvalStatus||"—"}</td><td>{a.submittedBy||a.approvedBy||"—"}</td><td>{a.status||"—"}{a.effectiveDate?<div className="muted-small">{a.effectiveDate}{a.expiryDate?" → "+a.expiryDate:""}</div>:null}</td></tr>)}{masterAuditFor(safeType,selectedRecord?.key||recordKey).length===0&&<tr><td colSpan="6" className="muted-small">Belum ada audit event.</td></tr>}</tbody>
           </table></div>
-          <div className="field-help">Version adalah version business master, bukan version metadata provenance. Pending draft disimpan persisten pada browser; monitoring tetap menggunakan approved master sampai approval.</div>
+          <div className="field-help">Version adalah business master version. Maker mengajukan draft; Checker melakukan approval/reject. Pending value dan lifecycle tersimpan persisten pada browser, tetapi tidak masuk monitoring sampai approval.</div>
         </div>
       </section>
 
