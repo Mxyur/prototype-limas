@@ -968,6 +968,7 @@ function applyMasterCsv(type,records){
       updated++;
     }
   });
+  if(type==="Country")hydrateCountryPrototypeAllocations();
   cleanseMasterData();
   buildProductIntegrationMappings();
   return updated;
@@ -1415,6 +1416,7 @@ function applyPersistedMasterValues(){
       if(row)applyMasterDraftValues(type,row,values);
     });
   });
+  if(store.Country)hydrateCountryPrototypeAllocations();
 }
 function loadMasterAudit(){
   try{const raw=window.localStorage.getItem(MASTER_AUDIT_STORE_KEY);return raw?JSON.parse(raw):[];}catch(e){return [];}
@@ -1450,6 +1452,7 @@ function approveMasterDraft(type,key){
   const current=loadRecordMeta(type,key);
   if(!row||!current.pendingValues)return null;
   applyMasterDraftValues(type,row,current.pendingValues);
+  if(type==="Country")hydrateCountryPrototypeAllocations();
   cleanseMasterData();
   buildProductIntegrationMappings();
   saveApprovedMasterSnapshot(type,row);
