@@ -175,23 +175,22 @@ function lpgProductAmount(r){
   return 0;
 }
 function lpgProductApplicationsForKey(key){
-  const row=lpgLeafRows().find(r=>String(r.key)===String(key));
-  if(!row)return [];
   const out=[];
   ["CASHLOAN","NON CASH LOAN"].forEach(productId=>{
-    (productDatabase[productId]||[]).forEach(r=>{
-      const c=lpgProductClassification(r);
-      if(c.classified&&c.sector===row.sector&&c.segment===row.segment){
-        const amount=lpgProductAmount(r);
-        out.push({
-          limitType:"LPG",key:row.key,productId,recordId:r.recordId,sourceSystem:r.sourceSystem,
-          sourceData:r.data,amount,label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",
-          scope:c.region||null,entity:r.data?.nm_cus||r.data?.CUSTNM||"",
-          exposureField:productId==="CASHLOAN"?"total_bade":"EQVIDR",
-          transform:productId==="NON CASH LOAN"?(String(r.sourceSystem||"").startsWith("DWH")&&r.data?.CCY==="IDR"?"BALANCE / Rp Juta":"EQVIDR / 1.000.000"):"Direct / Rp Juta",
-          masterMatch:true
-        });
-      }
+    const mappings=(productIntegrationMappings[productId]||[]).filter(a=>a.limitType==="LPG"&&String(a.key)===String(key));
+    mappings.forEach(a=>{
+      const r=(productDatabase[productId]||[]).find(x=>String(x.recordId)===String(a.recordId));
+      if(!r)return;
+      const normalized=normalizeAppliedAmount("LPG",productId,a.amount,r);
+      out.push({
+        ...a,productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
+        amount:a.amount,normalizedAmount:normalized.amount,
+        label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",
+        scope:a.scope||null,entity:r.data?.nm_cus||r.data?.CUSTNM||"",
+        exposureField:productId==="CASHLOAN"?"total_bade":"EQVIDR",
+        transform:normalized.transform,sourceUnit:normalized.sourceUnit,targetUnit:normalized.targetUnit,
+        masterMatch:(limasDemoData.LPG||[]).some(m=>String(m.key)===String(a.key))
+      });
     });
   });
   return out;
@@ -429,29 +428,39 @@ function recordLimit(type,row){
 function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposure(type,row);return limit?exp/limit:0}
 function recordStatus(type,row){
   if(String(row.dataQuality||"Normal").startsWith("Missing"))return "Data Issue";
-  if(type==="Country"){
-    const coverage=countryBookingCoverage(row),a=countryAllocationMetrics(row);
-    if(coverage.unmapped>0)return "Data Issue";
-    if(a.capacityDistributionGap!==null&&Math.abs(a.capacityDistributionGap)>0.01)return "Data Issue";
-    if(a.distributionGapDomestic!==null&&Math.abs(a.distributionGapDomestic)>0.01)return "Data Issue";
-    if(a.distributionGapOverseas!==null&&Math.abs(a.distributionGapOverseas)>0.01)return "Data Issue";
-  }
   const u=recordUtil(type,row);
   let maxUtil=type==="Country"?countryMaxUtilization(row):u;
+
+  if(type==="CCL"){
+    const contractualLimit=Number(row.contractual||0)*1000;
+    const contractualUtil=contractualLimit?recordExposure(type,row)/contractualLimit:0;
+    maxUtil=Math.max(u,contractualUtil);
+  }
+
   if(type==="CIL"){
     const apps=productApplicationsFor("CIL",row.key);
     const entityTotals={};
-    apps.forEach(a=>{const e=a.entity||"Entity";entityTotals[e]=(entityTotals[e]||0)+(Number(a.amount)||0);});
+    apps.forEach(a=>{
+      const e=a.entity||"Entity";
+      entityTotals[e]=(entityTotals[e]||0)+(Number(a.normalizedAmount??a.amount)||0);
+    });
+    let maxEil=0;
     Object.entries(entityTotals).forEach(([entity,amount])=>{
       const eil=Number(row.eils?.[entity]||0);
-      if(eil>0)maxUtil=Math.max(maxUtil,amount/eil);
+      if(eil>0)maxEil=Math.max(maxEil,amount/eil);
     });
+    const cit=Number(row.cit||0);
+    const citUtil=cit?recordExposure(type,row)/cit:0;
+    maxUtil=Math.max(maxUtil,maxEil,citUtil);
   }
+
   if(type==="LPG"){
     const bankwideExposure=lpgScopeExposure(row,LPG_BANK_SCOPE);
     if(bankwideExposure===null)return "Data Issue";
     maxUtil=lpgMaxUtilization(row);
   }
+
+  if(reconciliationIssues().some(x=>x.status==="Data Issue"&&x.limitType===type&&String(x.key)===String(row.key)))return "Data Issue";
   return maxUtil>=1?"Breach":maxUtil>=0.8?"Warning":"Normal";
 }
 function cilProjection(key){
@@ -466,9 +475,11 @@ function mlkSum(rows,field){const vals=rows.map(r=>mlkNum(r[field])).filter(v=>v
 function mlkFacilityMetrics(row){
   const p=productContributionMap("MLK",row.key);
   const clLimit=mlkNum(row.clLimit),nclLimit=mlkNum(row.nclLimit),treasuryLimit=mlkNum(row.treasuryLine)??0;
-  const clBade=mlkNum(row.clBade)??mlkNum(p.CASHLOAN)??0,nclBade=mlkNum(row.nclBade)??mlkNum(p["NON CASH LOAN"])??0,treasuryBade=mlkNum(row.badeTreasuryLine)??mlkNum(p["CREDIT LINE|Treasury"])??0;
+  const clBade=mlkNum(p.CASHLOAN)??0;
+  const nclBade=mlkNum(p["NON CASH LOAN"])??0;
+  const treasuryBade=mlkNum(p["CREDIT LINE|Treasury"])??0;
   const totalLimitExisting=mlkNum(row.totalLimitExisting) ?? (clLimit!==null&&nclLimit!==null?clLimit+nclLimit+treasuryLimit:null);
-  const totalBadeExisting=mlkNum(row.totalBadeExisting) ?? (clBade+nclBade+treasuryBade);
+  const totalBadeExisting=clBade+nclBade+treasuryBade;
   return {clLimit,nclLimit,treasuryLimit,clBade,nclBade,treasuryBade,totalLimitExisting,totalBadeExisting};
 }
 function mlkMonitoringRows(rows){
@@ -505,7 +516,6 @@ function buildReportDummy(data){
     })
   };
 }
-let reportDummy;
 
 const LPG_REPORT_COLUMNS=[
     ["No","no"],["Ecosystem LPG (Sektor)","sector"],["Segmen LPG","segment"],
@@ -544,7 +554,7 @@ function downloadReportCsv(type,rows){
 }
 function Report({nav}){
   const [type,setType]=useState("Country"),[period,setPeriod]=useState(E2E_DUMMY_META.period),[status,setStatus]=useState("All"),[generated,setGenerated]=useState(false);
-  const rows=reportDummy[type]||[],filtered=rows.filter(r=>status==="All"||statusForReport(r)===status),cfg=reportConfig[type];
+  const rows=(buildReportDummy(limasDemoData)[type]||[]),filtered=rows.filter(r=>status==="All"||statusForReport(r)===status),cfg=reportConfig[type];
   const generate=()=>setGenerated(true);
   const summary={total:rows.length,normal:rows.filter(r=>statusForReport(r)==="Normal").length,warning:rows.filter(r=>statusForReport(r)==="Warning").length,breach:rows.filter(r=>statusForReport(r)==="Breach").length,issue:rows.filter(r=>statusForReport(r)==="Data Issue").length};
   return <Layout screen="report" onNav={nav}><Header title="Generate Monitoring Report" subtitle="Generate report monitoring dengan struktur yang mengikuti master report masing-masing limit"/><div className="page">
@@ -678,26 +688,47 @@ function Dashboard({nav}){
   </Layout>
 }
 
+function exceptionEntity(r){
+  if(r.domain==="MLK"){
+    const master=(limasDemoData.MLK||[]).find(x=>String(x.key)===String(r.key));
+    return master?.entity||"BMRI";
+  }
+  if(r.domain==="CIL"){
+    const app=productApplicationsFor("CIL",r.key)[0];
+    return app?.entity||"BMRI";
+  }
+  return "BMRI";
+}
 function Warning({nav}){
-  const [status,setStatus]=useState("All"), [domain,setDomain]=useState("All");
-  const rows=canonicalExceptions();
-  const filtered=rows.filter(r=>(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain));
-  const breach=filtered.filter(r=>r.status==="Breach").length;
-  const warning=filtered.filter(r=>r.status==="Warning").length;
-  const issue=filtered.filter(r=>r.status==="Data Issue").length;
+  const [status,setStatus]=useState("All"),[domain,setDomain]=useState("All"),[entity,setEntity]=useState("All Entity"),[snapshot,setSnapshot]=useState("Latest Canonical Snapshot");
+  const rows=canonicalExceptions().map(r=>({...r,entity:exceptionEntity(r),snapshot:E2E_DUMMY_META.datasetId,period:E2E_DUMMY_META.period}));
+  const filtered=rows.filter(r=>(status==="All"||r.status===status)&&(domain==="All"||r.domain===domain)&&(entity==="All Entity"||r.entity===entity)&&(snapshot==="Latest Canonical Snapshot"||r.snapshot===snapshot));
+  const breach=filtered.filter(r=>r.status==="Breach").length,warning=filtered.filter(r=>r.status==="Warning").length,issue=filtered.filter(r=>r.status==="Data Issue").length;
+  const actionPending=filtered.length;
+  const entityOptions=[...new Set(rows.map(r=>r.entity).filter(Boolean))];
   return <Layout screen="warning" onNav={nav}><Header title="Early Warning & Breach Center" subtitle="Exception monitoring dari canonical Master Limit + Product Utilization + reconciliation engine"/><div className="page">
     <div className="metric-grid">
       <DomainKpi label="Total Exception" value={filtered.length} sub="Hasil filter saat ini"/>
       <DomainKpi label="Breach" value={breach} sub="Utilisasi ≥ 100%" accent="red"/>
       <DomainKpi label="Early Warning" value={warning} sub="80% ≤ utilisasi < 100%" accent="yellow"/>
       <DomainKpi label="Data Issue" value={issue} sub="Master / mapping / identity"/>
-      <DomainKpi label="Action Pending" value={rows.filter(r=>r.status!=="Normal").length} sub="Exception yang perlu review" accent="yellow"/>
+      <DomainKpi label="Action Pending" value={actionPending} sub="Exception yang perlu review" accent="yellow"/>
     </div>
-    <section className="card"><div className="head"><div><h2>Filter Exception</h2><p>Semua exception berasal dari canonical monitoring dan reconciliation engine.</p></div></div><div className="body"><div className="toolbar"><select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><select className="select" value={domain} onChange={e=>setDomain(e.target.value)}><option>All</option><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select><select className="select"><option>All Entity</option><option>BMRI</option><option>Perusahaan Anak</option></select><select className="select"><option>Latest Canonical Snapshot</option></select></div></div></section>
-    <section className="card"><div className="head"><div><h2>Exception Register</h2><p>Drill-down menuju master, product source dan reconciliation detail.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Status</th><th>Domain</th><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Threshold</th><th>Detail</th><th>Aksi</th></tr></thead><tbody>{filtered.map((r,i)=><tr key={r.domain+"|"+r.key+"|"+i}><td><Status v={r.status}/></td><td><b>{r.domain}</b></td><td><span className="key">{r.key}</span></td><td>{r.object}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.exposure)}</td><td>{r.util?((r.util*100).toFixed(2)+"%"):"—"}</td><td>{r.threshold}</td><td className="muted-small">{r.detail}</td><td><button className="btn ghost" onClick={()=>domains[r.domain]?nav("detail",{type:r.domain,key:r.key}):nav("products")}>{domains[r.domain]?"Detail":"Product"}</button></td></tr>)}</tbody></table></div></div></section>
-    <div className="dash-grid"><section className="card"><div className="head"><div><h2>Exception by Domain</h2><p>Canonical warning, breach dan reconciliation issue.</p></div></div><div className="body"><div className="heatmap">{["Country","CCL","MLK","CIL","LPG"].map(d=>{const n=rows.filter(r=>r.domain===d).length;return <div className={"heat "+(n>=3?"high":n>=1?"warn":"low")} key={d}><div>{d}</div><div style={{fontSize:18,marginTop:8}}>{n}</div></div>})}</div></div></section>
-    <section className="card"><div className="head"><div><h2>Reconciliation Status</h2><p>Issues yang benar-benar ditemukan pada product-to-master mapping.</p></div></div><div className="body">{reconciliationIssues().length?reconciliationIssues().map((x,i)=><div className="mini" style={{marginBottom:8}} key={x.recordId+"|"+i}><b>{x.issueType} • {x.productId}</b><div className="muted-small">{x.recordId} → {x.limitType} / {x.key} • {x.detail}</div></div>):<div className="mini">No reconciliation issue.</div>}</div></section></div>
-  </div></Layout>
+    <section className="card"><div className="head"><div><h2>Filter Exception</h2><p>Semua exception berasal dari canonical monitoring dan reconciliation engine.</p></div></div><div className="body"><div className="toolbar">
+      <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select>
+      <select className="select" value={domain} onChange={e=>setDomain(e.target.value)}><option>All</option><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select>
+      <select className="select" value={entity} onChange={e=>setEntity(e.target.value)}><option>All Entity</option>{entityOptions.map(x=><option key={x}>{x}</option>)}</select>
+      <select className="select" value={snapshot} onChange={e=>setSnapshot(e.target.value)}><option>Latest Canonical Snapshot</option><option value={E2E_DUMMY_META.datasetId}>{E2E_DUMMY_META.datasetId}</option></select>
+    </div></div></section>
+    <section className="card"><div className="head"><div><h2>Exception Register</h2><p>Drill-down menuju master, product source dan reconciliation detail.</p></div></div><div className="body"><div className="table-wrap"><table className="table">
+      <thead><tr><th>Status</th><th>Domain</th><th>Entity</th><th>Unique Key</th><th>Objek</th><th>Limit</th><th>Exposure</th><th>Utilisasi</th><th>Threshold</th><th>Snapshot</th><th>Detail</th><th>Aksi</th></tr></thead>
+      <tbody>{filtered.map((r,i)=><tr key={r.domain+"|"+r.key+"|"+i}><td><Status v={r.status}/></td><td><b>{r.domain}</b></td><td>{r.entity}</td><td><span className="key">{r.key}</span></td><td>{r.object}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.exposure)}</td><td>{r.util?((r.util*100).toFixed(2)+"%"):"—"}</td><td>{r.threshold}</td><td className="muted-small">{r.period}</td><td className="muted-small">{r.detail}</td><td><button className="btn ghost" onClick={()=>domains[r.domain]?nav("detail",{type:r.domain,key:r.key}):nav("products")}>{domains[r.domain]?"Detail":"Product"}</button></td></tr>)}</tbody>
+    </table></div></div></section>
+    <div className="dash-grid">
+      <section className="card"><div className="head"><div><h2>Exception by Domain</h2><p>Canonical warning, breach dan reconciliation issue.</p></div></div><div className="body"><div className="heatmap">{["Country","CCL","MLK","CIL","LPG"].map(d=>{const n=rows.filter(r=>r.domain===d).length;return <div className={"heat "+(n>=3?"high":n>=1?"warn":"low")} key={d}><div>{d}</div><div style={{fontSize:18,marginTop:8}}>{n}</div></div>})}</div></div></section>
+      <section className="card"><div className="head"><div><h2>Reconciliation Status</h2><p>Issues yang benar-benar ditemukan pada product-to-master mapping.</p></div></div><div className="body">{reconciliationIssues().length?reconciliationIssues().map((x,i)=><div className="mini" style={{marginBottom:8}} key={x.recordId+"|"+i}><b>{x.issueType+" • "+x.productId}</b><div className="muted-small">{x.recordId} → {x.limitType} / {x.key} • {x.detail}</div></div>):<div className="mini">No reconciliation issue.</div>}</div></section>
+    </div>
+  </div></Layout>;
 }
 function LPGMonitor({nav}){
   const rows=lpgDisplayRows(),leaf=lpgLeafRows();
@@ -779,7 +810,7 @@ function Monitor({type,nav}){
     if(type==="CIL"){
       return productContributionDetail("CIL",r.key).map(x=>demoProductLabel(x.product)+": "+Number(x.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ")||"Tidak ada exposure";
     }
-    return Object.entries(r.products||{}).map(([p,v])=>demoProductLabel(p)+": "+Number(v||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ")||"Tidak ada exposure";
+    return Object.entries(productContributionMap(type,r.key)).map(([p,v])=>demoProductLabel(p)+": "+Number(v||0).toLocaleString("id-ID",{maximumFractionDigits:2})).join(" • ")||"Tidak ada exposure";
   };
   return <Layout screen={type} onNav={nav}>
     <Header title={titleMap[type]} subtitle={subtitleMap[type]}/>
@@ -1388,91 +1419,17 @@ function makeProductRecord(productId,overrides={},applied=[],meta={}){
   const base={};
   (productSchemaFields[productId]||[]).forEach(f=>{base[f]='';});
   Object.assign(base,productSample[productId]||{},overrides);
-  const booking=deriveBookingAttributes(productId,overrides,meta);
-  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",status:meta.status||'Normal',...booking};
+  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",status:meta.status||'Normal'};
 }
 
 const productIntegrationMappings={};
-const productDatabase={
-  'CASHLOAN':[
-    makeProductRecord('CASHLOAN',{no_cus:'16000000010',nm_cus:'PURE SOURCE DAIRY FARM CO., LTD',no_rek:'6090100009393',jns_krd:'I-SYN-CNY',src:'KLN',total_limit:'286035.62',total_bade:'286035.62',project_location:'China',code:'CN'},[{limitType:'Country',key:'CN',amount:286035.62,label:'Cash Loan'}],{recordId:'CL-COUNTRY-CN',sourceSystem:'Big Data (adjusted Country)',bookingOffice:'PT BANK MANDIRI SHANGHAI (CNY)',bookingOfficeType:'Overseas',countryExposure:'CN'}),
-    makeProductRecord('CASHLOAN',{no_cus:'4000264485',nm_cus:'DJARUM',no_rek:'BMRI-4000264485',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'587',total_bade:'500',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'4000264485',amount:500,label:'Cash Loan'}],{recordId:'CL-MLK-001',sourceSystem:'LIMAST'}),
-    makeProductRecord('CASHLOAN',{no_cus:'1000145694',nm_cus:'ANEKA TAMBANG',no_rek:'BMRI-1000145694',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'0',total_bade:'0',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'1000145694',amount:0,label:'Cash Loan'}],{recordId:'CL-MLK-002',sourceSystem:'LIMAST'}),
-    makeProductRecord('CASHLOAN',{no_cus:'16000486963',nm_cus:'TUNAS MOBILINDO PERKASA',no_rek:'BMRI-16000486963',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'12',total_bade:'10.93',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'16000486963',amount:10.93,label:'Cash Loan'}],{recordId:'CL-MLK-003',sourceSystem:'LIMAST'}),
-    makeProductRecord('CASHLOAN',{no_cus:'20000474637',nm_cus:'TUNAS RIDEAN',no_rek:'BMRI-20000474637',jns_krd:'WORKING CAPITAL',src:'BMRI',total_limit:'150',total_bade:'134.73',project_location:'Indonesia',code:'ID'},[{limitType:'MLK',key:'20000474637',amount:134.73,label:'Cash Loan'}],{recordId:'CL-MLK-004',sourceSystem:'LIMAST'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000001',nm_cus:'PT Bumi Bara Nusantara',no_rek:'609000000001',jns_krd:'KREDIT',src:'DWH',total_limit:'65140',total_bade:'47450',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Corporate',region_lpg:'KP + OVS'},[],{recordId:'CL-LPG-001',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000002',nm_cus:'PT Cakrawala Mineral Indonesia',no_rek:'609000000002',jns_krd:'KREDIT',src:'DWH',total_limit:'35949',total_bade:'18500',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'KP + OVS'},[],{recordId:'CL-LPG-002',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000003',nm_cus:'PT Energi Nusantara Sejahtera',no_rek:'609000000003',jns_krd:'KREDIT',src:'DWH',total_limit:'123949',total_bade:'57000',project_location:'Indonesia',code:'ID',ecosystem_lpg:'ENERGI & AIR',segmen_lpg:'Corporate',region_lpg:''},[],{recordId:'CL-LPG-003',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000004',nm_cus:'PT Sumber Energi Indonesia',no_rek:'609000000004',jns_krd:'KREDIT',src:'DWH',total_limit:'33854',total_bade:'14500',project_location:'Indonesia',code:'ID',ecosystem_lpg:'ENERGI & AIR',segmen_lpg:'Commercial',region_lpg:''},[],{recordId:'CL-LPG-004',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000005',nm_cus:'PT Farma Medika Nusantara',no_rek:'609000000005',jns_krd:'KREDIT',src:'DWH',total_limit:'24600',total_bade:'10000',project_location:'Indonesia',code:'ID',ecosystem_lpg:'FARMASI & KESEHATAN',segmen_lpg:'Corporate',region_lpg:''},[],{recordId:'CL-LPG-005',sourceSystem:'DWH'})
-,
-    makeProductRecord('CASHLOAN',{no_cus:'300000100',nm_cus:'PT Borneo Coal Resources',no_rek:'609000000100',jns_krd:'KREDIT',src:'DWH',total_limit:'52.20',total_bade:'52.20',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region I'},[],{recordId:'CL-LPG-006',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000101',nm_cus:'PT Nusantara Coal Resources',no_rek:'609000000101',jns_krd:'KREDIT',src:'DWH',total_limit:'154.80',total_bade:'154.80',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region II'},[],{recordId:'CL-LPG-007',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000102',nm_cus:'PT Prima Mineral Abadi',no_rek:'609000000102',jns_krd:'KREDIT',src:'DWH',total_limit:'360.00',total_bade:'360.00',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region III'},[],{recordId:'CL-LPG-008',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000103',nm_cus:'PT Samudra Batu Bara',no_rek:'609000000103',jns_krd:'KREDIT',src:'DWH',total_limit:'25.80',total_bade:'25.80',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region IV'},[],{recordId:'CL-LPG-009',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000104',nm_cus:'PT Karya Tambang Sejahtera',no_rek:'609000000104',jns_krd:'KREDIT',src:'DWH',total_limit:'663.60',total_bade:'663.60',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region V'},[],{recordId:'CL-LPG-010',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000105',nm_cus:'PT Lintas Mineral Indonesia',no_rek:'609000000105',jns_krd:'KREDIT',src:'DWH',total_limit:'43.20',total_bade:'43.20',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region VIII'},[],{recordId:'CL-LPG-011',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000106',nm_cus:'PT Anugerah Batubara Nusantara',no_rek:'609000000106',jns_krd:'KREDIT',src:'DWH',total_limit:'779.40',total_bade:'779.40',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region IX'},[],{recordId:'CL-LPG-012',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000107',nm_cus:'PT Sumber Daya Mineral',no_rek:'609000000107',jns_krd:'KREDIT',src:'DWH',total_limit:'19.80',total_bade:'19.80',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region I'},[],{recordId:'CL-LPG-013',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000108',nm_cus:'PT Mitra Tambang Nusantara',no_rek:'609000000108',jns_krd:'KREDIT',src:'DWH',total_limit:'119.40',total_bade:'119.40',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region II'},[],{recordId:'CL-LPG-014',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000109',nm_cus:'PT Cipta Mineral Persada',no_rek:'609000000109',jns_krd:'KREDIT',src:'DWH',total_limit:'31.20',total_bade:'31.20',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region III'},[],{recordId:'CL-LPG-015',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000110',nm_cus:'PT Kencana Bara Sejahtera',no_rek:'609000000110',jns_krd:'KREDIT',src:'DWH',total_limit:'5.40',total_bade:'5.40',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region IV'},[],{recordId:'CL-LPG-016',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000111',nm_cus:'PT Sinar Mineral Abadi',no_rek:'609000000111',jns_krd:'KREDIT',src:'DWH',total_limit:'270.00',total_bade:'270.00',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region V'},[],{recordId:'CL-LPG-017',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000112',nm_cus:'PT Bumi Energi Makmur',no_rek:'609000000112',jns_krd:'KREDIT',src:'DWH',total_limit:'13.80',total_bade:'13.80',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region VI'},[],{recordId:'CL-LPG-018',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000113',nm_cus:'PT Sentosa Tambang Indonesia',no_rek:'609000000113',jns_krd:'KREDIT',src:'DWH',total_limit:'5.40',total_bade:'5.40',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region VII'},[],{recordId:'CL-LPG-019',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000114',nm_cus:'PT Mineral Jaya Nusantara',no_rek:'609000000114',jns_krd:'KREDIT',src:'DWH',total_limit:'166.80',total_bade:'166.80',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region IX'},[],{recordId:'CL-LPG-020',sourceSystem:'DWH'}),
-    makeProductRecord('CASHLOAN',{no_cus:'300000115',nm_cus:'CV Sumber Batu Bara Jaya',no_rek:'609000000115',jns_krd:'KREDIT',src:'DWH',total_limit:'4.80',total_bade:'4.80',project_location:'Indonesia',code:'ID',ecosystem_lpg:'BATUBARA',segmen_lpg:'Micro',region_lpg:'Region VIII'},[],{recordId:'CL-LPG-021',sourceSystem:'DWH'})  ],
-  'NON CASH LOAN':[
-    makeProductRecord('NON CASH LOAN',{NO:'1',MODULE:'EXCO','Swift Code':'ANZB AU 3M',REPORTTYPE:'Export Collection Financing',TRXREF:'XC77126002607',CUSTID:'16000005630',CUSTNM:'PT. PABRIK KERTAS TJIWI KIMIA TBK',CPNM:'KENSINGTON INTERNATIONAL LIMITED','Country Code':'HK','Country Name':'Hong Kong',CCY:'USD',AMOUNT:'24532.90',BALANCE:'24532.90',EXCHANGERT:'17310',EQVIDR:'425000000',FINTYPE:'DISCOUNT/REDISCOUNT',TRXDATE:'07/04/2026',DUEDATE:'02/10/2026',SERVCODE:'77106',SERVNM:'Trade Operation Export',SOF:'T',INTRT:'6.97'},[{limitType:'CCL',key:'ANZBAU3M',amount:425,label:'Non Cash Loan'},{limitType:'Country',key:'HK',amount:425,label:'Non Cash Loan'}],{recordId:'NCL-CCL-001',sourceSystem:'Core Banking Limit System',bookingOffice:'Bank Mandiri (Europe) Limited London',bookingOfficeType:'Overseas',countryExposure:'HK'}),
-    makeProductRecord('NON CASH LOAN',{NO:'2',MODULE:'EPLC','Swift Code':'ANZB AU 3M',REPORTTYPE:'Bank Guarantee',TRXREF:'NCL-0002',CUSTID:'1000145694',CUSTNM:'ANEKA TAMBANG',CPNM:'ANZ Banking Group','Country Code':'AU','Country Name':'Australia',CCY:'USD',AMOUNT:'12.47',BALANCE:'12.47',EXCHANGERT:'17310',EQVIDR:'215810000',FINTYPE:'GUARANTEE'},[{limitType:'MLK',key:'1000145694',amount:215.81,label:'Non Cash Loan'}],{recordId:'NCL-MLK-002',sourceSystem:'LIMAST',bookingOffice:'Bank Mandiri Cayman Islands',bookingOfficeType:'Overseas',countryExposure:'AU'}),
-    makeProductRecord('NON CASH LOAN',{NO:'3',MODULE:'EPLC','Swift Code':'DBSASGSG',REPORTTYPE:'Bank Guarantee',TRXREF:'NCL-0003',CUSTID:'20000474637',CUSTNM:'TUNAS RIDEAN',CPNM:'DBS Bank','Country Code':'SG','Country Name':'Singapore',CCY:'USD',AMOUNT:'900',BALANCE:'900',EXCHANGERT:'17300',EQVIDR:'155700000',FINTYPE:'GUARANTEE'},[{limitType:'MLK',key:'20000474637',amount:15.57,label:'Non Cash Loan'}],{recordId:'NCL-MLK-003',sourceSystem:'LIMAST',bookingOffice:'Menara Mandiri Jakarta',bookingOfficeType:'Domestic',countryExposure:'SG'}),
-    makeProductRecord('NON CASH LOAN',{NO:'4',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-001',CUSTID:'300000101',CUSTNM:'PT Bumi Bara Nusantara','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'7919',BALANCE:'7919',EQVIDR:'7919',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Corporate',region_lpg:'KP + OVS'},[],{recordId:'NCL-LPG-001',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'5',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-002',CUSTID:'300000102',CUSTNM:'PT Cakrawala Mineral Indonesia','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'5856',BALANCE:'4891',EQVIDR:'4891',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'KP + OVS'},[],{recordId:'NCL-LPG-002',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'6',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-003',CUSTID:'300000103',CUSTNM:'PT Energi Nusantara Sejahtera','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'14744',BALANCE:'14744',EQVIDR:'14744',FINTYPE:'Portfolio',ecosystem_lpg:'ENERGI & AIR',segmen_lpg:'Corporate',region_lpg:''},[],{recordId:'NCL-LPG-003',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'7',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-004',CUSTID:'300000104',CUSTNM:'PT Sumber Energi Indonesia','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'3915',BALANCE:'3915',EQVIDR:'3915',FINTYPE:'Portfolio',ecosystem_lpg:'ENERGI & AIR',segmen_lpg:'Commercial',region_lpg:''},[],{recordId:'NCL-LPG-004',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'8',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-005',CUSTID:'300000105',CUSTNM:'PT Farma Medika Nusantara','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'2000',BALANCE:'2000',EQVIDR:'2000',FINTYPE:'Portfolio',ecosystem_lpg:'FARMASI & KESEHATAN',segmen_lpg:'Corporate',region_lpg:''},[],{recordId:'NCL-LPG-005',sourceSystem:'DWH'})
-,
-    makeProductRecord('NON CASH LOAN',{NO:'300',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-006',CUSTID:'310000300',CUSTNM:'PT Borneo Coal Resources','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'34.80',BALANCE:'34.80',EQVIDR:'34.80',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region I'},[],{recordId:'NCL-LPG-006',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'301',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-007',CUSTID:'310000301',CUSTNM:'PT Nusantara Coal Resources','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'103.20',BALANCE:'103.20',EQVIDR:'103.20',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region II'},[],{recordId:'NCL-LPG-007',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'302',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-008',CUSTID:'310000302',CUSTNM:'PT Prima Mineral Abadi','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'240.00',BALANCE:'240.00',EQVIDR:'240.00',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region III'},[],{recordId:'NCL-LPG-008',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'303',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-009',CUSTID:'310000303',CUSTNM:'PT Samudra Batu Bara','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'17.20',BALANCE:'17.20',EQVIDR:'17.20',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region IV'},[],{recordId:'NCL-LPG-009',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'304',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-010',CUSTID:'310000304',CUSTNM:'PT Karya Tambang Sejahtera','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'442.40',BALANCE:'442.40',EQVIDR:'442.40',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region V'},[],{recordId:'NCL-LPG-010',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'305',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-011',CUSTID:'310000305',CUSTNM:'PT Lintas Mineral Indonesia','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'28.80',BALANCE:'28.80',EQVIDR:'28.80',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region VIII'},[],{recordId:'NCL-LPG-011',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'306',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-012',CUSTID:'310000306',CUSTNM:'PT Anugerah Batubara Nusantara','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'519.60',BALANCE:'519.60',EQVIDR:'519.60',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Commercial',region_lpg:'Region IX'},[],{recordId:'NCL-LPG-012',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'307',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-013',CUSTID:'310000307',CUSTNM:'PT Sumber Daya Mineral','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'13.20',BALANCE:'13.20',EQVIDR:'13.20',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region I'},[],{recordId:'NCL-LPG-013',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'308',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-014',CUSTID:'310000308',CUSTNM:'PT Mitra Tambang Nusantara','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'79.60',BALANCE:'79.60',EQVIDR:'79.60',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region II'},[],{recordId:'NCL-LPG-014',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'309',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-015',CUSTID:'310000309',CUSTNM:'PT Cipta Mineral Persada','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'20.80',BALANCE:'20.80',EQVIDR:'20.80',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region III'},[],{recordId:'NCL-LPG-015',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'310',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-016',CUSTID:'310000310',CUSTNM:'PT Kencana Bara Sejahtera','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'3.60',BALANCE:'3.60',EQVIDR:'3.60',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region IV'},[],{recordId:'NCL-LPG-016',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'311',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-017',CUSTID:'310000311',CUSTNM:'PT Sinar Mineral Abadi','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'180.00',BALANCE:'180.00',EQVIDR:'180.00',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region V'},[],{recordId:'NCL-LPG-017',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'312',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-018',CUSTID:'310000312',CUSTNM:'PT Bumi Energi Makmur','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'9.20',BALANCE:'9.20',EQVIDR:'9.20',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region VI'},[],{recordId:'NCL-LPG-018',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'313',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-019',CUSTID:'310000313',CUSTNM:'PT Sentosa Tambang Indonesia','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'3.60',BALANCE:'3.60',EQVIDR:'3.60',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region VII'},[],{recordId:'NCL-LPG-019',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'314',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-020',CUSTID:'310000314',CUSTNM:'PT Mineral Jaya Nusantara','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'111.20',BALANCE:'111.20',EQVIDR:'111.20',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Sme',region_lpg:'Region IX'},[],{recordId:'NCL-LPG-020',sourceSystem:'DWH'}),
-    makeProductRecord('NON CASH LOAN',{NO:'315',MODULE:'EPLC',REPORTTYPE:'Loan Portfolio Utilization',TRXREF:'NCL-LPG-021',CUSTID:'310000315',CUSTNM:'CV Sumber Batu Bara Jaya','Country Code':'ID','Country Name':'Indonesia',CCY:'IDR',AMOUNT:'3.20',BALANCE:'3.20',EQVIDR:'3.20',FINTYPE:'Portfolio',ecosystem_lpg:'BATUBARA',segmen_lpg:'Micro',region_lpg:'Region VIII'},[],{recordId:'NCL-LPG-021',sourceSystem:'DWH'})  ],
-  'CREDIT LINE':[
-    makeProductRecord('CREDIT LINE',{No:'1',Nama:'Australia and New Zealand Banking Group Limited','Swift Code':'ANZB AU 3M','Swift Code Vlookup':'ANZBAU3M',Code:'AU',Negara:'Australia',Bank:'Foreign',BMFIR:'AA',Fitch:'AA-','Moody\'s':'Aa2','S&P':'AA-','Treasury DN':'50000','Treasury DN Utilisasi':'1469.93','Treasury LN':'140000','Treasury LN Utilisasi':'0','Treasury Line Total':'190000','Treasury Line Total Utilisasi':'1469.93','Comm DN':'775000','Comm DN Utilisasi':'6618.77','Comm LN':'35000','Comm LN Utilisasi':'0','Comm Line Total':'810000','Comm Line Total Utilisasi':'6618.77','Corporate Card':'0','Credit Line Total':'1000000','Credit Line Total Utilisasi':'8088.69'},[{limitType:'Country',key:'AU',amount:6618.77,label:'Commercial Line',scope:'Commercial'},{limitType:'Country',key:'AU',amount:1469.93,label:'Treasury Line',scope:'Treasury'}],{recordId:'CRL-COUNTRY-AU-001',sourceSystem:'Data Utilisasi Credit Line',bookingOffice:'Bank Mandiri (Europe) Limited London',bookingOfficeType:'Overseas',countryExposure:'AU'}),
-    makeProductRecord('CREDIT LINE',{No:'2',Nama:'Australia Credit Line - Other','Swift Code':'ANZB AU OTHER','Swift Code Vlookup':'ANZBAU3M',Code:'AU',Negara:'Australia',Bank:'Foreign','Comm Line Total':'28842.19','Comm Line Total Utilisasi':'28842.19','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'28842.19','Credit Line Total Utilisasi':'28842.19'},[{limitType:'Country',key:'AU',amount:28842.19,label:'Commercial Line',scope:'Commercial'}],{recordId:'CRL-COUNTRY-AU-002',sourceSystem:'Data Utilisasi Credit Line',bookingOffice:'Bank Mandiri Cayman Islands',bookingOfficeType:'Overseas',countryExposure:'AU'}),
-    makeProductRecord('CREDIT LINE',{No:'3',Nama:'ABN Amro Bank NV','Swift Code':'ABNANL2A','Swift Code Vlookup':'ABNANL2A',Code:'NL',Negara:'Netherlands',Bank:'Foreign','Comm Line Total':'0','Comm Line Total Utilisasi':'0','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'0','Credit Line Total Utilisasi':'0'},[],{recordId:'CRL-CCL-001',sourceSystem:'Core Banking Limit System',bookingOffice:'Menara Mandiri Jakarta',bookingOfficeType:'Domestic',countryExposure:'NL'}),
-    makeProductRecord('CREDIT LINE',{No:'4',Nama:'Abu Dhabi Commercial Bank PJSC','Swift Code':'ADCBADAD','Swift Code Vlookup':'ADCB',Code:'AE',Negara:'UAE',Bank:'Foreign','Comm Line Total':'0','Comm Line Total Utilisasi':'0','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'0','Credit Line Total Utilisasi':'0'},[],{recordId:'CRL-CCL-002',sourceSystem:'Core Banking Limit System',bookingOffice:'Bank Mandiri (Europe) Limited London',bookingOfficeType:'Overseas',countryExposure:'AE'}),
-    makeProductRecord('CREDIT LINE',{No:'5',Nama:'Agricultural Bank of China Limited','Swift Code':'ABOCCNBJ','Swift Code Vlookup':'AGRICN',Code:'CN',Negara:'China',Bank:'Foreign','Comm Line Total':'0','Comm Line Total Utilisasi':'0','Treasury Line Total':'0','Treasury Line Total Utilisasi':'0','Credit Line Total':'2200','Credit Line Total Utilisasi':'2200'},[{limitType:'CCL',key:'AGRICN',amount:2200,label:'Credit Line'}],{recordId:'CRL-CCL-003',sourceSystem:'Core Banking Limit System',bookingOffice:'Bank Mandiri Shanghai',bookingOfficeType:'Overseas',countryExposure:'CN'}),
-    makeProductRecord('CREDIT LINE',{No:'6',Nama:'DJARUM Treasury', 'Swift Code':'DJARUM-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'0','Bade Treasury Line':'1938','Treasury Line Total Utilisasi':'1938','Credit Line Total Utilisasi':'1938'},[{limitType:'MLK',key:'4000264485',amount:1938,label:'Bade Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-001',sourceSystem:'LIMAST'}),
-    makeProductRecord('CREDIT LINE',{No:'7',Nama:'ANEKA TAMBANG Treasury', 'Swift Code':'ANTAM-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'0','Bade Treasury Line':'4248','Treasury Line Total Utilisasi':'4248','Credit Line Total Utilisasi':'4248'},[{limitType:'MLK',key:'1000145694',amount:4248,label:'Bade Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-002',sourceSystem:'LIMAST'}),
-    makeProductRecord('CREDIT LINE',{No:'8',Nama:'TUNAS MOBILINDO Treasury', 'Swift Code':'TUNAS-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'0','Bade Treasury Line':'59','Treasury Line Total Utilisasi':'59','Credit Line Total Utilisasi':'59'},[{limitType:'MLK',key:'16000486963',amount:59,label:'Bade Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-003',sourceSystem:'LIMAST'}),
-    makeProductRecord('CREDIT LINE',{No:'9',Nama:'TUNAS RIDEAN Treasury', 'Swift Code':'RIDEAN-TL',Code:'ID',Negara:'Indonesia',Bank:'BMRI','Treasury Line':'0','Bade Treasury Line':'262','Treasury Line Total Utilisasi':'262','Credit Line Total Utilisasi':'262'},[{limitType:'MLK',key:'20000474637',amount:262,label:'Bade Treasury Line',scope:'Treasury'}],{recordId:'TL-MLK-004',sourceSystem:'LIMAST'})
-  ],
-  'Investment Line':Array.from({length:5},(_,i)=>makeProductRecord('Investment Line',{No:String(i+1),'Nama Bank':['ANZ','DBS','OCBC','MUFG','Mizuho'][i],'Nama Entity (Scope Entity : AKK)':'DPBM',Switftcode:['ANZxx','DBSxx','OCBCxx','MUFGxx','MHCBxx'][i],'Jenis Invesment Line':i<3?'Deposito':'Placement','Amount Invesment Line':['10000000000','5000000000','3500000000','2500000000','1800000000'][i]},[],{recordId:'INV-00'+(i+1),sourceSystem:'Investment source / Monthly'})),
-  'BONDS':Array.from({length:5},(_,i)=>makeProductRecord('BONDS',{Date:'30-Apr-26',Branch:['Menara Mandiri Jakarta','Bank Mandiri (Europe) Limited London','Bank Mandiri Cayman Islands','Bank Mandiri Shanghai','Menara Mandiri Jakarta'][i],'Securities Type':i===2?'Corporate Bond':'Fixed Rate','Securities Name':['FR0037','FR0080','OBL-CORP-01','FR0090','FR0100'][i],'Issuer Name':i===2?'Indo Corp':'Indo Gov','Issuer Country':'ID','Issuer Type':i===2?'Corporate':'Government',Portfolio:'Banking Book',CCY:'IDR',Amount:['585424000000','250000000000','100000000000','75000000000','50000000000'][i],'Amount Eq. IDR Juta':['585424','250000','100000','75000','50000'][i],'Maturity Date':['15-Sep-26','15-Jan-27','15-May-27','15-May-28','15-Jun-29'][i],Coupon:['12%','6.5%','7%','7.5%','7%'][i],'Potential P/L (Eq. IDR Juta)':'0'},[{limitType:'Country',key:'ID',amount:0,label:'Bonds',reason:'Issuer Country = ID; excluded from active Country exposure demo'}],{recordId:'BND-00'+(i+1),sourceSystem:'Market Risk/Treasury',bookingOffice:['Menara Mandiri Jakarta','Bank Mandiri (Europe) Limited London','Bank Mandiri Cayman Islands','Bank Mandiri Shanghai','Menara Mandiri Jakarta'][i],bookingOfficeType:['Domestic','Overseas','Overseas','Overseas','Domestic'][i],countryExposure:'ID'})),
-  'NOSTRO':Array.from({length:5},(_,i)=>makeProductRecord('NOSTRO',{Year:'Apr-26',Branch:['Bank Mandiri Cayman Islands','Menara Mandiri Jakarta','Bank Mandiri Singapore','Bank Mandiri Shanghai','Bank Mandiri (Europe) Limited London'][i],SwfitCode:['FABIAEAA','BOFAUS3N','DBSSSGSG','BOTKJPJT','BARCGB22'][i],'Bank Name':['FIRST ABU DABI BANK','BANK OF AMERICA','DBS BANK','MUFG BANK','BARCLAYS BANK'][i],'Bank Country':['AE','US','SG','JP','GB'][i],Balance:['26.64','0','0','0','0'][i]},[{limitType:'Country',key:['AE','US','SG','JP','GB'][i],amount:i===0?26.64:0,label:'Nostro'}],{recordId:'NOS-00'+(i+1),sourceSystem:'Internal Mandiri',bookingOffice:['Bank Mandiri Cayman Islands','Menara Mandiri Jakarta','Bank Mandiri Singapore','Bank Mandiri Shanghai','Bank Mandiri (Europe) Limited London'][i],bookingOfficeType:['Overseas','Domestic','Overseas','Overseas','Overseas'][i],countryExposure:['AE','US','SG','JP','GB'][i]})),
-  'Nominal Pertanggungan':Array.from({length:16},(_,i)=>{
-    const insurers=[['TUGU','PT Asuransi Tugu Pratama Indonesia Tbk','Asuransi Kredit',[['BMRI',60093270.28,51079279.738],['Mandiri Taspen',26999429.42,22949514.007],['MTF',10591613.12,9002871.152],['MUF',10129963.92,8610469.332]]],['PLN-INS','PT Asuransi Perisai Listrik Nasional','Asuransi',[['BMRI',6660665.24,1463320.54],['Mandiri Taspen',2992584.03,21417716.08],['MTF',1173961.56,0],['MUF',1122792.92,18378]]],['ASKRIDA','PT Asuransi Bangun Askrida','Asuransi',[['BMRI',12864690.67,2618582.14],['Mandiri Taspen',5780003.42,17299747.72],['MTF',2267439.03,0],['MUF',2168609.76,0]]],['AKRINDO','PT Asuransi Kredit Indonesia','Asuransi',[['BMRI',51624833.26,1058528.01],['Mandiri Taspen',23194627.88,4878825.62],['MTF',9099026.54,0],['MUF',8702433.67,0]]]];
-    const g=insurers[Math.floor(i/4)],e=g[3][i%4];
-    return makeProductRecord('Nominal Pertanggungan',{No:String(i+1),'Perusahaan Asuransi':g[1],'Jenis Prudk Asuransi':g[2],'Entitas':e[0],'EIL Entitas (Rp Juta)':String(e[1]),'Nominal Pertanggungan 2025 (Rp Juta)':String(e[2])},[{limitType:'CIL',key:g[0],entity:e[0],amount:e[2],label:'Nominal Pertanggungan'}],{recordId:'CIL-'+g[0]+'-'+e[0].replaceAll(' ','-'),sourceSystem:'CIL_MONITORING'});
-  })
-};
-
+const productDatabase={};
 
 function installE2EDummyDataset(){
   Object.keys(limasDemoData).forEach(k=>delete limasDemoData[k]);
-  Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{limasDemoData[type]=JSON.parse(JSON.stringify(rows));});
+  Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{
+    limasDemoData[type]=JSON.parse(JSON.stringify(rows));
+  });
   Object.keys(productDatabase).forEach(k=>delete productDatabase[k]);
   Object.keys(productIntegrationMappings).forEach(k=>delete productIntegrationMappings[k]);
 
@@ -1486,13 +1443,206 @@ function installE2EDummyDataset(){
         return [f,spec.data?.[f]??spec.data?.[sourceKey]??''];
       }));
       record.applied=[];
-      if(!productIntegrationMappings[productId])productIntegrationMappings[productId]=[];
-      (spec.integration||[]).forEach(mapping=>productIntegrationMappings[productId].push({...JSON.parse(JSON.stringify(mapping)),productId,recordId:record.recordId}));
       return record;
     });
-    if(productDatabase[productId]?.[0]) productSample[productId]={...productDatabase[productId][0].data};
+    if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
   });
 }
+
+const DOMAIN_CANONICAL_UNITS={
+  Country:"Rp Juta",
+  CCL:"Rp Juta",
+  MLK:"Rp Juta",
+  CIL:"Rp Juta",
+  LPG:"Rp Juta"
+};
+const productCanonicalTransform=(domain,productId,row)=>{
+  const d=row?.data||{};
+  const targetUnit=DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta";
+  if(productId==="NON CASH LOAN"){
+    const dwhIdr=String(row?.sourceSystem||"").startsWith("DWH")&&String(d.CCY||"").toUpperCase()==="IDR";
+    return dwhIdr
+      ? {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"DWH IDR context: use BALANCE already expressed in Rp Juta."}
+      : {sourceUnit:"Rp",targetUnit,factor:0.000001,description:"Normalize EQVIDR from IDR (Rp) to canonical Rp Juta."};
+  }
+  if(productId==="NOSTRO"){
+    const fx=Number(d["FX Rate to IDR"]);
+    return Number.isFinite(fx)&&fx>0
+      ? {sourceUnit:String(d.CCY||"Source Currency"),targetUnit:"Rp Juta",factor:fx/1000000,description:"Convert Balance in source currency to IDR using FX Rate to IDR, then normalize to Rp Juta."}
+      : {sourceUnit:String(d.CCY||"Source Currency"),targetUnit:"Rp Juta",factor:0,description:"FX metadata is missing or invalid; canonical IDR utilization cannot be calculated."};
+  }
+  if(productId==="BONDS")return {sourceUnit:"Rp Juta",targetUnit,targetUnit,factor:1,description:"Use Amount Eq. IDR Juta as canonical exposure."};
+  if(productId==="CREDIT LINE")return {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"Credit Line utilization is source-native in Rp Juta; DN/LN semantics remain source-native."};
+  if(productId==="CASHLOAN")return {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"Use Total BADE as canonical exposure in Rp Juta."};
+  if(productId==="Nominal Pertanggungan")return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use Nominal Pertanggungan as canonical exposure in Rp Juta."};
+  return {sourceUnit:targetUnit,targetUnit,factor:1,description:"Direct canonical unit."};
+};
+function normalizeAppliedAmount(domain,productId,raw,row){
+  const value=Number(raw)||0;
+  const t=productCanonicalTransform(domain,productId,row);
+  const amount=productId==="NOSTRO"?Number(row?.data?.Balance||0)*t.factor:value*t.factor;
+  return {amount,sourceUnit:t.sourceUnit,targetUnit:t.targetUnit,factor:t.factor,transform:t.description};
+}
+function normalizeLpgSegment(value){
+  const raw=String(value??"").trim();
+  if(/^sme$/i.test(raw))return "SME";
+  if(/^small\s*medium/i.test(raw))return "SME";
+  if(/^micro$/i.test(raw))return "Micro";
+  return raw;
+}
+function canonicalizeProductBusinessValues(r){
+  const data=r?.data||{};
+  if(data.code!==undefined)data.code=String(data.code||"").trim().toUpperCase();
+  if(data["Country Code"]!==undefined)data["Country Code"]=String(data["Country Code"]||"").trim().toUpperCase();
+  if(data["Issuer Country"]!==undefined)data["Issuer Country"]=String(data["Issuer Country"]||"").trim().toUpperCase();
+  if(data["Bank Country"]!==undefined)data["Bank Country"]=String(data["Bank Country"]||"").trim().toUpperCase();
+  if(data.CCY!==undefined)data.CCY=String(data.CCY||"").trim().toUpperCase();
+  if(data.ecosystem_lpg!==undefined)data.ecosystem_lpg=String(data.ecosystem_lpg||"").trim();
+  if(data.segmen_lpg!==undefined)data.segmen_lpg=normalizeLpgSegment(data.segmen_lpg);
+  if(data.region_lpg!==undefined)data.region_lpg=String(data.region_lpg||"").trim();
+}
+function productSourceField(productId,domain){
+  if(domain==="Country"){
+    if(productId==="CASHLOAN")return "code";
+    if(productId==="NON CASH LOAN")return "Country Code";
+    if(productId==="CREDIT LINE")return "Code";
+    if(productId==="BONDS")return "Issuer Country";
+    if(productId==="NOSTRO")return "Bank Country";
+  }
+  if(domain==="CCL"){
+    if(productId==="CREDIT LINE")return "Swift Code Vlookup";
+    if(productId==="NON CASH LOAN")return "Swift Code";
+  }
+  if(domain==="MLK"){
+    if(productId==="CASHLOAN")return "no_cus";
+    if(productId==="NON CASH LOAN")return "CUSTID";
+  }
+  if(domain==="CIL"&&productId==="Nominal Pertanggungan")return "Perusahaan Asuransi";
+  if(domain==="LPG")return "ecosystem_lpg / segmen_lpg";
+  return "—";
+}
+function productRawExposure(productId,row,domain){
+  const d=row?.data||{};
+  if(productId==="CASHLOAN")return Number(d.total_bade)||0;
+  if(productId==="NON CASH LOAN"){
+    if(domain==="LPG"&&String(row?.sourceSystem||"").startsWith("DWH")&&String(d.CCY||"").toUpperCase()==="IDR")return Number(d.BALANCE)||0;
+    return Number(d.EQVIDR)||0;
+  }
+  if(productId==="CREDIT LINE")return Number(d["Credit Line Total Utilisasi"])||0;
+  if(productId==="BONDS")return Number(d["Amount Eq. IDR Juta"])||0;
+  if(productId==="NOSTRO")return Number(d.Balance)||0;
+  if(productId==="Nominal Pertanggungan")return Number(d["Nominal Pertanggungan 2025 (Rp Juta)"])||0;
+  return 0;
+}
+function addIntegrationMapping(productId,row,config){
+  const key=String(config.key??"").trim();
+  if(!key)return;
+  const masterRows=limasDemoData[config.limitType]||[];
+  const master=masterRows.find(m=>String(m.key).trim().toUpperCase()===key.toUpperCase());
+  const booking=deriveBookingAttributes(productId,row.data||{},config.meta||{});
+  const raw=Number(config.amount??productRawExposure(productId,row,config.limitType))||0;
+  const entry={
+    limitType:config.limitType,key,amount:raw,label:config.label||demoProductLabel(productId),
+    productId,recordId:row.recordId,sourceField:config.sourceField||productSourceField(productId,config.limitType),
+    sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
+    scope:config.scope||null,entity:config.entity||null,masterMatch:Boolean(master),
+    masterObject:master?.name||master?.sector||master?.key||"—",
+    bookingOffice:config.bookingOffice??booking.bookingOffice,
+    bookingOfficeType:config.bookingOfficeType??booking.bookingOfficeType,
+    bookingOfficeStatus:config.bookingOfficeStatus??booking.bookingOfficeStatus,
+    countryExposure:config.countryExposure??(config.limitType==="Country"?key:"—"),
+    sourceSystem:row.sourceSystem,asOfDate:row.asOfDate
+  };
+  (productIntegrationMappings[productId]??=[]).push(entry);
+}
+function buildProductIntegrationMappings(){
+  Object.keys(productIntegrationMappings).forEach(k=>delete productIntegrationMappings[k]);
+
+  (productDatabase.CASHLOAN||[]).forEach(r=>{
+    const d=r.data||{},code=String(d.code||"").trim(),cif=String(d.no_cus||"").trim();
+    if(code)addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> Country Code"});
+    if(cif)addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF"});
+  });
+
+  (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
+    const d=r.data||{},country=String(d["Country Code"]||"").trim(),cif=String(d.CUSTID||"").trim(),swift=String(d["Swift Code"]||"").trim();
+    if(country)addIntegrationMapping("NON CASH LOAN",r,{limitType:"Country",key:country,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Country Code",sourceValue:country,mappingRule:"NCL Country Code -> Country Code"});
+    if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF"});
+    if(swift)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code -> CCL Swift"});
+    const sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
+    if(sector&&segment){
+      const scope=String(d.region_lpg||"").trim();
+      addIntegrationMapping("NON CASH LOAN",r,{limitType:"LPG",key:sector+"|"+segment,amount:d.EQVIDR,label:"Non Cash Loan",scope:scope||null,sourceField:"ecosystem_lpg / segmen_lpg",sourceValue:sector+" / "+segment,mappingRule:"NCL debtor attributes -> LPG Ecosystem x Segment x Scope"});
+    }
+  });
+
+  (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
+    const d=r.data||{},swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim(),total=Number(d["Credit Line Total Utilisasi"]||0),country=String(d.Code||"").trim();
+    if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift"});
+    if(country){
+      const components=[
+        ["Commercial","Comm DN Utilisasi","Domestic"],["Commercial","Comm LN Utilisasi","Overseas"],
+        ["Treasury","Treasury DN Utilisasi","Domestic"],["Treasury","Treasury LN Utilisasi","Overseas"]
+      ];
+      components.forEach(([scope,field,bo])=>{
+        const amount=Number(String(d[field]??"").replace(/,/g,""))||0;
+        if(amount!==0)addIntegrationMapping("CREDIT LINE",r,{limitType:"Country",key:country,amount,label:"Credit Line",scope,sourceField:field,sourceValue:d[field],mappingRule:"Credit Line "+scope+" "+bo+" utilization -> Country "+bo});
+      });
+    }
+  });
+
+  (productDatabase.BONDS||[]).forEach(r=>{
+    const d=r.data||{},country=String(d["Issuer Country"]||"").trim();
+    if(country)addIntegrationMapping("BONDS",r,{limitType:"Country",key:country,amount:d["Amount Eq. IDR Juta"],label:"Bonds",sourceField:"Issuer Country",sourceValue:country,bookingOffice:d.Branch||"—",mappingRule:"Bonds Issuer Country -> Country Code",meta:{bookingOffice:d.Branch||""}});
+  });
+
+  (productDatabase.NOSTRO||[]).forEach(r=>{
+    const d=r.data||{},country=String(d["Bank Country"]||"").trim();
+    if(country)addIntegrationMapping("NOSTRO",r,{limitType:"Country",key:country,amount:d.Balance,label:"Nostro",sourceField:"Bank Country",sourceValue:country,bookingOffice:d.Branch||"—",mappingRule:"Nostro Bank Country -> Country Code",meta:{bookingOffice:d.Branch||""}});
+  });
+
+  (productDatabase["Nominal Pertanggungan"]||[]).forEach(r=>{
+    const d=r.data||{},insurer=String(d["Perusahaan Asuransi"]||"").trim(),entity=String(d.Entitas||"").trim();
+    if(insurer)addIntegrationMapping("Nominal Pertanggungan",r,{limitType:"CIL",key:insurer,entity,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity -> CIL master"});
+  });
+
+  ["CASHLOAN","NON CASH LOAN"].forEach(productId=>{
+    (productDatabase[productId]||[]).forEach(r=>{
+      const d=r.data||{},sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
+      if(!sector||!segment)return;
+      const scope=String(d.region_lpg||"").trim();
+      addIntegrationMapping(productId,r,{limitType:"LPG",key:sector+"|"+segment,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:scope||null,sourceField:"ecosystem_lpg / segmen_lpg",sourceValue:sector+" / "+segment,mappingRule:"Product LPG attributes -> Ecosystem x Segment x Scope"});
+    });
+  });
+}
+
+function cleanseMasterData(){
+  (limasDemoData.Country||[]).forEach(r=>{
+    delete r.masterLimit;
+    r.capacityLimit=Number(Number(r.capacityLimit||0).toFixed(2));
+    r.statusMaster=r.statusMaster||"Exist";
+  });
+  (limasDemoData.MLK||[]).forEach(r=>{
+    const clLimit=mlkNum(r.clLimit),nclLimit=mlkNum(r.nclLimit),treasuryLimit=mlkNum(r.treasuryLine);
+    if(clLimit!==null&&nclLimit!==null&&treasuryLimit!==null)r.totalLimitExisting=clLimit+nclLimit+treasuryLimit;
+    if(r.masterLimitSetting===null||r.masterLimitSetting===undefined||r.masterLimitSetting==="")r.masterLimit=r.totalLimitExisting??r.masterLimit;
+  });
+  (limasDemoData.CIL||[]).forEach(r=>{
+    const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
+    if(sumEil>0)r.cil=Number(sumEil.toFixed(2));
+    if(Number(r.ic)>0&&Number(r.multiplier)>0)r.cit=Number((r.ic*r.multiplier).toFixed(2));
+  });
+  (limasDemoData.LPG||[]).forEach(r=>{
+    const bankwide=Number(r.limits?.Bankwide)||0;
+    const regionValues=LPG_REGIONAL_SCOPES.map(s=>r.limits?.[s]).filter(v=>v!==undefined&&v!==null).map(Number);
+    if(r.limits&&regionValues.length===LPG_REGIONAL_SCOPES.length&&r.limits["KP + OVS"]!==undefined){
+      const regional=regionValues.reduce((a,v)=>a+(Number(v)||0),0);
+      r.limits["KP + OVS"]=Number((bankwide-regional).toFixed(2));
+    }
+  });
+  Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
+}
+
 const DOMAIN_CANONICAL_UNITS={
   Country:"Rp Juta",
   CCL:"Rp Juta",
@@ -1578,12 +1728,11 @@ function cleanseMasterData(){
 function productApplicationsFor(type,key){
   if(type==="LPG")return lpgProductApplicationsForKey(key);
   const out=[];
-  const exposureField=(domain,productId,scope,row)=>{
+  const exposureField=(domain,productId,scope)=>{
     if(productId==="CASHLOAN")return "total_bade";
     if(productId==="NON CASH LOAN")return "EQVIDR / BALANCE";
     if(productId==="CREDIT LINE"){
       if(domain==="CCL")return "Credit Line Total Utilisasi";
-      if(domain==="MLK"&&row.data?.["Bade Treasury Line"]!==undefined)return "Bade Treasury Line";
       if(scope==="Commercial")return "Comm Line Total Utilisasi";
       if(scope==="Treasury")return "Treasury Line Total Utilisasi";
       return "Credit Line Total Utilisasi";
@@ -1593,19 +1742,15 @@ function productApplicationsFor(type,key){
     if(productId==="Nominal Pertanggungan")return "Nominal Pertanggungan 2025 (Rp Juta)";
     return getProductMeta(productId)?.exposure||"—";
   };
-  const transform=(productId,scope,row)=>{
+  const transform=(productId,scope)=>{
     if(productId==="NON CASH LOAN")return "EQVIDR/BALANCE normalized to domain canonical unit";
     if(productId==="CREDIT LINE"){
-      const treasuryExposureOnly=row.data?.["Bade Treasury Line"]!==undefined &&
-        row.data?.["Treasury Line Total"]===undefined &&
-        row.data?.["Credit Line Total"]===undefined;
-      return treasuryExposureOnly
-        ?"MLK Treasury exposure memakai Bade Treasury Line; bukan approved limit"
-        :"DN/LN source-native; Commercial + Treasury hierarchy forms Credit Line Total";
+      return (scope==="Commercial"||scope==="Treasury")
+        ?"DN/LN source-native; Commercial + Treasury hierarchy forms Credit Line Total"
+        :"DN/LN source-native; Credit Line Total is parent utilization";
     }
     return "Direct / canonical source unit";
   };
-
   Object.entries(productIntegrationMappings).forEach(([productId,mappings])=>{
     (mappings||[]).forEach(a=>{
       if(a.limitType!==type||String(a.key)!==String(key))return;
@@ -1614,18 +1759,16 @@ function productApplicationsFor(type,key){
       const normalized=normalizeAppliedAmount(type,productId,a.amount,r);
       out.push({
         ...a,productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
-        exposureField:exposureField(type,productId,a.scope,r),transform:transform(productId,a.scope,r),
+        exposureField:exposureField(type,productId,a.scope),transform:transform(productId,a.scope),
         sourceUnit:normalized.sourceUnit,targetUnit:normalized.targetUnit,normalizationFactor:normalized.factor,
-        normalizedAmount:normalized.amount,
-        masterMatch:(limasDemoData[a.limitType]||[]).some(m=>String(m.key)===String(a.key)),
-        bookingOffice:r.bookingOffice||"—",bookingOfficeType:r.bookingOfficeType||"Needs Mapping",
-        bookingOfficeStatus:r.bookingOfficeStatus||"Needs Mapping",countryExposure:r.countryExposure||a.key
+        normalizedAmount:normalized.amount,masterMatch:(limasDemoData[type]||[]).some(m=>String(m.key)===String(a.key)),
+        bookingOffice:a.bookingOffice||"—",bookingOfficeType:a.bookingOfficeType||"Needs Mapping",
+        bookingOfficeStatus:a.bookingOfficeStatus||"Needs Mapping",countryExposure:a.countryExposure||"—"
       });
     });
   });
   return out;
 }
-
 function canonicalReadModelRows(){
   const rows=[];
   Object.entries(domainDataContract).forEach(([domain,cfg])=>{
@@ -1660,15 +1803,36 @@ function canonicalReadModelRows(){
 
 function reconciliationIssues(){
   const issues=[];
+  const countryProducts=["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"];
+
+  Object.entries(productDatabase).forEach(([productId,rows])=>{
+    (rows||[]).forEach(row=>{
+      const d=row.data||{};
+      if(countryProducts.includes(productId)){
+        const field=productSourceField(productId,"Country");
+        const key=String(d[field]??"").trim();
+        const mappings=(productIntegrationMappings[productId]||[]).filter(a=>a.limitType==="Country"&&String(a.recordId)===String(row.recordId));
+        if(!key){
+          issues.push({status:"Data Issue",issueType:"MISSING_COUNTRY_KEY",productId,recordId:row.recordId,limitType:"Country",key:"—",object:"—",detail:productId+" does not have source Country Exposure in field "+field,amount:0});
+        }else if(!mappings.length){
+          issues.push({status:"Data Issue",issueType:"COUNTRY_MAPPING_MISSING",productId,recordId:row.recordId,limitType:"Country",key,object:"—",detail:"Source Country key exists but no mapping candidate was created.",amount:0});
+        }else if(productId!=="CREDIT LINE"&&mappings.some(a=>a.bookingOfficeType==="Needs Mapping")){
+          const a=mappings.find(x=>x.bookingOfficeType==="Needs Mapping")||mappings[0];
+          issues.push({status:"Data Issue",issueType:"MISSING_BOOKING_MAPPING",productId,recordId:row.recordId,limitType:"Country",key,object:a.masterObject||"—",detail:"Country mapping needs Booking Office Type from reference/enrichment; source record does not provide the classification.",amount:0});
+        }
+      }
+    });
+  });
+
   Object.entries(productIntegrationMappings).forEach(([productId,mappings])=>(mappings||[]).forEach(a=>{
-    const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key)===String(a.key));
+    const master=(limasDemoData[a.limitType]||[]).find(m=>String(m.key).trim().toUpperCase()===String(a.key).trim().toUpperCase());
     const row=(productDatabase[productId]||[]).find(r=>String(r.recordId)===String(a.recordId));
     const normalized=row?normalizeAppliedAmount(a.limitType,productId,a.amount,row).amount:(Number(a.amount)||0);
     if(!master&&normalized!==0){
-      issues.push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Integration mapping menunjuk master key yang belum tersedia.",amount:normalized});
+      issues.push({status:"Data Issue",issueType:"MASTER_NOT_FOUND",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:a.masterObject||"—",detail:"Integration mapping points to a master key that is not available.",amount:normalized});
     }
     if(Number(a.amount||0)<0){
-      issues.push({status:"Data Issue",issueType:"NEGATIVE_EXPOSURE",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:"—",detail:"Integration exposure cannot be negative.",amount:Number(a.amount)||0});
+      issues.push({status:"Data Issue",issueType:"NEGATIVE_EXPOSURE",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:a.masterObject||"—",detail:"Integration exposure cannot be negative.",amount:Number(a.amount)||0});
     }
     if(productId==="CREDIT LINE"&&a.limitType==="CCL"&&master&&row){
       const sourceNameValue=String(row.data?.Nama||"").trim().toLowerCase();
@@ -1680,7 +1844,6 @@ function reconciliationIssues(){
   }));
   return issues;
 }
-
 function canonicalExceptions(){
   const rows=[];
   Object.keys(limasDemoData).forEach(type=>(limasDemoData[type]||[]).forEach(r=>{
@@ -1704,7 +1867,18 @@ function productContributionMap(type,key){
   const apps=type==="LPG"&&row?.segment==="TOTAL SEKTOR"
     ? lpgLeafRows().filter(x=>x.sector===row.sector).flatMap(x=>productApplicationsFor("LPG",x.key))
     : productApplicationsFor(type,key);
-  apps.forEach(a=>{const k=a.productId==='CREDIT LINE'?'CREDIT LINE|'+(a.scope||'Common'):a.productId;map[k]=(map[k]||0)+(Number(a.normalizedAmount??a.amount)||0);});
+  apps.forEach(a=>{
+    if(type==="CCL"&&a.productId==="CREDIT LINE"){
+      const d=a.sourceData||{};
+      const comm=(Number(String(d["Comm DN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(d["Comm LN Utilisasi"]??"").replace(/,/g,""))||0);
+      const trs=(Number(String(d["Treasury DN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(d["Treasury LN Utilisasi"]??"").replace(/,/g,""))||0);
+      map["CREDIT LINE|Commercial"]=(map["CREDIT LINE|Commercial"]||0)+comm;
+      map["CREDIT LINE|Treasury"]=(map["CREDIT LINE|Treasury"]||0)+trs;
+      return;
+    }
+    const k=a.productId==="CREDIT LINE"?"CREDIT LINE|"+(a.scope||"Common"):a.productId;
+    map[k]=(map[k]||0)+(Number(a.normalizedAmount??a.amount)||0);
+  });
   return map;
 }
 function productContributionDetail(type,key){return Object.entries(productContributionMap(type,key)).map(([product,amount])=>({product,amount})).filter(x=>x.amount!==0);}
@@ -1773,24 +1947,35 @@ function masterCanonicalQualityIssues(){
 function canonicalPipelineControls(){
   const masterIssues=masterCanonicalQualityIssues();
   const productIssues=canonicalProductQualityIssues();
-  const rawRecon=[...reconciliationIssues().filter(x=>x.status==="Data Issue"),...canonicalProductQualityIssues()];
-  const reconSeen=new Set();
-  const reconIssues=rawRecon.filter(x=>{const k=[x.issueType||x.type,x.productId||"",x.recordId||"",x.limitType||x.domain||"",x.key||""].join("|");if(reconSeen.has(k))return false;reconSeen.add(k);return true;});
+  const mappingIssues=reconciliationIssues().filter(x=>x.status==="Data Issue");
+  const dictionaryIssues=productMasterCatalog.filter(p=>!p.id||!p.exposure||!p.canonicalUnit).length;
+  const report=buildReportDummy(limasDemoData);
+  const readModelMismatches=[];
+  ["Country","CCL","MLK","CIL","LPG"].forEach(domain=>{
+    const masters=domain==="LPG"?lpgLeafRows():(limasDemoData[domain]||[]);
+    const reportRows=domain==="LPG"?(report[domain]||[]).filter(r=>r.segment!=="TOTAL SEKTOR"):(report[domain]||[]);
+    if(masters.length!==reportRows.length)readModelMismatches.push(domain+" row-count");
+    masters.forEach(master=>{
+      const rr=reportRows.find(r=>String(r.key)===String(master.key));
+      if(rr&&statusForReport(rr)!==recordStatus(domain,master))readModelMismatches.push(domain+" "+String(master.key)+" status");
+    });
+  });
   return [
     {layer:"1. Master Limit",status:masterIssues.length?"Data Issue":"Normal",count:masterIssues.length,detail:masterIssues.length?masterIssues.slice(0,3).map(x=>x.type+" • "+(x.domain||"")).join(" ; "):"Master keys, capacity/product allocation and master formulas reconcile."},
-    {layer:"2. Product Dictionary",status:"Normal",count:0,detail:"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
-    {layer:"3. Product Database",status:productIssues.length?"Data Issue":"Normal",count:productIssues.length,detail:productIssues.length?productIssues.slice(0,3).map(x=>x.productId+" • "+x.type).join(" ; "):"Required identifiers and Credit Line hierarchy checks pass."},
-    {layer:"4. Integration / Read Model",status:reconIssues.length?"Data Issue":"Normal",count:reconIssues.length,detail:reconIssues.length?reconIssues.slice(0,3).map(x=>x.issueType+" • "+x.productId).join(" ; "):"Applied Limit → normalized exposure → master aggregation reconciles."},
-    {layer:"5. Report & Monitoring",status:"Normal",count:0,detail:"Dashboard, Report and EWS use the same canonical limit/exposure/status functions."}
+    {layer:"2. Product Dictionary",status:dictionaryIssues?"Data Issue":"Normal",count:dictionaryIssues,detail:dictionaryIssues?"Product registry still has incomplete definitions.":"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
+    {layer:"3. Product Database",status:productIssues.length?"Data Issue":"Normal",count:productIssues.length,detail:productIssues.length?productIssues.slice(0,3).map(x=>x.productId+" • "+x.type).join(" ; "):"Required identifiers and source hierarchy checks pass."},
+    {layer:"4. Integration / Read Model",status:mappingIssues.length?"Data Issue":"Normal",count:mappingIssues.length,detail:mappingIssues.length?mappingIssues.slice(0,3).map(x=>x.issueType+" • "+x.productId).join(" ; "):"Source key → normalized exposure → master aggregation reconciles."},
+    {layer:"5. Report & Monitoring",status:readModelMismatches.length?"Data Issue":"Normal",count:readModelMismatches.length,detail:readModelMismatches.length?readModelMismatches.slice(0,3).join(" ; "):"Report, Dashboard, Monitoring dan EWS membaca canonical functions yang sama."}
   ];
 }
 
 
-cleanseMasterData();
-reportDummy=buildReportDummy(limasDemoData);
-
 
 // Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
+installE2EDummyDataset();
+buildProductIntegrationMappings();
+cleanseMasterData();
+
 const CANONICAL_BUSINESS_LABELS={
   countryExposure:"Country Exposure",
   bookingOffice:"Booking Office",
@@ -2193,15 +2378,16 @@ function ProductBookingClassification({view,rows}){
           <thead><tr><th>Record ID</th><th>Country Exposure</th>{view==="CREDIT LINE"?<><th>Commercial DN / LN</th><th>Treasury DN / LN</th></>:<><th>Booking Office</th><th>Booking Office Type</th></>}<th>Domestic Exposure</th><th>Overseas Exposure</th><th>Needs Mapping Exposure</th></tr></thead>
           <tbody>{rows.map(r=>{
             const amount=productExposureAmount(view,r);
-            const type=r.bookingOfficeType==="Domestic"||r.bookingOfficeType==="Overseas"?r.bookingOfficeType:"Needs Mapping";
+            const mapping=(productIntegrationMappings[view]||[]).find(a=>a.limitType==="Country"&&String(a.recordId)===String(r.recordId));
+            const type=mapping?.bookingOfficeType==="Domestic"||mapping?.bookingOfficeType==="Overseas"?mapping.bookingOfficeType:"Needs Mapping";
             const creditSplit=view==="CREDIT LINE"?{
               domestic:(Number(String(r.data?.["Comm DN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(r.data?.["Treasury DN Utilisasi"]??"").replace(/,/g,""))||0),
               overseas:(Number(String(r.data?.["Comm LN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(r.data?.["Treasury LN Utilisasi"]??"").replace(/,/g,""))||0)
             }:null;
             return <tr key={"booking-"+r.recordId}>
               <td className="key">{r.recordId}</td>
-              <td>{r.countryExposure||"—"}</td>
-              {view==="CREDIT LINE"?<><td>{r.data?.["Comm DN Utilisasi"]||0} / {r.data?.["Comm LN Utilisasi"]||0}</td><td>{r.data?.["Treasury DN Utilisasi"]||0} / {r.data?.["Treasury LN Utilisasi"]||0}</td></>:<><td>{r.bookingOffice||"—"}</td><td><Status v={type}/></td></>}
+              <td>{mapping?.countryExposure||"—"}</td>
+              {view==="CREDIT LINE"?<><td>{r.data?.["Comm DN Utilisasi"]||0} / {r.data?.["Comm LN Utilisasi"]||0}</td><td>{r.data?.["Treasury DN Utilisasi"]||0} / {r.data?.["Treasury LN Utilisasi"]||0}</td></>:<><td>{mapping?.bookingOffice||"—"}</td><td><Status v={type}/></td></>}
               <td>{view==="CREDIT LINE"?(creditSplit.domestic||0).toLocaleString("id-ID",{maximumFractionDigits:2}):(type==="Domestic"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
               <td>{view==="CREDIT LINE"?(creditSplit.overseas||0).toLocaleString("id-ID",{maximumFractionDigits:2}):(type==="Overseas"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
               <td>{view==="CREDIT LINE"?"—":(type==="Needs Mapping"?amount.toLocaleString("id-ID",{maximumFractionDigits:2}):"—")}</td>
