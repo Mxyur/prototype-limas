@@ -2260,6 +2260,8 @@ function ProductBookingClassification({view,rows}){
   </section>;
 }
 
+const canonicalProductUtilizationFields=["Country Exposure","Booking Office","Booking Office Type","Booking Office Status"];
+
 function productDatabaseDisplayValue(view,r,f){
   if(view!=="CREDIT LINE") return canonicalProductUtilizationFields.includes(f)?(f==="Booking Office"?r.bookingOffice||"—":f==="Booking Office Type"?<Status v={r.bookingOfficeType||"Needs Mapping"}/>:f==="Booking Office Status"?<Status v={r.bookingOfficeStatus||"Needs Mapping"}/>:r.countryExposure||"—"):(r.data[f]===0?0:(r.data[f]||"—"));
   const field=creditLineCanonicalFields.find(x=>x.key===f);
