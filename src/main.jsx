@@ -953,11 +953,9 @@ function applyMasterCsv(type,records){
       if(input.ic!=="")row.ic=parseNumberOrKeep(input.ic);
       if(input.multiplier!=="")row.multiplier=parseNumberOrKeep(input.multiplier);
     }else if(type==="LPG"){
-      if(input.sector!==undefined&&input.sector!=="")row.sector=input.sector;
-      if(input.segment!==undefined&&input.segment!=="")row.segment=normalizeLpgSegment(input.segment);
+      // LPG master key = sector + segment and is immutable for an update.
       row.limits=row.limits||{};
       ["Bankwide",...LPG_REGIONAL_SCOPES].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row.limits[f]=parseNumberOrKeep(input[f]);});
-      row.key=String(row.sector||"").trim()+"|"+String(row.segment||"").trim();
     }
     const after=masterValueSnapshot(type,row);
     if(JSON.stringify(before)!==JSON.stringify(after)){
@@ -1339,8 +1337,6 @@ const MASTER_EDITABLE_FIELDS={
     {section:"Entity Limit (EIL)",field:"EIL MUF",path:["eils","MUF"],kind:"number"}
   ],
   LPG:[
-    {section:"Identitas",field:"Ecosystem LPG (Sektor)",path:["sector"],kind:"text"},
-    {section:"Identitas",field:"Segmen LPG",path:["segment"],kind:"text"},
     {section:"Bankwide Limit",field:"Bankwide / Limit",path:["limits","Bankwide"],kind:"number"},
     ...LPG_REGIONAL_SCOPES.map(scope=>({section:"Regional Limit",field:scope+" / Limit",path:["limits",scope],kind:"number"}))
   ]
