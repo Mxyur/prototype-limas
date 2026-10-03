@@ -616,7 +616,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
 function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -776,6 +776,150 @@ function Warning({nav}){
     </div>
   </div></Layout>;
 }
+
+function DataRemediation({nav}){
+  const [layer,setLayer]=useState("All Layers"),[filter,setFilter]=useState("All"),[selectedId,setSelectedId]=useState(""),[field,setField]=useState(""),[value,setValue]=useState(""),[bookingOffice,setBookingOffice]=useState(""),[bookingType,setBookingType]=useState(""),[reason,setReason]=useState(""),[refresh,setRefresh]=useState(0);
+  const all=dataQualityIssueRows();
+  const rows=all.filter(r=>(layer==="All Layers"||r.layer===layer)&&(filter==="All"||r.issueType===filter));
+  const selected=rows.find(r=>r.id===selectedId)||all.find(r=>r.id===selectedId)||null;
+  const sourceRow=selected?.productId&&selected?.recordId ? (productDatabase[selected.productId]||[]).find(r=>String(r.recordId)===String(selected.recordId)) : null;
+  const fields=sourceRow ? (productSchemaFields[selected.productId]||[]) : [];
+  const isBookingMapping=selected?.issueType==="MISSING_BOOKING_MAPPING"&&selected?.productId&&selected?.recordId;
+  const isMaster=selected?.layer==="Master Limit";
+  const choose=(r)=>{
+    setSelectedId(r.id);
+    setReason("");
+    setValue("");
+    setBookingOffice("");
+    setBookingType("");
+    const target=remediationTargetField(r);
+    setField(target||((productSchemaFields[r.productId]||[])[0]||""));
+    const src=r.productId&&r.recordId?(productDatabase[r.productId]||[]).find(x=>String(x.recordId)===String(r.recordId)):null;
+    if(src&&target)setValue(String(src.data?.[target]??""));
+    const map=r.productId&&r.recordId?getMappingRemediation(r.productId,r.recordId,r.domain,r.key):null;
+    if(map){setBookingOffice(map.bookingOffice||"");setBookingType(map.bookingOfficeType||"");}
+  };
+  const apply=()=>{
+    if(!selected) return;
+    try{
+      if(isMaster){nav("detail",{type:selected.domain,key:selected.key});return;}
+      if(isBookingMapping){
+        saveMappingCorrection(selected.productId,selected.recordId,selected.domain,selected.key,{bookingOffice,bookingOfficeType:bookingType},reason||"Operational booking classification remediation");
+      }else{
+        if(!field)throw new Error("Pilih source field yang akan dikoreksi.");
+        saveProductSourceCorrection(selected.productId,selected.recordId,{[field]:value},reason||"Source data remediation");
+      }
+      setRefresh(x=>x+1);
+      alert("Correction diterapkan. Validator akan dihitung ulang dari data terbaru.");
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const resolve=()=>{
+    if(!selected)return;
+    try{
+      const note=window.prompt("Catatan resolution:", "");
+      if(note===null)return;
+      setExceptionAction(dataQualityActionRef(selected),"Resolved",note,{requireClear:true});
+      setRefresh(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const close=()=>{
+    if(!selected)return;
+    try{
+      setExceptionAction(dataQualityActionRef(selected),"Closed",selected.action?.notes||"",{requireClear:true});
+      setRefresh(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const issueTypes=[...new Set(all.map(x=>x.issueType))].sort();
+  const currentAction=selected?getExceptionAction(dataQualityActionRef(selected)):null;
+  const rem=getSourceRemediation(selected?.productId,selected?.recordId);
+  const mapRem=isBookingMapping?getMappingRemediation(selected.productId,selected.recordId,selected.domain,selected.key):null;
+  return <Layout screen="remediation" onNav={nav}>
+    <Header title="Data Remediation & Source Control" subtitle="Correction source / enrichment → rebuild mapping → revalidate → resolve only when validator no longer detects the issue"/>
+    <div className="page">
+      <div className="metric-grid">
+        <DomainKpi label="Open DQ" value={all.filter(x=>exceptionActionPending(x.action.status)).length} sub="Requires action" accent="yellow"/>
+        <DomainKpi label="Selected Issue" value={selected?"1":"0"} sub="Remediation workspace"/>
+        <DomainKpi label="Applied Source Corrections" value={Object.values(loadSourceRemediations()).filter(x=>x.status==="Applied").length} sub="Persistent correction records"/>
+        <DomainKpi label="Applied Mapping Fixes" value={Object.values(loadMappingRemediations()).filter(x=>x.status==="Applied").length} sub="Persistent enrichment fixes"/>
+        <DomainKpi label="Current Validator Issues" value={all.length} sub="Recomputed from canonical validators"/>
+      </div>
+      <section className="card">
+        <div className="head"><div><h2>Remediation Queue</h2><p>Pilih issue untuk melihat root cause, source record dan correction route. Master Limit dikembalikan ke governance Detail.</p></div><div className="toolbar"><button className="btn secondary" onClick={()=>nav("quality")}>Data Quality</button><button className="btn ghost" onClick={()=>setRefresh(x=>x+1)}>Run Check</button></div></div>
+        <div className="body">
+          <div className="toolbar">
+            <select className="select" value={layer} onChange={e=>setLayer(e.target.value)}><option>All Layers</option><option>Master Limit</option><option>Product Database</option><option>Integration / Mapping</option></select>
+            <select className="select" value={filter} onChange={e=>setFilter(e.target.value)}><option>All</option>{issueTypes.map(x=><option key={x}>{x}</option>)}</select>
+            <span className="muted-small">{rows.length+" issue(s)"}</span>
+          </div>
+          <div className="table-wrap" style={{marginTop:12}}><table className="table">
+            <thead><tr><th>Layer</th><th>Issue Type</th><th>Product</th><th>Record</th><th>Key</th><th>Detail</th><th>Action</th><th>Route</th></tr></thead>
+            <tbody>{rows.map(r=><tr key={r.id}>
+              <td>{r.layer}</td><td><b>{r.issueType}</b></td><td>{r.productId||"—"}</td><td className="key">{r.recordId||"—"}</td><td className="key">{r.key}</td><td className="muted-small">{r.detail}</td><td><span className="chip blue">{r.action.status}</span></td>
+              <td><button className="btn ghost" onClick={()=>choose(r)}>Open</button></td>
+            </tr>)}</tbody>
+          </table></div>
+        </div>
+      </section>
+
+      {selected&&<section className="card">
+        <div className="head"><div><h2>Remediation Detail</h2><p>{selected.layer+" • "+selected.issueType+" • "+selected.key}</p></div><span className={"chip "+(currentAction?.status==="Resolved"?"blue":"")}>{currentAction?.status||"Open"}</span></div>
+        <div className="body">
+          <div className="integration-chip-grid">
+            <div className="mini integration-chip"><b>Root Cause</b><div className="muted-small">{selected.detail}</div></div>
+            <div className="mini integration-chip"><b>Source System</b><div className="muted-small">{sourceRow?.sourceSystem||"Master / Mapping layer"}</div></div>
+            <div className="mini integration-chip"><b>As-of Date</b><div className="muted-small">{sourceRow?.asOfDate||E2E_DUMMY_META.asOfDate||"—"}</div></div>
+            <div className="mini integration-chip"><b>Resolution Gate</b><div className="muted-small">Resolve hanya setelah issue tidak lagi terdeteksi validator.</div></div>
+          </div>
+
+          {isMaster&&<div className="mini" style={{marginTop:12}}>
+            <b>Master governance route</b>
+            <p className="muted-small">Perubahan master tidak dilakukan dari remediation workspace. Gunakan Draft → Approval pada Master Limit Detail.</p>
+            <button className="btn primary" onClick={()=>nav("detail",{type:selected.domain,key:selected.key})}>Open Master Limit Detail</button>
+          </div>}
+
+          {!isMaster&&!isBookingMapping&&sourceRow&&<div style={{marginTop:12}}>
+            <div className="section-title">Source Correction</div>
+            <div className="toolbar">
+              <select className="select" value={field} onChange={e=>{setField(e.target.value);setValue(String(sourceRow.data?.[e.target.value]??""));}}>
+                {(fields||[]).map(f=><option key={f} value={f}>{f}</option>)}
+              </select>
+              <input className="input" value={value} onChange={e=>setValue(e.target.value)} placeholder="Corrected source value"/>
+            </div>
+            <div className="field-help"><b>Current:</b> {String(sourceRow.data?.[field]??"—")} • Source correction tersimpan sebagai audit dan diterapkan ke runtime source record. Source field name tidak di-rename.</div>
+          </div>}
+
+          {!isMaster&&!isBookingMapping&&sourceRow&&rem&&<div className="field-help" style={{marginTop:8}}><b>Last correction:</b> {rem.appliedAt} by {rem.appliedBy} • {rem.reason}</div>}
+
+          {!isMaster&&isBookingMapping&&<div style={{marginTop:12}}>
+            <div className="section-title">Booking Office Enrichment</div>
+            <div className="toolbar">
+              <input className="input" value={bookingOffice} onChange={e=>setBookingOffice(e.target.value)} placeholder="Booking Office"/>
+              <select className="select" value={bookingType} onChange={e=>setBookingType(e.target.value)}><option value="">Select Booking Office Type</option><option>Domestic</option><option>Overseas</option></select>
+            </div>
+            <div className="field-help">Untuk issue MISSING_BOOKING_MAPPING, correction berada di integration/enrichment layer. Source Product Database tidak diubah.</div>
+            {mapRem&&<div className="field-help" style={{marginTop:8}}><b>Last mapping fix:</b> {mapRem.appliedAt} by {mapRem.appliedBy} • {mapRem.reason}</div>}
+          </div>}
+
+          {!isMaster&&<div style={{marginTop:12}}>
+            <label className="muted-small">Reason / remediation note</label>
+            <textarea className="textarea compact-area" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Jelaskan koreksi / evidence / reference"></textarea>
+            <div className="toolbar" style={{marginTop:10}}>
+              <button className="btn primary" onClick={apply}>{isBookingMapping?"Apply Enrichment Fix":"Apply Source Correction"}</button>
+              {currentAction?.status==="In Progress"&&<button className="btn secondary" onClick={resolve}>Resolve After Recheck</button>}
+              {currentAction?.status==="Resolved"&&<button className="btn secondary" onClick={close}>Close</button>}
+              {currentAction?.status==="Open"&&<button className="btn secondary" onClick={()=>{
+                try{setExceptionAction(dataQualityActionRef(selected),"In Progress","",{requireClear:false});setRefresh(x=>x+1);}catch(e){alert(e?.message||String(e));}
+              }}>Start Action</button>}
+            </div>
+          </div>}
+        </div>
+      </section>}
+
+      {!selected&&<section className="card"><div className="body"><div className="mini">Pilih issue dari Remediation Queue untuk memulai correction.</div></div></section>}
+    </div>
+  </Layout>;
+}
+
 function DataQuality({nav}){
   const [filter,setFilter]=useState("All"),[layer,setLayer]=useState("All Layers"),[action,setAction]=useState("All Actions"),[refresh,setRefresh]=useState(0);
   const summary=dataQualitySummary();
@@ -786,7 +930,7 @@ function DataQuality({nav}){
     try{
       const note=(next==="Resolved"||next==="Closed")?window.prompt("Catatan action / resolution:",row.action.notes||""):(row.action.notes||"");
       if((next==="Resolved"||next==="Closed")&&note===null)return;
-      setExceptionAction({domain:row.domain,key:row.key,detail:row.issueType+" • "+row.detail+(row.recordId?" • "+row.recordId:"")},next,note||"");
+      setExceptionAction(dataQualityActionRef(row),next,note||"",{requireClear:true});
       setRefresh(x=>x+1);
     }catch(e){alert(e?.message||String(e));}
   };
@@ -811,10 +955,10 @@ function DataQuality({nav}){
     </div>
     <section className="card"><div className="head"><div><h2>Data Quality Register</h2><p>Resolution workflow tidak memodifikasi Product Database atau Master Limit secara langsung.</p></div><span className="chip blue">{rows.length} visible</span></div>
       <div className="body"><div className="table-wrap"><table className="table">
-        <thead><tr><th>Layer</th><th>Issue Type</th><th>Domain</th><th>Key</th><th>Object</th><th>Detail</th><th>Action</th><th>Owner</th><th>Updated</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>Layer</th><th>Issue Type</th><th>Domain</th><th>Key</th><th>Object</th><th>Detail</th><th>Action</th><th>Owner</th><th>Updated</th><th>Route</th><th>Aksi</th></tr></thead>
         <tbody>{rows.map((r,i)=>{
           const next=r.action.status==="Open"?"In Progress":r.action.status==="In Progress"?"Resolved":r.action.status==="Resolved"?"Closed":null;
-          return <tr key={r.id+"|"+i}><td>{r.layer}</td><td><b>{r.issueType}</b></td><td>{r.domain}</td><td className="key">{r.key}</td><td>{r.object}</td><td className="muted-small">{r.detail}{r.action.notes&&<div>Note: {r.action.notes}</div>}</td><td><span className="chip blue">{r.action.status}</span></td><td>{r.action.owner}</td><td className="muted-small">{r.action.updatedAt||"—"}</td><td>{next?<button className="btn ghost" onClick={()=>runAction(r,next)}>{next==="Resolved"?"Resolve":next==="Closed"?"Close":"Start Action"}</button>:<span className="muted-small">Completed</span>}</td></tr>;
+          return <tr key={r.id+"|"+i}><td>{r.layer}</td><td><b>{r.issueType}</b></td><td>{r.domain}</td><td className="key">{r.key}</td><td>{r.object}</td><td className="muted-small">{r.detail}{r.action.notes&&<div>Note: {r.action.notes}</div>}</td><td><span className="chip blue">{r.action.status}</span></td><td>{r.action.owner}</td><td className="muted-small">{r.action.updatedAt||"—"}</td><td><button className="btn ghost" onClick={()=>nav("remediation",{type:r.domain,key:r.key})}>Remediate</button></td><td>{next?<button className="btn ghost" onClick={()=>runAction(r,next)}>{next==="Resolved"?"Resolve":next==="Closed"?"Close":"Start Action"}</button>:<span className="muted-small">Completed</span>}</td></tr>;
         })}</tbody>
       </table></div></div>
     </section>
@@ -2025,6 +2169,7 @@ function installE2EDummyDataset(){
     });
     if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
   });
+  applyPersistedSourceRemediations();
 }
 
 const DOMAIN_CANONICAL_UNITS={
@@ -2118,6 +2263,7 @@ function addIntegrationMapping(productId,row,config){
   const masterRows=limasDemoData[config.limitType]||[];
   const master=masterRows.find(m=>String(m.key).trim().toUpperCase()===key.toUpperCase());
   const booking=deriveBookingAttributes(productId,row.data||{},config.meta||{});
+  const override=getMappingRemediation(productId,row.recordId,config.limitType,key);
   const raw=Number(config.amount??productRawExposure(productId,row,config.limitType))||0;
   const entry={
     limitType:config.limitType,key,amount:raw,label:config.label||demoProductLabel(productId),
@@ -2125,9 +2271,9 @@ function addIntegrationMapping(productId,row,config){
     sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
     scope:config.scope||null,entity:config.entity||null,masterMatch:Boolean(master),
     masterObject:master?.name||master?.sector||master?.key||"—",
-    bookingOffice:config.bookingOffice??booking.bookingOffice,
-    bookingOfficeType:config.bookingOfficeType??booking.bookingOfficeType,
-    bookingOfficeStatus:config.bookingOfficeStatus??booking.bookingOfficeStatus,
+    bookingOffice:override?.bookingOffice||config.bookingOffice??booking.bookingOffice,
+    bookingOfficeType:override?.bookingOfficeType||config.bookingOfficeType??booking.bookingOfficeType,
+    bookingOfficeStatus:override?.status==="Applied"?"Remediated":(config.bookingOfficeStatus??booking.bookingOfficeStatus),
     countryExposure:config.countryExposure??(config.limitType==="Country"?key:"—"),
     sourceSystem:row.sourceSystem,asOfDate:row.asOfDate
   };
@@ -2355,6 +2501,87 @@ function reconciliationIssues(){
 const EXCEPTION_ACTION_STORE_KEY="limas_exception_actions_v1";
 const EXCEPTION_ACTION_STATUSES=["Open","In Progress","Resolved","Closed"];
 
+const SOURCE_REMEDIATION_STORE_KEY="limas_source_remediations_v1";
+const MAPPING_REMEDIATION_STORE_KEY="limas_mapping_remediations_v1";
+
+function remediationKey(productId,recordId){return [productId||"—",recordId||"—"].join("||");}
+function loadSourceRemediations(){
+  try{const raw=window.localStorage.getItem(SOURCE_REMEDIATION_STORE_KEY);return raw?JSON.parse(raw):{};}catch(e){return {};}
+}
+function saveSourceRemediations(store){try{window.localStorage.setItem(SOURCE_REMEDIATION_STORE_KEY,JSON.stringify(store));}catch(e){}}
+function getSourceRemediation(productId,recordId){
+  return loadSourceRemediations()[remediationKey(productId,recordId)]||null;
+}
+function mappingRemediationKey(productId,recordId,limitType,key){
+  return [productId||"—",recordId||"—",limitType||"—",key||"—"].join("||");
+}
+function loadMappingRemediations(){
+  try{const raw=window.localStorage.getItem(MAPPING_REMEDIATION_STORE_KEY);return raw?JSON.parse(raw):{};}catch(e){return {};}
+}
+function saveMappingRemediations(store){try{window.localStorage.setItem(MAPPING_REMEDIATION_STORE_KEY,JSON.stringify(store));}catch(e){}}
+function getMappingRemediation(productId,recordId,limitType,key){
+  return loadMappingRemediations()[mappingRemediationKey(productId,recordId,limitType,key)]||null;
+}
+function applyPersistedSourceRemediations(){
+  const store=loadSourceRemediations();
+  Object.values(store).forEach(item=>{
+    if(item?.status!=="Applied")return;
+    const row=(productDatabase[item.productId]||[]).find(r=>String(r.recordId)===String(item.recordId));
+    if(!row)return;
+    Object.entries(item.changes||{}).forEach(([field,value])=>{row.data[field]=value;});
+  });
+  Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
+}
+function saveProductSourceCorrection(productId,recordId,changes,reason){
+  const row=(productDatabase[productId]||[]).find(r=>String(r.recordId)===String(recordId));
+  if(!row)throw new Error("Source record tidak ditemukan.");
+  const fields=productSchemaFields[productId]||[];
+  const sanitized=Object.fromEntries(Object.entries(changes||{}).filter(([field,value])=>fields.includes(field)&&String(value??"").trim()!==""));
+  if(!Object.keys(sanitized).length)throw new Error("Tidak ada field source yang dikoreksi.");
+  const store=loadSourceRemediations(),key=remediationKey(productId,recordId),current=store[key]||{history:[]};
+  const previous=Object.fromEntries(Object.keys(sanitized).map(field=>[field,row.data?.[field]??""]));
+  Object.entries(sanitized).forEach(([field,value])=>{row.data[field]=String(value).trim();});
+  canonicalizeProductBusinessValues(row);
+  const stamp=nowLabel();
+  store[key]={
+    ...current,
+    productId,recordId,status:"Applied",reason:String(reason||"Source correction").trim(),
+    changes:sanitized,previous,appliedBy:"Risk Management",appliedAt:stamp,updatedAt:stamp,
+    history:[...(current.history||[]),{at:stamp,by:"Risk Management",reason:String(reason||"Source correction").trim(),changes:sanitized,previous}]
+  };
+  saveSourceRemediations(store);
+  buildProductIntegrationMappings();
+  return store[key];
+}
+function saveMappingCorrection(productId,recordId,limitType,key,changes,reason){
+  if(!productId||!recordId||!limitType||!key)throw new Error("Mapping remediation reference tidak lengkap.");
+  const sanitized={
+    bookingOffice:String(changes?.bookingOffice??"").trim(),
+    bookingOfficeType:String(changes?.bookingOfficeType??"").trim()
+  };
+  if(!sanitized.bookingOfficeType||!["Domestic","Overseas"].includes(sanitized.bookingOfficeType))throw new Error("Booking Office Type harus Domestic atau Overseas.");
+  const store=loadMappingRemediations(),k=mappingRemediationKey(productId,recordId,limitType,key),current=store[k]||{history:[]},stamp=nowLabel();
+  store[k]={...current,productId,recordId,limitType,key,...sanitized,status:"Applied",reason:String(reason||"Mapping remediation").trim(),appliedBy:"Risk Management",appliedAt:stamp,updatedAt:stamp,history:[...(current.history||[]),{at:stamp,by:"Risk Management",reason:String(reason||"Mapping remediation").trim(),changes:sanitized}]};
+  saveMappingRemediations(store);
+  buildProductIntegrationMappings();
+  return store[k];
+}
+function remediationTargetField(issue){
+  const p=issue?.productId;
+  const t=issue?.issueType;
+  if(!p)return "";
+  if(t==="MISSING_COUNTRY_KEY"||t==="COUNTRY_MAPPING_MISSING"||t==="MISSING_BOOKING_MAPPING")return productSourceField(p,"Country");
+  if(t==="MISSING_IDENTIFIER")return p==="CASHLOAN"?"no_cus":p==="NON CASH LOAN"?"CUSTID":"";
+  if(t==="INVALID_IDENTITY")return p==="CREDIT LINE"?"Nama":p==="Nominal Pertanggungan"?"Perusahaan Asuransi":"";
+  if(t==="CIL_IDENTITY_REVIEW")return "Perusahaan Asuransi";
+  if(t==="BONDS_EQ_IDR_MISMATCH")return "Amount Eq. IDR Juta";
+  if(t==="MISSING_FX_METADATA")return "FX Rate to IDR";
+  if(t==="CREDIT_LINE_RECONCILIATION")return "Credit Line Total Utilisasi";
+  if(t==="MASTER_NOT_FOUND")return productSourceField(p,issue?.domain||"Country");
+  return (productSchemaFields[p]||[])[0]||"";
+}
+
+
 function exceptionKey(row){
   return [row.domain||"—",row.key||"—",row.detail||"—"].join("||");
 }
@@ -2366,13 +2593,14 @@ function getExceptionAction(row){
   const key=exceptionKey(row),store=loadExceptionActions();
   return store[key]||{status:"Open",owner:"Risk Management",notes:"",updatedAt:"",resolvedAt:"",closedAt:""};
 }
-function setExceptionAction(row,nextStatus,notes=""){
+function setExceptionAction(row,nextStatus,notes="",options={}){
   const key=exceptionKey(row),store=loadExceptionActions(),current=store[key]||{status:"Open",owner:"Risk Management",notes:"",updatedAt:"",resolvedAt:"",closedAt:""};
   const order=EXCEPTION_ACTION_STATUSES.indexOf(nextStatus);
   const previous=EXCEPTION_ACTION_STATUSES.indexOf(current.status||"Open");
   if(order<0)throw new Error("Exception action status tidak valid.");
   if(nextStatus==="Closed"&&current.status!=="Resolved")throw new Error("Issue hanya dapat di-close setelah berstatus Resolved.");
   if(nextStatus==="Resolved"&&!String(notes||current.notes||"").trim())throw new Error("Catatan penyelesaian wajib diisi sebelum Resolve.");
+  if(nextStatus==="Resolved"&&options.requireClear&&dataQualityIssueStillPresent(row))throw new Error("Issue masih terdeteksi validator. Lakukan remediation lalu Run Check sebelum Resolve.");
   if(nextStatus==="In Progress"&&current.status==="Closed")throw new Error("Issue yang sudah Closed tidak dapat dibuka kembali dari flow ini.");
   const stamp=nowLabel();
   const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp};
@@ -2386,22 +2614,29 @@ function exceptionActionPending(status){return status==="Open"||status==="In Pro
 function enrichExceptionRows(rows){
   return rows.map(r=>({...r,action:getExceptionAction(r)}));
 }
+function dataQualityActionRef(row){
+  return {domain:row.domain,key:row.key,detail:row.issueType+" • "+row.detail+(row.recordId?" • "+row.recordId:"")};
+}
 function dataQualityIssueRows(){
   const out=[];
   masterCanonicalQualityIssues().forEach(x=>out.push({
-    id:exceptionKey({domain:x.domain||"Master Limit",key:x.key,detail:x.type+" • "+x.detail}),
-    layer:"Master Limit",domain:x.domain||"Master Limit",key:x.key||"—",object:x.key||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue"
+    layer:"Master Limit",domain:x.domain||"Master Limit",key:x.key||"—",object:x.key||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue",recordId:null,productId:null
   }));
   canonicalProductQualityIssues().forEach(x=>out.push({
-    id:exceptionKey({domain:"Product Database",key:x.recordId,detail:x.type+" • "+x.detail}),
-    layer:"Product Database",domain:"Product Database",key:x.recordId||"—",object:x.productId||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue"
+    layer:"Product Database",domain:"Product Database",key:x.recordId||"—",object:x.productId||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
   }));
   reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>out.push({
-    id:exceptionKey({domain:x.limitType||"Integration",key:x.key||x.recordId,detail:x.issueType+" • "+x.detail+" • "+x.recordId}),
     layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId,object:x.object||x.productId||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
   }));
   const seen=new Set();
-  return out.filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;}).map(x=>({...x,action:getExceptionAction({domain:x.domain,key:x.key,detail:x.issueType+" • "+x.detail+(x.recordId?" • "+x.recordId:"")})}));
+  return out
+    .filter(x=>{const id=exceptionKey(dataQualityActionRef(x));if(seen.has(id))return false;seen.add(id);return true;})
+    .map(x=>({...x,id:exceptionKey(dataQualityActionRef(x)),action:getExceptionAction(dataQualityActionRef(x))}));
+}
+function dataQualityIssueStillPresent(row){
+  const ref=dataQualityActionRef(row);
+  const target=exceptionKey(ref);
+  return dataQualityIssueRows().some(x=>exceptionKey(dataQualityActionRef(x))===target);
 }
 function dataQualitySummary(){
   const rows=dataQualityIssueRows();
@@ -2997,11 +3232,11 @@ function ProductDatabaseTable({view}){
       </div>
       <div className="table-wrap product-db-wrap">
         <table className="table product-db-table">
-          <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>As-of Date</th></tr></thead>
+          <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>As-of Date</th><th>Correction</th></tr></thead>
           <tbody>{rows.map(r=><tr key={r.recordId}>
             <td className="key">{r.recordId}</td>
             {fields.map(f=><td key={f}>{productDatabaseDisplayValue(view,r,f)}</td>)}
-            <td>{r.sourceSystem||"—"}</td><td>{r.asOfDate||"—"}</td>
+            <td>{r.sourceSystem||"—"}</td><td>{r.asOfDate||"—"}</td><td>{getSourceRemediation(view,r.recordId)?.status==="Applied"?<span className="chip blue">Remediated</span>:"—"}</td>
           </tr>)}</tbody>
         </table>
       </div>
@@ -3143,6 +3378,7 @@ function App(){
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
   if(screen==="quality") return <DataQuality nav={nav}/>;
+  if(screen==="remediation") return <DataRemediation nav={nav}/>;
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
