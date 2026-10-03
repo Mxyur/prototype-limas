@@ -2332,7 +2332,8 @@ function ProductUsage({view}){
       })()}/></div>
       <div className="mini" style={{marginTop:8}}>Source Schema <span>{getProductMeta(view)?.sheet||"—"}</span></div>
     </div>
-  </div>;
+  </div>
+  </>;
 }
 
 function CanonicalReadModelPreview(){
