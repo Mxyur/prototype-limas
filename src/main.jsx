@@ -363,22 +363,43 @@ function demoProductLabel(p){
   return p;
 }
 function productTotal(products){return Object.values(products||{}).reduce((a,v)=>a+(Number(v)||0),0)}
+function countryCreditLineSplit(apps){
+  const n=v=>Number(String(v??"").replace(/,/g,""))||0;
+  return apps.filter(x=>x.productId==="CREDIT LINE").reduce((a,x)=>{
+    const d=x.sourceData||{};
+    a.domestic += n(d["Comm DN Utilisasi"])+n(d["Treasury DN Utilisasi"]);
+    a.overseas += n(d["Comm LN Utilisasi"])+n(d["Treasury LN Utilisasi"]);
+    return a;
+  },{domestic:0,overseas:0});
+}
 function countryBookingExposure(row,bookingType){
-  return productApplicationsFor("Country",row.key)
-    .filter(x=>x.bookingOfficeType===bookingType)
+  const apps=productApplicationsFor("Country",row.key);
+  const cl=countryCreditLineSplit(apps);
+  const other=apps.filter(x=>x.productId!=="CREDIT LINE"&&x.bookingOfficeType===bookingType)
     .reduce((a,x)=>a+(Number(x.amount)||0),0);
+  return other + (bookingType==="Domestic"?cl.domestic:bookingType==="Overseas"?cl.overseas:0);
 }
 function countryBookingCoverage(row){
   const apps=productApplicationsFor("Country",row.key);
-  return {total:apps.reduce((a,x)=>a+(Number(x.amount)||0),0),mapped:apps.filter(x=>x.bookingOfficeType!=="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0),unmapped:apps.filter(x=>x.bookingOfficeType==="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0)};
+  const cl=countryCreditLineSplit(apps);
+  const otherTotal=apps.filter(x=>x.productId!=="CREDIT LINE").reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const otherMapped=apps.filter(x=>x.productId!=="CREDIT LINE"&&x.bookingOfficeType!=="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0);
+  const otherUnmapped=apps.filter(x=>x.productId!=="CREDIT LINE"&&x.bookingOfficeType==="Needs Mapping").reduce((a,x)=>a+(Number(x.amount)||0),0);
+  return {total:otherTotal+cl.domestic+cl.overseas,mapped:otherMapped+cl.domestic+cl.overseas,unmapped:otherUnmapped};
 }
 function countryProductMonitoring(row){
   const allocation=countryAllocationMetrics(row);
   const apps=productApplicationsFor("Country",row.key);
   return allocation.items.map(item=>{
     const productApps=apps.filter(a=>a.productId===item.product);
-    const domestic=productApps.filter(a=>a.bookingOfficeType==="Domestic").reduce((s,a)=>s+(Number(a.amount)||0),0);
-    const overseas=productApps.filter(a=>a.bookingOfficeType==="Overseas").reduce((s,a)=>s+(Number(a.amount)||0),0);
+    let domestic=0,overseas=0;
+    if(item.product==="CREDIT LINE"){
+      const cl=countryCreditLineSplit(productApps);
+      domestic=cl.domestic; overseas=cl.overseas;
+    }else{
+      domestic=productApps.filter(a=>a.bookingOfficeType==="Domestic").reduce((s,a)=>s+(Number(a.amount)||0),0);
+      overseas=productApps.filter(a=>a.bookingOfficeType==="Overseas").reduce((s,a)=>s+(Number(a.amount)||0),0);
+    }
     const exposure=domestic+overseas;
     return {
       ...item,domesticExposure:domestic,overseasExposure:overseas,exposure,
@@ -530,7 +551,7 @@ function Report({nav}){
     <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Generate report dari monitoring read model yang sama dengan halaman Monitoring.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
       <div className="report-controls">
         <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select></div>
-        <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>Agustus 2026 • Canonical Snapshot</option></select></div>
+        <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>{E2E_DUMMY_META.period}</option></select></div>
         <div><label>Status</label><select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select></div>
         <div className="report-actions"><button className="btn primary" onClick={generate}>Generate Report</button><button className="btn secondary" onClick={()=>downloadReportCsv(type,filtered)}>Download CSV</button></div>
       </div>
@@ -1087,7 +1108,7 @@ function masterFieldValue(type,section,field,base,row,index){
   }
   if(type==="CCL"){
     const p=productContributionMap("CCL",row.key),total=recordExposure("CCL",row);
-    const bankLoan=(p.CASHLOAN||0)+(p["NON CASH LOAN"]||0),contractUtil=row.contractual?total/row.contractual:0;
+    const bankLoan=p.CASHLOAN||0,contractUtil=row.contractual?total/row.contractual:0;
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
       "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
