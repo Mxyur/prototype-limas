@@ -123,4 +123,127 @@ scopes.forEach((scope,i)=>{
 });
 p.CASHLOAN.push(rec("CASHLOAN",{no_cus:"LPG-CORP",nm_cus:"LPG Corporate Bankwide",no_rek:"LPG-CORP",total_limit:"50000",total_bade:"42000",project_location:"Indonesia",code:"ID",ecosystem_lpg:"BATUBARA",segmen_lpg:"Corporate",region_lpg:"KP + OVS"},[],{recordId:"CL-LPG-CORP",sourceSystem:"DWH"}));
 
+
+const fillDemoProductData=()=>{
+  const offices=[
+    ["Menara Mandiri Jakarta","Domestic","Jakarta"],
+    ["Bank Mandiri Singapore","Overseas","Singapore"],
+    ["Bank Mandiri Shanghai","Overseas","Shanghai"],
+    ["Bank Mandiri (Europe) Limited London","Overseas","London"],
+    ["Bank Mandiri Cayman Islands","Overseas","Cayman"]
+  ];
+  const officeByCountry={ID:offices[0],SG:offices[1],CN:offices[2],AU:offices[3],JP:offices[1]};
+  const businessUnits=["Corporate Banking 1","Corporate Banking 4","Corporate Banking 5","Corporate Banking 6","Commercial Banking 2","Commercial Banking 8"];
+  const products=p;
+  products.CASHLOAN.forEach((r,i)=>{
+    const d=r.data||{}, country=String(d.code||"ID").toUpperCase(), office=officeByCountry[country]||offices[i%offices.length];
+    const mlk=E2E_MASTER_DATA.MLK.find(x=>String(x.key)===String(d.no_cus));
+    const officeCode=String(d.kd_cab||((i%5===0)?"60900":(i%5===1?"60200":(i%5===2?"60600":"60100")));
+    d.kd_cab=officeCode;
+    d.nm_cab=d.nm_cab||office[0];
+    d.gas_reporting=d.gas_reporting||"WHOLESALE BANKING";
+    d.buc_reporting=d.buc_reporting||businessUnits[i%businessUnits.length];
+    d.unit_pengelola=d.unit_pengelola||(mlk?.unitKerja||businessUnits[i%businessUnits.length]);
+    d.jns_krd=d.jns_krd||"WORKING CAPITAL";
+    d.src=d.src||"LIMAST";
+    d.j_guna=d.j_guna||"KREDIT MODAL KERJA";
+    d.revolv=d.revolv||"N";
+    d.bilokj=d.bilokj||"9999";
+    d["MatDate/Jatem"]=d["MatDate/Jatem"]||"30-Sep-2027";
+    d.ecosystem_lpg=d.ecosystem_lpg||"GENERAL";
+    d.segmen_lpg=d.segmen_lpg||(mlk?"Commercial":"Corporate");
+    d.region_lpg=d.region_lpg||(office[2]==="Jakarta"?"KP + OVS":office[2]);
+    r.meta={...r.meta,bookingOffice:r.meta.bookingOffice||d.nm_cab,bookingOfficeType:r.meta.bookingOfficeType||office[1],countryExposure:r.meta.countryExposure||country,asOfDate:r.meta.asOfDate||E2E_DUMMY_META.asOfDate};
+  });
+  products["NON CASH LOAN"].forEach((r,i)=>{
+    const d=r.data||{}, country=String(d["Country Code"]||"ID").toUpperCase(), office=officeByCountry[country]||offices[i%offices.length];
+    d["Swift Code"]=d["Swift Code"]||("BMRI"+country+"E2E"+String(i+1).padStart(3,"0"));
+    d.REPORTTYPE=d.REPORTTYPE||"NON CASH LOAN";
+    d.RELREF=d.RELREF||("REL-"+String(r.meta?.recordId||"NCL-"+i));
+    d.CPNM=d.CPNM||"Mandiri Counterparty "+country;
+    d.CPCNTY=d.CPCNTY||country;
+    d.CPBK=d.CPBK||office[2];
+    d.BKCNTRY=d.BKCNTRY||country;
+    d["Country Name"]=d["Country Name"]||({ID:"Indonesia",SG:"Singapore",CN:"China",AU:"Australia",JP:"Japan"}[country]||country);
+    d["Type of Judgment"]=d["Type of Judgment"]||"STANDARD";
+    d.TRXTYPE=d.TRXTYPE||"BG";
+    d.AMOUNT=d.AMOUNT||String(Math.max(Number(d.EQVIDR||0)*0.7,1));
+    d.EXCHANGERT=d.EXCHANGERT||"1";
+    d.FINTYPE=d.FINTYPE||"GUARANTEE";
+    d.TRXDATE=d.TRXDATE||"2026-09-30";
+    d.DUEDATE=d.DUEDATE||"2027-09-30";
+    d.SERVCODE=d.SERVCODE||"NCL-GUARANTEE";
+    d.SERVNM=d.SERVNM||"Bank Guarantee";
+    d.PCCD=d.PCCD||"BMRI";
+    d.PCNM=d.PCNM||"Bank Mandiri";
+    d.BUCD=d.BUCD||"WHOLESALE";
+    d.SOF=d.SOF||"TRADE";
+    d.INTRT=d.INTRT||"0";
+    d.ecosystem_lpg=d.ecosystem_lpg||"GENERAL";
+    d.segmen_lpg=d.segmen_lpg||"Corporate";
+    d.region_lpg=d.region_lpg||(country==="ID"?"KP + OVS":office[2]);
+    r.meta={...r.meta,bookingOffice:r.meta.bookingOffice||office[0],bookingOfficeType:r.meta.bookingOfficeType||office[1],countryExposure:r.meta.countryExposure||country,asOfDate:r.meta.asOfDate||E2E_DUMMY_META.asOfDate};
+  });
+  products["CREDIT LINE"].forEach((r,i)=>{
+    const d=r.data||{};
+    const country=String(d.Code||"ID").toUpperCase();
+    d["Swift Code"]=d["Swift Code"]||("BMRI"+country+"CL"+String(i+1).padStart(3,"0"));
+    d["Swift Code Vlookup"]=d["Swift Code Vlookup"]||d["Swift Code"];
+    d["Aging Schedule RM"]=d["Aging Schedule RM"]||"30D";
+    d.Bank=d.Bank||"Bank Mandiri / Counterparty";
+    d.RM=d.RM||businessUnits[i%businessUnits.length];
+    d["Dept."]=d["Dept."]||"Wholesale Banking";
+    d.BMFIR=d.BMFIR||"BMRI";
+    d.Fitch=d.Fitch||"A";
+    d["Moody's"]=d["Moody's"]||"A2";
+    d["S&P"]=d["S&P"]||"A";
+    const total=Number(d["Credit Line Total"]||d["Credit Line Total Utilisasi"]||0);
+    const comm=Number(d["Comm Line Total"]||d["Comm Line Total Utilisasi"]||0);
+    const tre=Number(d["Treasury Line Total"]||d["Treasury Line Total Utilisasi"]||Math.max(total-comm,0));
+    d["Comm DN"]=d["Comm DN"]||String(Math.round(comm*.7));
+    d["Comm DN Utilisasi"]=d["Comm DN Utilisasi"]||String(comm);
+    d["Comm LN"]=d["Comm LN"]||String(Math.max(comm-Number(d["Comm DN"]),0));
+    d["Comm LN Utilisasi"]=d["Comm LN Utilisasi"]||"0";
+    d["Comm Line Total"]=d["Comm Line Total"]||String(comm);
+    d["Comm Line Total Utilisasi"]=d["Comm Line Total Utilisasi"]||String(comm);
+    d["Treasury DN"]=d["Treasury DN"]||String(tre);
+    d["Treasury DN Utilisasi"]=d["Treasury DN Utilisasi"]||String(tre);
+    d["Treasury LN"]=d["Treasury LN"]||"0";
+    d["Treasury LN Utilisasi"]=d["Treasury LN Utilisasi"]||"0";
+    d["Treasury Line Total"]=d["Treasury Line Total"]||String(tre);
+    d["Treasury Line Total Utilisasi"]=d["Treasury Line Total Utilisasi"]||String(tre);
+    d["Credit Line Total"]=d["Credit Line Total"]||String(comm+tre);
+    d["Credit Line Total Utilisasi"]=d["Credit Line Total Utilisasi"]||String(comm+tre);
+    r.meta={...r.meta,sourceSystem:r.meta?.sourceSystem||"Credit Line Utilization Feed",countryExposure:r.meta?.countryExposure||country,asOfDate:r.meta?.asOfDate||E2E_DUMMY_META.asOfDate};
+  });
+  products["Investment Line"].forEach((r,i)=>{
+    const d=r.data||{};
+    d["catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"]=d["catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"]||"Source-only investment exposure; pending product classification";
+  });
+  products.BONDS.forEach((r,i)=>{
+    const d=r.data||{};
+    d["Potential P/L (Eq. IDR Juta)"]=d["Potential P/L (Eq. IDR Juta)"]||String([125.4,-42.8,86.2,31.7][i%4]);
+    const country=String(d["Issuer Country"]||"ID").toUpperCase();
+    r.meta={...r.meta,bookingOffice:r.meta?.bookingOffice||d.Branch||"Menara Mandiri Jakarta",bookingOfficeType:r.meta?.bookingOfficeType||((country==="ID")?"Domestic":"Overseas"),countryExposure:r.meta?.countryExposure||country,asOfDate:r.meta?.asOfDate||E2E_DUMMY_META.asOfDate};
+  });
+  products.NOSTRO.forEach(r=>{
+    const d=r.data||{}, country=String(d["Bank Country"]||"ID").toUpperCase();
+    r.meta={...r.meta,bookingOffice:r.meta?.bookingOffice||d.Branch||"Menara Mandiri Jakarta",bookingOfficeType:r.meta?.bookingOfficeType||"Domestic",countryExposure:r.meta?.countryExposure||country,asOfDate:r.meta?.asOfDate||d["FX Rate Date"]||E2E_DUMMY_META.asOfDate};
+  });
+  products["Nominal Pertanggungan"].forEach(r=>{
+    const d=r.data||{}, master=E2E_MASTER_DATA.CIL.find(x=>x.key===r.applied?.[0]?.key), amount=Number(d["Nominal Pertanggungan 2025 (Rp Juta)"]||0), eil=Number(d["EIL Entitas (Rp Juta)"]||0), projection=amount*(String(d["Entitas"]||"").toUpperCase()==="BMRI"?1.10:1.075), cil=Number(master?.cil||0), cit=Number(master?.cit||0);
+    d["Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)"]=projection.toFixed(2);
+    d["Utilisasi EIL (%)"]=eil?((amount/eil)*100).toFixed(2):"0.00";
+    d["CIL (Rp Juta)"]=String(cil);
+    d["CIT (Rp Juta)"]=String(cit);
+    d["Utilisasi CIL (%)"]=cil?((amount/cil)*100).toFixed(2):"0.00";
+    d["% Utilisasi (Nominal Pertanggungan/CIL)"]=cil?((amount/cil)*100).toFixed(2):"0.00";
+    d["% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)"]=cil?((projection/cil)*100).toFixed(2):"0.00";
+    d["Skor Akreditasi (PCP)"]=String(master?.score??75);
+    d["Klasifikasi EWS (PCP)"]=((amount/cil)>=.8)?"High":"Normal";
+    d["Status / Rekomendasi Action Plan"]=master?.action||"Monitoring as usual";
+  });
+};
+fillDemoProductData();
+
 export const E2E_DUMMY_PRODUCT_DATA=p;
