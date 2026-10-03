@@ -9,8 +9,8 @@ const LPG_SCOPES=[LPG_BANK_SCOPE,...LPG_REGIONAL_SCOPES];
 const lpgScopeKey=(scope)=>String(scope).replace(/[^A-Za-z0-9]+/g,"_");
 
 const domains={"Country": {"sheet": "COUNTRY_MONITORING", "key": "Country Code", "name": "Negara", "products": ["CASHLOAN", "NON CASH LOAN", "CREDIT LINE", "BONDS", "NOSTRO"], "sections": {"Identitas": [["No", "1", "Data/master/reference"], ["Negara", "United Arab Emirates", "Data/master/reference"], ["Code", "AE", "Data/master/reference"], ["Status", "Exist", "Data/master/reference"]], "Limit & Gap": [["Capacity Limit", "35,941", "Data/master/reference"], ["Capacity Distribution / Domestic", "—", "Data/master/reference"], ["Capacity Distribution / Overseas", "—", "Data/master/reference"], ["Product Distribution / CASHLOAN / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / CASHLOAN / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / CASHLOAN / Total Product Limit", "—", "Calculated"], ["Product Distribution / NON CASH LOAN / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / NON CASH LOAN / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / NON CASH LOAN / Total Product Limit", "—", "Calculated"], ["Product Distribution / CREDIT LINE / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / CREDIT LINE / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / CREDIT LINE / Total Product Limit", "—", "Calculated"], ["Product Distribution / BONDS / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / BONDS / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / BONDS / Total Product Limit", "—", "Calculated"], ["Product Distribution / NOSTRO / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / NOSTRO / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / NOSTRO / Total Product Limit", "—", "Calculated"], ["Allocated Capacity", "—", "Calculated"], ["Unallocated Capacity", "—", "Calculated"]]}}, "CCL": {"sheet": "CCL_MONITORING", "key": "Kode Bank / Swift Code", "name": "Nama bank", "products": ["CASHLOAN", "NON CASH LOAN", "CREDIT LINE"], "sections": {"Bank Profile": [["Nama bank", "ABN Amro Bank NV", "Data/master/reference"], ["CIF/Swift", "-", "Data/master/reference"], ["Kategori Bank", "Asing", "Data/master/reference"], ["Negara", "Netherlands", "Data/master/reference"], ["Global Parent Bank", "—", "Data/master/reference"], ["Apakah Bank termasuk Top 200 Bank Besar Dunia berdasarkan total aset menurut Banker's Almanac", "—", "Data/master/reference"]], "Risk & Capacity": [["Country Rating", "AAA", "Data/master/reference"], ["Bobot", "0.55", "Data/master/reference"], ["Rating", "AA-", "Data/master/reference"], ["Posisi Rating", "31/12/2023", "Data/master/reference"], ["Rating Index", "90.23%", "Data/master/reference"], ["Limit Inhouse (Rp Miliar)", "68,498", "Data/master/reference"], ["Tier 1 Capital (Rp Miliar)", "403,594", "Data/master/reference"], ["Capacity", "200,290", "Data/master/reference"], ["Capacity Limit Adjusted", "68,498", "Data/master/reference"]], "Limit": [["CCL", "500", "Data/master/reference"], ["Utilisasi Capacity", "0.73%", "Data/master/reference"], ["Limit Contractual", "500", "Data/master/reference"]], "BMRI Exposure": [["Outstanding", "13", "Data/master/reference"], ["Jenis Limit", "Direct", "Data/master/reference"], ["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Outstanding Maksimum", "13", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]], "Perusahaan Anak": [["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]]}}, "MLK": {"sheet": "MLK_Master", "key": "CIF", "name": "Nama Debitur", "products": ["CASHLOAN", "NON CASH LOAN", "CREDIT LINE"], "sections": {"Profil Debitur": [["Entitas", "BMRI", "Data/master/reference"], ["CIF", "4000264485", "Data/master/reference"], ["Nama Debitur", "DJARUM", "Data/master/reference"], ["Group Usaha", "DJARUM GROUP", "Data/master/reference"], ["Unit Kerja Pengelola", "CB6", "Data/master/reference"], ["Group", "DJARUM GROUP", "Data/master/reference"], ["BUMN/Swasta Flag", "Swasta", "Data/master/reference"], ["Tier", "B", "Data/master/reference"]], "Risk & Regulatory": [["BMPK Konsol", "67,204", "Data/master/reference"], ["Inhouse Limit Konsol", "60,484", "Data/master/reference"], ["BMPK/BMPP/BMPD Entitas", "55,993", "Data/master/reference"], ["Inhouse Limit Entitas", "50,394", "Data/master/reference"], ["Sektor DC", "INDUSTRI ROKOK", "Data/master/reference"], ["DC Sectoral", "3", "Data/master/reference"], ["Rating", "A+", "Data/master/reference"], ["Rating Multiplier", "2.67", "Data/master/reference"], ["Watchlist", "HIJAU", "Data/master/reference"], ["Discount Factor", "1", "Data/master/reference"]], "Financial & Capacity": [["EBITDA/Pengganti EBITDA", "1,938", "Data/master/reference"], ["Kredit Bank Lain", "12,010", "Data/master/reference"], ["Total Debt", "-", "Data/master/reference"], ["Borrowing Capacity", "15,523.38", "Data/master/reference"], ["Available BC", "(2,183.62)", "Data/master/reference"], ["Status Perhitungan", "-", "Data/master/reference"]], "Product Limit & Exposure": [["CL Bade", "500", "Data/master/reference"], ["CL Limit", "587", "Data/master/reference"], ["NCL Bade", "-", "Data/master/reference"], ["NCL Limit", "121", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Bade Treasury Line", "-", "Data/master/reference"], ["Total Limit Existing", "-", "Data/master/reference"], ["Total Bade Existing", "-", "Data/master/reference"]], "Master Limit": [["Master Limit Setting", "5,110", "Data/master/reference"], ["Master Limit", "5,818", "Data/master/reference"]]}}, "CIL": {"sheet": "CIL_Master", "key": "Insurance Company ID / Entity", "name": "Perusahaan Asuransi", "products": ["Nominal Pertanggungan"], "sections": {"Insurance Profile": [["No", "1", "Data/master/reference"], ["Perusahaan Asuransi", "PT Asuransi Tugu Pratama Indonesia Tbk", "Data/master/reference"], ["Jenis Perusahaan (Asuransi/Penjaminan)", "Asuransi", "Data/master/reference"], ["Jenis Produk Asuransi", "Asuransi Kredit", "Data/master/reference"]], "Capacity & Threshold": [["Insurance Capacity (IC) (Rp Juta)", "3,605,020,000", "Data/master/reference"], ["Multiplier Terpakai (%)", "3.00%", "Data/master/reference"], ["Consolidated Insurance Threshold (CIT) (Rp Juta)", "108,150,600", "Parameter monitoring"]], "BMRI": [["Nominal Pertanggungan BMRI 2025", "11,573,402.55", "Data/master/reference"], ["EIL BMRI", "60,093,270.28", "Data/master/reference"]], "Mandiri Taspen": [["Nominal Pertanggungan Mandiri Taspen 2025", "BUKAN REKANAN", "Data/master/reference"], ["EIL Mandiri Taspen", "26,999,429.42", "Data/master/reference"]], "MTF": [["Nominal Pertanggungan MTF 2025", "285,708.13", "Data/master/reference"], ["EIL MTF", "10,591,613.12", "Data/master/reference"]], "MUF": [["Nominal Pertanggungan MUF 2025", "21,313", "Data/master/reference"], ["EIL MUF", "10,129,963.92", "Data/master/reference"]], "Consolidated": [["Consolidated Insurance Limit (CIL) (Rp Juta)", "107,814,276.74", "Data/master/reference"], ["Total Nominal Pertanggungan All Entitas 2025 (Rp Juta)", "11,880,423.68", "Data/master/reference"], ["Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)", "13,060,790.52", "Data/master/reference"], ["Skor Akreditasi (PCP)", "79.38", "Data/master/reference"], ["Klasifikasi EWS (PCP)", "Monitoring", "Data/master/reference"]]}}, "LPG": {"sheet":"LPG_Loanportfolio","key":"Ecosystem LPG + Segmen LPG","name":"Ecosystem LPG","products":["CASHLOAN","NON CASH LOAN"],"sections":{"Identitas":[["No","1","Data/master/reference"],["Ecosystem LPG (Sektor)","BATUBARA","Data/master/reference"],["Segmen LPG","Corporate","Data/master/reference"]],"Bankwide Limit":[["Bankwide / Limit","65,140","Data/master/reference"],["Bankwide / Outstanding","Derived from CL + NCL debtor classification","Calculated"]],"Regional Limit":[["Region I / Limit","—","Data/master/reference"],["Region II / Limit","—","Data/master/reference"],["Region III / Limit","—","Data/master/reference"],["Region IV / Limit","—","Data/master/reference"],["Region V / Limit","—","Data/master/reference"],["Region VI / Limit","—","Data/master/reference"],["Region VII / Limit","—","Data/master/reference"],["Region VIII / Limit","—","Data/master/reference"],["Region IX / Limit","—","Data/master/reference"],["Region X / Limit","—","Data/master/reference"],["Region XI / Limit","—","Data/master/reference"],["Region XII / Limit","—","Data/master/reference"],["KP + OVS / Limit","—","Data/master/reference"]]}}};
-const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_rek", "gas_reporting", "buc_reporting", "jns_krd", "src", "j_guna", "revolv", "bilokj", "total_limit", "total_bade", "project_location", "code", "MatDate/Jatem", "ecosystem_lpg", "segmen_lpg", "region_lpg"], "NON CASH LOAN": ["NO", "MODULE", "Swift Code", "REPORTTYPE", "TRXREF", "RELREF", "CUSTID", "CUSTNM", "CPNM", "CPCNTY", "CPBK", "BKCNTRY", "Country Code", "Country Name", "Type of Judgment", "TRXTYPE", "CCY", "AMOUNT", "BALANCE", "EXCHANGERT", "EQVIDR", "FINTYPE", "TRXDATE", "DUEDATE", "SERVCODE", "SERVNM", "PCCD", "PCNM", "BUCD", "SOF", "INTRT", "ecosystem_lpg", "segmen_lpg", "region_lpg"], "COMMERCIAL LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "Treasury DN", "Treasury DN Utilisasi", "Treasury LN", "Treasury LN Utilisasi", "Treasury Line Total", "Treasury Line Total Utilisasi", "Comm DN", "Comm DN Utilisasi", "Comm LN", "Comm LN Utilisasi", "Comm Line Total", "Comm Line Total Utilisasi", "Corporate Card", "Credit Line Total", "Credit Line Total Utilisasi"], "Investment Line": ["No", "Nama Bank", "Nama Entity (Scope Entity : AKK)", "Switftcode", "Jenis Invesment Line", "Amount Invesment Line", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"], "BONDS": ["Date", "Branch", "Securities Type", "Securities Name", "Issuer Name", "Issuer Country", "Issuer Type", "Portfolio", "CCY", "Amount", "Amount Eq. IDR Juta", "Maturity Date", "Coupon", "Potential P/L (Eq. IDR Juta)"], "NOSTRO": ["Year", "Branch", "SwfitCode", "Bank Name", "Bank Country", "Balance"]};
-const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT Asuransi Tugu Pratama Indonesia Tbk","Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":"BMRI","EIL Entitas (Rp Juta)":"60093270.28","Nominal Pertanggungan 2025 (Rp Juta)":"11573402.55","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":"13060790.52","Utilisasi EIL (%)":"21.73%","CIL (Rp Juta)":"107814276.74","CIT (Rp Juta)":"108150600","Utilisasi CIL (%)":"11.02%","% Utilisasi (Nominal Pertanggungan/CIL)":"10.74%","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)":"12.12%","Skor Akreditasi (PCP)":"79.38","Klasifikasi EWS (PCP)":"Monitoring","Status / Rekomendasi Action Plan":"Monitoring as usual / no specific action"},"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "286035.62", "total_bade": "286035.62", "project_location": "China", "code": "CN", "MatDate/Jatem": "", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "24532.90", "BALANCE": "24532.90", "EXCHANGERT": "17310", "EQVIDR": "425000000", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "FABIAEAA", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "Balance": "26.64"}};
+const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_rek", "gas_reporting", "buc_reporting", "jns_krd", "src", "j_guna", "revolv", "bilokj", "total_limit", "total_bade", "project_location", "code", "MatDate/Jatem", "ecosystem_lpg", "segmen_lpg", "region_lpg"], "NON CASH LOAN": ["NO", "MODULE", "Swift Code", "REPORTTYPE", "TRXREF", "RELREF", "CUSTID", "CUSTNM", "CPNM", "CPCNTY", "CPBK", "BKCNTRY", "Country Code", "Country Name", "Type of Judgment", "TRXTYPE", "CCY", "AMOUNT", "BALANCE", "EXCHANGERT", "EQVIDR", "FINTYPE", "TRXDATE", "DUEDATE", "SERVCODE", "SERVNM", "PCCD", "PCNM", "BUCD", "SOF", "INTRT", "ecosystem_lpg", "segmen_lpg", "region_lpg"], "COMMERCIAL LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "Treasury DN", "Treasury DN Utilisasi", "Treasury LN", "Treasury LN Utilisasi", "Treasury Line Total", "Treasury Line Total Utilisasi", "Comm DN", "Comm DN Utilisasi", "Comm LN", "Comm LN Utilisasi", "Comm Line Total", "Comm Line Total Utilisasi", "Corporate Card", "Credit Line Total", "Credit Line Total Utilisasi"], "Investment Line": ["No", "Nama Bank", "Nama Entity (Scope Entity : AKK)", "Switftcode", "Jenis Invesment Line", "Amount Invesment Line", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"], "BONDS": ["Date", "Branch", "Securities Type", "Securities Name", "Issuer Name", "Issuer Country", "Issuer Type", "Portfolio", "CCY", "Amount", "Amount Eq. IDR Juta", "Maturity Date", "Coupon", "Potential P/L (Eq. IDR Juta)"], "NOSTRO": ["Year", "Branch", "SwfitCode", "Bank Name", "Bank Country", "CCY", "Balance", "FX Rate to IDR", "FX Rate Date", "Balance IDR"]};
+const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT Asuransi Tugu Pratama Indonesia Tbk","Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":"BMRI","EIL Entitas (Rp Juta)":"60093270.28","Nominal Pertanggungan 2025 (Rp Juta)":"11573402.55","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":"13060790.52","Utilisasi EIL (%)":"21.73%","CIL (Rp Juta)":"107814276.74","CIT (Rp Juta)":"108150600","Utilisasi CIL (%)":"11.02%","% Utilisasi (Nominal Pertanggungan/CIL)":"10.74%","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)":"12.12%","Skor Akreditasi (PCP)":"79.38","Klasifikasi EWS (PCP)":"Monitoring","Status / Rekomendasi Action Plan":"Monitoring as usual / no specific action"},"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "286035.62", "total_bade": "286035.62", "project_location": "China", "code": "CN", "MatDate/Jatem": "", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "24532.90", "BALANCE": "24532.90", "EXCHANGERT": "17310", "EQVIDR": "425000000", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "FABIAEAA", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "CCY": "AED", "Balance": "26.64", "FX Rate to IDR": "4700", "FX Rate Date": "2026-04-30", "Balance IDR": "125208"}};
 const integrationRuntimeSource={
   Country:{"CASHLOAN":"Big Data (adjusted Country)","NON CASH LOAN":"NTF -> Provided by DWB","CREDIT LINE":"Data Utilisasi Credit Line","BONDS":"Market Risk/Treasury","NOSTRO":"Internal Mandiri"},
   CCL:{"CASHLOAN":"Core Banking Limit System","NON CASH LOAN":"Core Banking Limit System","CREDIT LINE":"Core Banking Limit System"},
@@ -25,7 +25,7 @@ const integrationTargets={
     "NON CASH LOAN":"Country Exposure = Country Code; Booking Office source is not present in current schema; Domestic/Overseas requires reference/source",
     "CREDIT LINE":"Country Exposure = Code / Negara; Domestic = Commercial DN + Treasury DN; Overseas = Commercial LN + Treasury LN; no Booking Office enrichment required",
     "BONDS":"Country Exposure = Issuer Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference",
-    "NOSTRO":"Country Exposure = Bank Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference"
+    "NOSTRO":"Country Exposure = Bank Country; Booking Office source = Branch; Balance is normalized to IDR using CCY + FX Rate to IDR + FX Rate Date"
 },
   CCL:{"CASHLOAN":"Bank / Counterparty mapping","NON CASH LOAN":"Swift Code / Counterparty","CREDIT LINE":"Swift Code","Investment Line":"Swift Code / Entity"},
   MLK:{"CASHLOAN":"CIF","NON CASH LOAN":"CUSTID / CIF","CREDIT LINE":"CIF / Debtor mapping (Treasury scope)"},
@@ -420,7 +420,7 @@ function recordExposure(type,row){
 }
 function recordLimit(type,row){
   if(type==="Country")return Number(row.capacityLimit)||0;
-  if(type==="CCL")return Number(row.ccl)||0;
+  if(type==="CCL")return (Number(row.ccl)||0)*1000;
   if(type==="MLK")return Number(row.masterLimit)||0;
   if(type==="CIL")return Number(row.cil)||0;
   if(type==="LPG")return Number(lpgScopeLimit(row,LPG_BANK_SCOPE)||0);
@@ -490,7 +490,7 @@ function mlkMonitoringRows(rows){
 function buildReportDummy(data){
   return {
     Country:data.Country.map((r,i)=>{const p=productContributionMap("Country",r.key),exp=recordExposure("Country",r),totalLimits=limasDemoData.Country.reduce((a,x)=>a+(Number(x.capacityLimit??x.masterLimit)||0),0),share=totalLimits?(Number(r.capacityLimit??r.masterLimit)||0)/totalLimits:0,a=countryAllocationMetrics(r);return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,domestic:countryBookingExposure(r,"Domestic"),overseas:countryBookingExposure(r,"Overseas"),unmapped:countryBookingExposure(r,"Needs Mapping"),capacity:r.capacityLimit,capacityDomestic:a.domesticCapacity,capacityOverseas:a.overseasCapacity,allocatedCapacity:a.allocated,unallocatedCapacity:a.unallocated,clDomesticLimit:a.items.find(x=>x.product==="CASHLOAN")?.domestic,clOverseasLimit:a.items.find(x=>x.product==="CASHLOAN")?.overseas,clTotalLimit:a.items.find(x=>x.product==="CASHLOAN")?.total,nclDomesticLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.domestic,nclOverseasLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.overseas,nclTotalLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.total,comDomesticLimit:a.items.find(x=>x.product==="CREDIT LINE")?.domestic,comOverseasLimit:a.items.find(x=>x.product==="CREDIT LINE")?.overseas,comTotalLimit:a.items.find(x=>x.product==="CREDIT LINE")?.total,bondDomesticLimit:a.items.find(x=>x.product==="BONDS")?.domestic,bondOverseasLimit:a.items.find(x=>x.product==="BONDS")?.overseas,bondTotalLimit:a.items.find(x=>x.product==="BONDS")?.total,nosDomesticLimit:a.items.find(x=>x.product==="NOSTRO")?.domestic,nosOverseasLimit:a.items.find(x=>x.product==="NOSTRO")?.overseas,nosTotalLimit:a.items.find(x=>x.product==="NOSTRO")?.total,formulasi:r.formulasi,diputus:r.diputus,limit:r.capacityLimit,pct:share,status:recordStatus("Country",r)}}),
-    CCL:data.CCL.map((r,i)=>{const p=productContributionMap("CCL",r.key),exp=recordExposure("CCL",r);return {no:i+1,bank:r.name,category:r.category,country:r.country,countryRating:r.countryRating,bobot:r.bobot,rating:r.rating,position:r.position,ratingIndex:r.ratingIndex,inhouse:r.inhouse,tier1:r.tier1,capacity:r.capacity,adjusted:r.adjusted,globalParent:r.globalParent,top200:r.top200,ccl:r.ccl,cclCapacity:r.capacity? r.ccl/r.capacity:0,limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:exp,bmriLoan:p.CASHLOAN||0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:r.ccl?exp/r.ccl:0,contractualUtil:r.contractual?exp/r.contractual:0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
+    CCL:data.CCL.map((r,i)=>{const p=productContributionMap("CCL",r.key),exp=recordExposure("CCL",r);return {no:i+1,bank:r.name,category:r.category,country:r.country,countryRating:r.countryRating,bobot:r.bobot,rating:r.rating,position:r.position,ratingIndex:r.ratingIndex,inhouse:r.inhouse,tier1:r.tier1,capacity:r.capacity,adjusted:r.adjusted,globalParent:r.globalParent,top200:r.top200,ccl:r.ccl,cclCapacity:r.capacity? r.ccl/r.capacity:0,limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:exp,bmriLoan:p.CASHLOAN||0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:r.ccl?exp/(r.ccl*1000):0,contractualUtil:r.contractual?exp/(r.contractual*1000):0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
     MLK:mlkMonitoringRows(data.MLK),
     CIL:data.CIL.map((r,i)=>{const rows=productApplicationsFor("CIL",r.key),p=productContributionMap("CIL",r.key),total=recordExposure("CIL",r);const byEntity={};rows.forEach(a=>{byEntity[a.entity||"Entity"]=(byEntity[a.entity||"Entity"]||0)+(Number(a.amount)||0)});return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:byEntity.BMRI||0,bmriEil:r.eils?.BMRI||0,mtNominal:byEntity["Mandiri Taspen"]||0,mtEil:r.eils?.["Mandiri Taspen"]||0,mtfNominal:byEntity.MTF||0,mtfEil:r.eils?.MTF||0,mufNominal:byEntity.MUF||0,mufEil:r.eils?.MUF||0,cil:r.cil,totalNominal:total,projection:cilProjection(r.key),utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?cilProjection(r.key)/r.cit:0,cilUtil:r.cil?total/r.cil:0,eilUtil:Math.max(...Object.entries(byEntity).map(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil?amount/eil:0}),0),eilBreaches:Object.entries(byEntity).filter(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil>0&&amount/eil>=1}).map(([entity])=>entity).join(", "),status:recordStatus("CIL",r),score:r.score,action:r.action}}),
     LPG:lpgDisplayRows().map((r,i)=>{
@@ -773,7 +773,7 @@ function Monitor({type,nav}){
   const statusCounts={Normal:rows.filter(r=>recordStatus(type,r)==="Normal").length,Warning:rows.filter(r=>recordStatus(type,r)==="Warning").length,Breach:rows.filter(r=>recordStatus(type,r)==="Breach").length,"Data Issue":rows.filter(r=>recordStatus(type,r)==="Data Issue").length};
   const titleMap={Country:"Country Capacity Limit Monitoring",CCL:"Counterparty / CCL Monitoring",MLK:"Debtor / MLK Monitoring",CIL:"Insurance / CIL Monitoring",LPG:"Portfolio / LPG Monitoring"};
   const subtitleMap={Country:"Country Capacity Limit → Domestic/Overseas Distribution → Product Limit → integrated utilization.",CCL:"Master CCL / Contractual Limit + integrated counterparty product utilization.",MLK:"Master Limit per CIF/group + integrated CL, NCL and Treasury Line exposure.",CIL:"Master IC/CIT/EIL/CIL + integrated Nominal Pertanggungan.",LPG:"Master limit Sector × Segment × Region + integrated CL/NCL outstanding."};
-  const unitMap={Country:"Rp Juta",CCL:"Rp Miliar",MLK:"Rp Juta",CIL:"Rp Juta",LPG:"Rp Juta"};
+  const unitMap={Country:"Rp Juta",CCL:"Rp Juta",MLK:"Rp Juta",CIL:"Rp Juta",LPG:"Rp Juta"};
   const pct=v=>(v*100).toFixed(2)+"%";
   const productsText=r=>{
     if(type==="CIL"){
@@ -1108,7 +1108,7 @@ function masterFieldValue(type,section,field,base,row,index){
   }
   if(type==="CCL"){
     const p=productContributionMap("CCL",row.key),total=recordExposure("CCL",row);
-    const bankLoan=p.CASHLOAN||0,contractUtil=row.contractual?total/row.contractual:0;
+    const bankLoan=p.CASHLOAN||0,contractualCanonical=(Number(row.contractual)||0)*1000,contractUtil=contractualCanonical?total/contractualCanonical:0;
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
       "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
@@ -1250,13 +1250,13 @@ function sourceKey(p){return getProductMeta(p)?.key||"—"}
 function sourceExposure(p){return getProductMeta(p)?.exposure||"—"}
 
 const productMasterCatalog=[
-  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country Exposure memakai field code/Country Code pada source. Booking Office memakai nm_cab; Domestic/Overseas adalah derived classification dari kantor pembukuan, bukan source field baru."},
-  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Country Exposure memakai Country Code. Untuk kebutuhan Domestic/Overseas, LIMAS menambahkan Business Enrichment Booking Office + Booking Office Type sebagai reference layer karena source NCL belum menyediakan kantor pembukuan. Nilai tidak boleh diinfer dari Country Code."},
-  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Credit Line Total Utilisasi",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Credit Line adalah parent product yang terdiri dari Commercial Line + Treasury Line. Source sudah memisahkan Domestic (DN) dan Overseas (LN) pada masing-masing komponen. TDN/TLN/CDN/CLN diperlakukan sebagai alias terminology, bukan business fields tambahan. Credit Line Total = Commercial Line + Treasury Line; Domestic = Commercial DN + Treasury DN; Overseas = Commercial LN + Treasury LN."},
-  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",source:"master_dataproduk.xlsx • Investment Line",note:"Pooling untuk eksposur yang belum termapping. Tidak termasuk linked product Country saat ini; source field tetap mengikuti Investment Line."},
-  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",source:"master_dataproduk.xlsx • BONDS",note:"Country Exposure memakai Issuer Country. Jika Domestic/Overseas diperlukan, Branch adalah source field kantor pembukuan; Branch tidak boleh diganti dengan Issuer Country dan tidak perlu dibuat field Booking Office baru."},
-  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",exposure:"Balance",source:"master_dataproduk.xlsx • NOSTRO",note:"Country Exposure memakai Bank Country. Jika Domestic/Overseas diperlukan, Branch adalah source field kantor pembukuan; tidak membuat field Booking Office baru. Balance masih kurs asli dan perlu konversi kurs tengah NTR."},
-  {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Digunakan untuk monitoring utilisasi CIL. Utilisasi membandingkan Nominal Pertanggungan terhadap CIL. Source berasal dari monitoring CIL, bukan workbook master_dataproduk."}
+  {id:"CASHLOAN",label:"Cash Loan",sheet:"CASHLOAN",key:"no_cus / no_rek / code",exposure:"total_bade",canonicalUnit:"Rp Juta",status:"Active",source:"master_dataproduk.xlsx • CASHLOAN",note:"Country Exposure memakai field code/Country Code. Booking Office memakai nm_cab; Domestic/Overseas berasal dari reference kantor pembukuan."},
+  {id:"NON CASH LOAN",label:"Non Cash Loan",sheet:"NON CASH LOAN",key:"CUSTID / Swift Code / Country Code",exposure:"EQVIDR / BALANCE",canonicalUnit:"Rp Juta",status:"Active",source:"master_dataproduk.xlsx • NON CASH LOAN",note:"Country Exposure memakai Country Code. Booking Office + Booking Office Type adalah business enrichment/reference yang wajib tersedia untuk identifikasi Country; tidak boleh diinfer dari Country Code."},
+  {id:"CREDIT LINE",label:"Credit Line",sheet:"Credit Line (CommLine and TL)",key:"Swift Code Vlookup / Code",exposure:"Credit Line Total Utilisasi",canonicalUnit:"Rp Juta",status:"Active",source:"master_dataproduk.xlsx • Credit Line (CommLine and TL)",note:"Credit Line adalah parent product: Commercial Line + Treasury Line. TDN/TLN/CDN/CLN adalah alias terminology, bukan product terpisah. DN = Domestic dan LN = Overseas."},
+  {id:"Investment Line",label:"Investment Line",sheet:"Investment Line",key:"Nama Bank + Entity + Swiftcode",exposure:"Amount Invesment Line",canonicalUnit:"Rp Juta",status:"Future / Scoped",source:"master_dataproduk.xlsx • Investment Line",note:"Source-only/scoped. Belum menjadi linked utilization aktif; canonical unit disiapkan Rp Juta untuk integrasi berikutnya."},
+  {id:"BONDS",label:"Bonds",sheet:"BONDS",key:"Securities Name + Issuer Country",exposure:"Amount Eq. IDR Juta",canonicalUnit:"Rp Juta",status:"Active",source:"master_dataproduk.xlsx • BONDS",note:"Country Exposure memakai Issuer Country. Branch adalah source field kantor pembukuan; Issuer Country tidak boleh dipakai sebagai Booking Office."},
+  {id:"NOSTRO",label:"Nostro",sheet:"NOSTRO",key:"SwfitCode / Bank Country",exposure:"Balance",canonicalUnit:"Rp Juta",status:"Active",source:"master_dataproduk.xlsx • NOSTRO",note:"Country Exposure memakai Bank Country. Balance tetap source currency; canonical utilization dikonversi ke IDR memakai CCY + FX Rate to IDR + FX Rate Date."},
+  {id:"Nominal Pertanggungan",label:"Nominal Pertanggungan",sheet:"CIL_MONITORING",key:"Perusahaan Asuransi + Entitas",exposure:"Nominal Pertanggungan 2025 / Proyeksi 2026",canonicalUnit:"Rp Juta",status:"Active",source:"master_reportMonitoringLimit.xlsx • CIL_MONITORING",note:"Utilisasi CIL membandingkan Nominal Pertanggungan terhadap EIL/CIL. Source berasal dari CIL_MONITORING."}
 ];
 
 const productBusinessMapping={
@@ -1353,11 +1353,13 @@ const productTabFields={
   ]
 };
 
-const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
-  p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
-  p.id==='CREDIT LINE'?creditLineCanonicalFields.map(x=>x.key):
-  (productTabFields[p.id]||productFields[p.id]||[])
-)]]));
+const productUtilizationMetadataFields=["Country Exposure","Booking Office","Booking Office Type","Booking Office Status"];
+const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set([
+  ...(p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
+    p.id==='CREDIT LINE'?creditLineCanonicalFields.map(x=>x.key):
+    (productTabFields[p.id]||productFields[p.id]||[])),
+  ...(countryIntegratedProductIds.includes(p.id)?productUtilizationMetadataFields:[])
+])]]));
 
 const bookingOfficeReference=[
   {office:'Menara Mandiri Jakarta',officeType:'Domestic',country:'ID',status:'Active'},
@@ -1389,7 +1391,7 @@ function makeProductRecord(productId,overrides={},applied=[],meta={}){
   (productSchemaFields[productId]||[]).forEach(f=>{base[f]='';});
   Object.assign(base,productSample[productId]||{},overrides);
   const booking=deriveBookingAttributes(productId,overrides,meta);
-  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',status:meta.status||'Normal',...booking};
+  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",status:meta.status||'Normal',...booking};
 }
 
 const productDatabase={
@@ -1497,38 +1499,37 @@ installE2EDummyDataset();
 
 const DOMAIN_CANONICAL_UNITS={
   Country:"Rp Juta",
-  CCL:"Rp Miliar",
+  CCL:"Rp Juta",
   MLK:"Rp Juta",
   CIL:"Rp Juta",
   LPG:"Rp Juta"
 };
 const productCanonicalTransform=(domain,productId,row)=>{
+  const d=row?.data||{};
+  const targetUnit=DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta";
   if(productId==="NON CASH LOAN"){
-    const d=row?.data||{};
     const dwhIdr=String(row?.sourceSystem||"").startsWith("DWH")&&String(d.CCY||"").toUpperCase()==="IDR";
-    if(dwhIdr){
-      return domain==="CCL"
-        ? {sourceUnit:"Rp Juta",targetUnit:"Rp Miliar",factor:0.001,description:"DWH IDR context: use BALANCE (Rp Juta), then convert to CCL Rp Miliar."}
-        : {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"DWH IDR context: use BALANCE as canonical outstanding."};
-    }
-    return domain==="CCL"
-      ? {sourceUnit:"Rp",targetUnit:"Rp Miliar",factor:0.000000001,description:"Normalize EQVIDR from Rp to Rp Juta, then to CCL Rp Miliar."}
-      : {sourceUnit:"Rp",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:0.000001,description:"Normalize EQVIDR from Rp to Rp Juta."};
+    return dwhIdr
+      ? {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"DWH IDR context: use BALANCE already expressed in Rp Juta."}
+      : {sourceUnit:"Rp",targetUnit,factor:0.000001,description:"Normalize EQVIDR from IDR (Rp) to canonical Rp Juta."};
   }
-  if(domain==="CCL"&&["CREDIT LINE","CASHLOAN","BONDS"].includes(productId)){
-    return {sourceUnit:"Rp Juta",targetUnit:"Rp Miliar",factor:0.001,description:"Normalize source exposure from Rp Juta to CCL canonical Rp Miliar."};
+  if(productId==="NOSTRO"){
+    const fx=Number(d["FX Rate to IDR"]);
+    return Number.isFinite(fx)&&fx>0
+      ? {sourceUnit:String(d.CCY||"Source Currency"),targetUnit:"Rp Juta",factor:fx/1000000,description:"Convert Balance in source currency to IDR using FX Rate to IDR, then normalize to Rp Juta."}
+      : {sourceUnit:String(d.CCY||"Source Currency"),targetUnit:"Rp Juta",factor:0,description:"FX metadata is missing or invalid; canonical IDR utilization cannot be calculated."};
   }
-  if(productId==="BONDS")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Use Amount Eq. IDR Juta as canonical exposure."};
-  if(productId==="NOSTRO")return {sourceUnit:"Source Currency",targetUnit:"Rp Juta",factor:1,description:"Demo balance retained; production FX normalization requires authoritative currency/rate/as-of definition."};
-  if(productId==="CREDIT LINE")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Credit Line source is already in the demo domain unit; DN/LN semantics remain source-native."};
-  if(productId==="CASHLOAN")return {sourceUnit:"Rp Juta",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1,description:"Use Total BADE as canonical exposure."};
-  if(productId==="Nominal Pertanggungan")return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use Nominal Pertanggungan as canonical exposure."};
-  return {sourceUnit:DOMAIN_CANONICAL_UNITS[domain]||"Source Unit",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Source Unit",factor:1,description:"Direct / source unit."};
+  if(productId==="BONDS")return {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"Use Amount Eq. IDR Juta as canonical exposure."};
+  if(productId==="CREDIT LINE")return {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"Credit Line utilization is source-native in Rp Juta; DN/LN semantics remain source-native."};
+  if(productId==="CASHLOAN")return {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"Use Total BADE as canonical exposure in Rp Juta."};
+  if(productId==="Nominal Pertanggungan")return {sourceUnit:"Rp Juta",targetUnit:"Rp Juta",factor:1,description:"Use Nominal Pertanggungan as canonical exposure in Rp Juta."};
+  return {sourceUnit:targetUnit,targetUnit,factor:1,description:"Direct canonical unit."};
 };
 function normalizeAppliedAmount(domain,productId,raw,row){
   const value=Number(raw)||0;
   const t=productCanonicalTransform(domain,productId,row);
-  return {amount:value*t.factor,sourceUnit:t.sourceUnit,targetUnit:t.targetUnit,factor:t.factor,transform:t.description};
+  const amount=productId==="NOSTRO"?Number(row?.data?.Balance||0)*t.factor:value*t.factor;
+  return {amount,sourceUnit:t.sourceUnit,targetUnit:t.targetUnit,factor:t.factor,transform:t.description};
 }
 function normalizeLpgSegment(value){
   const raw=String(value??"").trim();
@@ -1743,6 +1744,7 @@ function canonicalProductQualityIssues(){
         if(nominal&&eq&&Math.abs(nominal/1000000-eq)>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"BONDS_EQ_IDR_MISMATCH",detail:"Amount does not reconcile to Amount Eq. IDR Juta."});
       }
       if(productId==="NOSTRO"&&(!d.SwfitCode||!d["Bank Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Nostro requires Swift identifier and Bank Country."});
+      if(productId==="NOSTRO"&&(!d.CCY||!(Number(d["FX Rate to IDR"])>0)||!d["FX Rate Date"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_FX_METADATA",detail:"Nostro canonical IDR utilization requires CCY, positive FX Rate to IDR, and FX Rate Date."});
       if(productId==="Nostro"&&d.Balance!==undefined)void d.Balance;
       if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
 
@@ -2104,52 +2106,25 @@ function ProductCatalog(){
   const cancel=()=>{setDraft(Object.fromEntries(productMasterCatalog.map(item=>[item.id,loadProductCatalogMeta(item)])));setEditing(false)};
   return <section className="card">
     <div className="head">
-      <div><h2>Product Universe</h2><p>Registry jenis produk dan source schema yang digunakan LIMAS. Tidak menyimpan Master Limit maupun current utilization; LPG classification berasal dari debtor attributes pada Cash Loan / Non Cash Loan.</p></div>
+      <div><h2>Product Universe</h2><p>Registry produk, definisi utilisasi, canonical unit, dan jumlah source records. Audit/cleansing tetap berjalan di belakang layar.</p></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Product Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <div className="body">
       <div className="table-wrap product-master-wrap">
         <table className="table product-master-table">
-          <thead><tr><th>Product</th><th>Source Sheet</th><th>Primary Key</th><th>Integrated to Domain</th><th>Utilization Field</th><th>Database Records</th><th>Source Data</th><th>Keterangan</th></tr></thead>
+          <thead><tr><th>Product</th><th>Status</th><th>Integrated Domain</th><th>Utilization Field</th><th>Canonical Unit</th><th>Primary Key</th><th>Database Records</th><th>Definition</th></tr></thead>
           <tbody>{productMasterCatalog.map(item=>{
             const m=draft[item.id]||{};
             return <tr key={item.id}>
-              <td><b>{item.label}</b></td><td>{item.sheet}</td><td>{item.key}</td><td>{productIntegratedDomains(item.id).join(" / ")|| (item.id==="Investment Line"?"Future / Scoped":"—")}</td><td>{item.exposure}</td><td><span className="chip blue">{(productDatabase[item.id]||[]).length}</span></td>
-              <td>{editing?<input className="input compact field-input" value={m.source||""} onChange={e=>update(item.id,"source",e.target.value)}/>:<span className="source-text">{m.source||"—"}</span>}</td>
-              <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||"—"}</span>}</td>
+              <td><b>{item.label}</b></td><td><Status v={item.status==="Future / Scoped"?"Needs Mapping":"Normal"}/></td>
+              <td>{productIntegratedDomains(item.id).join(" / ")||"Future / Scoped"}</td><td>{item.exposure}</td><td><b>{item.canonicalUnit||"Rp Juta"}</b></td><td>{item.key}</td>
+              <td><span className="chip blue">{(productDatabase[item.id]||[]).length}</span></td>
+              <td>{editing?<textarea className="textarea compact-area" value={m.note||""} onChange={e=>update(item.id,"note",e.target.value)}/>:<span className="note-text">{m.note||item.note||"—"}</span>}</td>
             </tr>
           })}</tbody>
         </table>
       </div>
-      <ProductUniverseAudit/>
-      <section className="card" style={{marginTop:16}}>
-        <div className="head"><div><h2>Data Cleansing Control</h2><p>Validation Master Limit + Product Database sebelum read model monitoring dibentuk.</p></div><span className="chip blue">Pre-Monitoring Control</span></div>
-        <div className="body"><div className="metric-grid">
-          {canonicalPipelineControls().map((x,i)=><DomainKpi key={"cleanse-"+i} label={x.layer} value={x.count} sub={x.status}/>)}
-        </div></div>
-      </section>
-      <section className="card" style={{marginTop:16}}>
-        <div className="head"><div><h2>Crosscheck Source Field → Business Requirement</h2><p>Audit seluruh product menu. Field asli dipertahankan; kebutuhan bisnis dipetakan melalui metadata dan runtime/reference layer.</p></div><span className="chip blue">Source-native</span></div>
-        <div className="body">
-          <div className="table-wrap">
-            <table className="table product-master-table">
-              <thead><tr><th>Product</th><th>Country Exposure Source</th><th>Booking Office Source</th><th>Exposure Source</th><th>Limit Source</th><th>Crosscheck</th></tr></thead>
-              <tbody>{productMasterCatalog.map(item=>{
-                const m=productBusinessMapping[item.id]||{};
-                const bookingRequired=countryIntegratedProductIds.includes(item.id);
-                const bookingAvailable=!!m.bookingOfficeField;
-                const gap=bookingRequired&&!bookingAvailable;
-                return <tr key={"audit-"+item.id}>
-                  <td><b>{item.label}</b></td><td>{productBusinessMappingLabel(item.id,"country")}</td><td>{productBusinessMappingLabel(item.id,"booking")}</td><td>{productBusinessMappingLabel(item.id,"exposure")}</td><td>{productBusinessMappingLabel(item.id,"limit")}</td>
-                  <td><Status v={gap?"Warning":(productBusinessEnrichment[item.id]?"Normal":"Normal")}/><div className="muted-small">{gap?"Source gap — reference required":productBusinessEnrichment[item.id]?"Business enrichment created":"Existing source field reused"}</div></td>
-                </tr>;
-              })}</tbody>
-            </table>
-          </div>
-          <div className="field-help">Business Enrichment <b>Booking Office</b> + <b>Booking Office Type</b> hanya digunakan untuk Non Cash Loan karena source NCL belum menyediakan atribut kantor pembukuan. Credit Line tidak menggunakan enrichment tersebut; Domestic/Overseas langsung berasal dari DN/LN pada Commercial Line dan Treasury Line.</div>
-        </div>
-      </section>
-      <div className="field-help">Product Universe menjadi registry source/integration. Product Database menyimpan source records per produk. Commercial Line dan Treasury Line adalah component di bawah Credit Line, bukan dua universe product terpisah. LPG tidak menjadi direct Applied Limit: klasifikasi LPG berasal dari debtor attributes Cash Loan/Non Cash Loan lalu diagregasi menjadi monitoring LPG. Nominal Pertanggungan untuk CIL berasal dari CIL_MONITORING; Investment Line masih Future / Scoped.</div>
+      <div className="field-help"><b>Canonical contract:</b> seluruh limit/utilization pada read model LIMAS dinyatakan dalam IDR dengan canonical unit <b>Rp Juta</b>. Source field tetap dipertahankan apa adanya dan hanya dinormalisasi pada integration/read-model layer. Credit Line tetap satu product; Commercial Line dan Treasury Line adalah component. LPG berasal dari agregasi Cash Loan + Non Cash Loan. Investment Line masih Future / Scoped.</div>
     </div>
   </section>;
 }
@@ -2184,10 +2159,13 @@ function creditLineAuditRows(rows){
 function productExposureAmount(productId,r){
   const n=(v)=>Number(String(v??"").replace(/,/g,""))||0;
   if(productId==="CASHLOAN") return n(r.data?.total_bade);
-  if(productId==="NON CASH LOAN") return n(r.data?.EQVIDR)/1000000;
+  if(productId==="NON CASH LOAN"){
+    const dwhIdr=String(r?.sourceSystem||"").startsWith("DWH")&&String(r?.data?.CCY||"").toUpperCase()==="IDR";
+    return dwhIdr?n(r.data?.BALANCE):n(r.data?.EQVIDR)/1000000;
+  }
   if(productId==="CREDIT LINE") return n(r.data?.["Credit Line Total Utilisasi"]);
   if(productId==="BONDS") return n(r.data?.["Amount Eq. IDR Juta"]);
-  if(productId==="NOSTRO") return n(r.data?.Balance);
+  if(productId==="NOSTRO") return normalizeAppliedAmount("Country","NOSTRO",n(r.data?.Balance),r).amount;
   return 0;
 }
 function productBookingSplit(view,rows){
@@ -2260,7 +2238,7 @@ function ProductBookingClassification({view,rows}){
   </section>;
 }
 
-const canonicalProductUtilizationFields=["Country Exposure","Booking Office","Booking Office Type","Booking Office Status"];
+const canonicalProductUtilizationFields=productUtilizationMetadataFields;
 
 function productDatabaseDisplayValue(view,r,f){
   if(view!=="CREDIT LINE") return canonicalProductUtilizationFields.includes(f)?(f==="Booking Office"?r.bookingOffice||"—":f==="Booking Office Type"?<Status v={r.bookingOfficeType||"Needs Mapping"}/>:f==="Booking Office Status"?<Status v={r.bookingOfficeStatus||"Needs Mapping"}/>:r.countryExposure||"—"):(r.data[f]===0?0:(r.data[f]||"—"));
@@ -2286,7 +2264,7 @@ function ProductDatabaseTable({view}){
           {fields.map(f=><td key={f}>{productDatabaseDisplayValue(view,r,f)}</td>)}
           <td>{r.sourceSystem}</td>
 
-          <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=><div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}{a.scope?" • "+a.scope:""}</div>):<span className="muted-small">No direct limit mapping</span>}</td><td>{["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified?<span className="muted-small">LPG derived • {lpgProductAttribute(r,"ecosystem_lpg")} / {lpgProductAttribute(r,"segmen_lpg")} / {lpgProductAttribute(r,"region_lpg")||"Region belum diisi"}</span>:<span className="muted-small">—</span>}</td>
+          <td>{(r.applied||[]).length?(r.applied||[]).map((a,i)=>{const norm=normalizeAppliedAmount(a.limitType,r.productId,a.amount,r);return <div className="db-apply-row" key={i}><b>{a.limitType}</b> → {a.key} • source {Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})} {norm.sourceUnit} → canonical {Number(norm.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})} {norm.targetUnit}{a.scope?" • "+a.scope:""}</div>}):<span className="muted-small">No direct limit mapping</span>}</td><td>{["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified?<span className="muted-small">LPG derived • {lpgProductAttribute(r,"ecosystem_lpg")} / {lpgProductAttribute(r,"segmen_lpg")} / {lpgProductAttribute(r,"region_lpg")||"Region belum diisi"}</span>:<span className="muted-small">—</span>}</td>
         </tr>)}</tbody>
       </table></div>
       <div className="field-help">Untuk CL/NCL, ecosystem_lpg, segmen_lpg dan region_lpg adalah atribut source pada level debitur. Atribut ini bukan produk LPG dan bukan Applied Limit. LPG Bankwide/Region dibentuk oleh aggregation engine dari total_bade (Cash Loan) dan exposure Non Cash Loan sesuai source/unit (BALANCE untuk demo DWH IDR, atau EQVIDR yang dinormalisasi). Click pada product tetap menampilkan source record asli.</div>
@@ -2294,50 +2272,34 @@ function ProductDatabaseTable({view}){
   </section>;
 }
 function ProductUsage({view}){
-  const domainsUsing=productIntegratedDomains(view);
+  const item=getProductMeta(view)||{};
+  const mapping=productBusinessMapping[view]||{};
   const rows=productDatabase[view]||[];
-  const sourceDomainRows=domainsUsing.map(d=>[
-    d,
-    integrationTargets[d]?.[view]||"Target mapping belum dilengkapi",
-    integrationRuntimeSource[d]?.[view]||"Runtime source belum dilengkapi",
-    getProductMeta(view)?.exposure||"—",
-    d==="LPG"?rows.filter(r=>["CASHLOAN","NON CASH LOAN"].includes(r.productId)&&lpgProductClassification(r).classified).length:rows.filter(r=>(r.applied||[]).some(a=>a.limitType===d)).length
-  ]);
-  const bookingMapped=rows.filter(r=>r.bookingOfficeType!=="Needs Mapping").length;
-  const bookingNeedsMapping=rows.filter(r=>r.bookingOfficeType==="Needs Mapping").length;
-  return <>
-    <ProductBookingClassification view={view} rows={rows}/>
-    <div className="product-mapping-grid">
-    <div>
-      <div className="section-title">Integration / Runtime Lineage</div>
-      {sourceDomainRows.map(([d,target,source,exposure,count])=><div className="mini" key={d}>
-        <b>{d}</b>
-        <div className="muted-small">Target Key: {target}</div>
-        <div className="muted-small">Runtime Source: {source}</div>
-        <div className="muted-small">Utilization Field: {exposure}</div>
-        <div className="muted-small">{d==="LPG"?"Debtor Classified Records":"Mapped Records"}: {count}</div>
-      </div>)}
-      {!sourceDomainRows.length&&<div className="mini"><b>Future / Scoped</b><div className="muted-small">Belum menjadi runtime integration aktif.</div></div>}
+  const domainsUsing=productIntegratedDomains(view);
+  const status=item.status==="Future / Scoped"?"Future / Scoped":"Active";
+  return <section className="card" style={{marginTop:16}}>
+    <div className="head"><div><h2>Product Definition</h2><p>Definisi bisnis minimum yang dipakai untuk membentuk utilization dari Product Database.</p></div><Status v={status==="Active"?"Normal":"Needs Mapping"}/></div>
+    <div className="body">
+      <div className="metric-grid">
+        <DomainKpi label="Canonical Unit" value={item.canonicalUnit||"Rp Juta"} sub="Canonical read model"/>
+        <DomainKpi label="Database Records" value={rows.length} sub="Source records"/>
+        <DomainKpi label="Utilization Field" value={item.exposure||"—"} sub="Source exposure basis"/>
+        <DomainKpi label="Integrated Domain" value={domainsUsing.join(" / ")||"Future / Scoped"} sub="Active integration"/>
+      </div>
+      <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table product-master-table"><thead><tr><th>Business Attribute</th><th>Source / Rule</th><th>Canonical Treatment</th></tr></thead>
+          <tbody>
+            <tr><td><b>Primary Key</b></td><td>{item.key||"—"}</td><td>Business key product-specific; Record ID tetap technical key.</td></tr>
+            <tr><td><b>Country Exposure</b></td><td>{mapping.countryExposureField||"—"}</td><td>{mapping.countryExposureLabel||"Not applicable"}</td></tr>
+            <tr><td><b>Booking Office</b></td><td>{mapping.bookingOfficeField||"—"}</td><td>{mapping.bookingOfficeLabel||"Not applicable"}</td></tr>
+            <tr><td><b>Utilization</b></td><td>{mapping.exposureField||item.exposure||"—"}</td><td>Normalized to {item.canonicalUnit||"Rp Juta"} before monitoring.</td></tr>
+            <tr><td><b>Data Date</b></td><td>Product record metadata</td><td>{rows[0]?.asOfDate||E2E_DUMMY_META.asOfDate||"—"}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="field-help">{item.note||"—"}</div>
     </div>
-    <div>
-      <div className="section-title">Data Quality</div>
-      <div className="mini">Product Records <span className="chip blue">{rows.length}</span></div>
-      {view!=="CREDIT LINE"&&<div className="mini" style={{marginTop:8}}><b>Booking Office</b><div className="muted-small">{productBusinessMappingLabel(view,"booking")}</div><div className="muted-small">Classification: {bookingMapped} mapped / {bookingNeedsMapping} needs mapping</div></div>}
-      {view==="CREDIT LINE"&&<div className="mini" style={{marginTop:8}}><b>Domestic / Overseas Source</b><div className="muted-small">Commercial Line: DN = Domestic • LN = Overseas</div><div className="muted-small">Treasury Line: DN = Domestic • LN = Overseas</div></div>}
-      {productBusinessEnrichment[view]&&<div className="mini" style={{marginTop:8}}><b>Business Enrichment</b><div className="muted-small">{productBusinessEnrichment[view].join(" + ")}</div><div className="muted-small">{productBusinessEnrichmentNote[view]}</div></div>}
-      <div className="mini" style={{marginTop:8}}>Unique Key <Status v="Normal"/></div>
-      <div className="mini" style={{marginTop:8}}>Integration Coverage <Status v={(() => {
-        if(view==="CASHLOAN"||view==="NON CASH LOAN"){
-          const ok=rows.every(r=>(r.applied||[]).length>0||lpgProductClassification(r).classified);
-          return ok?"Normal":"Warning";
-        }
-        if(view==="Investment Line")return "Normal";
-        return rows.some(r=>(r.applied||[]).length>0)?"Normal":"Warning";
-      })()}/></div>
-      <div className="mini" style={{marginTop:8}}>Source Schema <span>{getProductMeta(view)?.sheet||"—"}</span></div>
-    </div>
-  </div>
-  </>;
+  </section>;
 }
 
 function CanonicalReadModelPreview(){
