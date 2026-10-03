@@ -2617,7 +2617,7 @@ function Products({nav}){
             ? <CreditLineFieldTable/>
             : <ProductFieldTable key={view} tab={view} fields={productTabFields[view]||[]} sample={productSample[view]||{}}/>
           }
-          <ProductUsage view={view}/><ProductIntegrationTable view={view}/>{view!=="catalog"&&<ProductDatabaseTable view={view}/>
+          <ProductUsage view={view}/><ProductIntegrationTable view={view}/>{view!=="catalog"&&<ProductDatabaseTable view={view}/>}
         </div>
       </section>}
     </div>
