@@ -128,7 +128,7 @@ function loadMasterMeta(type){
 function saveMasterMeta(type,meta){try{window.localStorage.setItem(`limas_master_meta_v1_${type}`,JSON.stringify(meta));}catch(e){}}
 function recordMetaKey(type,recordKey){return `limas_master_record_v1_${type}||${recordKey}`;}
 function loadRecordMeta(type,recordKey){
-  const fallback={version:1,status:"Active",effectiveDate:provenanceDefaults[type]?.period||"",expiryDate:"",approvedBy:"Risk Management",lastUpdated:"Belum pernah disimpan"};
+  const fallback={version:1,status:"Active",approvalStatus:"Approved",effectiveDate:provenanceDefaults[type]?.period||"",expiryDate:"",approvedBy:"Risk Management",approvedAt:"",lastUpdated:"Belum pernah disimpan"};
   if(!recordKey)return fallback;
   try{const saved=window.localStorage.getItem(recordMetaKey(type,recordKey));if(saved)return {...fallback,...JSON.parse(saved)};}catch(e){}
   return fallback;
@@ -931,35 +931,48 @@ function parseNumberOrKeep(v){
 function applyMasterCsv(type,records){
   const target=limasDemoData[type]||[];
   const byKey=new Map(target.map(r=>[String(r.key),r]));
+  let updated=0;
   records.forEach(input=>{
     const key=String(input.key||"").trim();
     if(!key)return;
     const row=byKey.get(key);
     if(!row)return;
+    const before=masterValueSnapshot(type,row);
     if(type==="Country"){
-      if(input.name!==undefined)row.name=input.name;
+      if(input.name!==undefined&&input.name!=="")row.name=input.name;
       if(input.capacityLimit!=="")row.capacityLimit=parseNumberOrKeep(input.capacityLimit);
-      row.capacityDistribution=row.capacityDistribution||{};
-      if(input.domesticCapacity!=="")row.capacityDistribution.domesticLimit=parseNumberOrKeep(input.domesticCapacity);
-      if(input.overseasCapacity!=="")row.capacityDistribution.overseasLimit=parseNumberOrKeep(input.overseasCapacity);
     }else if(type==="CCL"){
       ["name","category","country"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=input[f];});
       ["ccl","contractual"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=parseNumberOrKeep(input[f]);});
     }else if(type==="MLK"){
       ["name","group","entity"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=input[f];});
       if(input.masterLimitSetting!=="")row.masterLimitSetting=parseNumberOrKeep(input.masterLimitSetting);
+      row.groupUsahaHolding=row.group;
     }else if(type==="CIL"){
       ["name","type"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=input[f];});
-      ["ic","multiplier","cit","cil"].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row[f]=parseNumberOrKeep(input[f]);});
+      if(input.ic!=="")row.ic=parseNumberOrKeep(input.ic);
+      if(input.multiplier!=="")row.multiplier=parseNumberOrKeep(input.multiplier);
     }else if(type==="LPG"){
       if(input.sector!==undefined&&input.sector!=="")row.sector=input.sector;
       if(input.segment!==undefined&&input.segment!=="")row.segment=normalizeLpgSegment(input.segment);
       row.limits=row.limits||{};
       ["Bankwide",...LPG_REGIONAL_SCOPES].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row.limits[f]=parseNumberOrKeep(input[f]);});
+      row.key=String(row.sector||"").trim()+"|"+String(row.segment||"").trim();
+    }
+    const after=masterValueSnapshot(type,row);
+    if(JSON.stringify(before)!==JSON.stringify(after)){
+      const current=loadRecordMeta(type,row.key);
+      const stamp=nowLabel();
+      const next={...current,version:Number(current.version||1)+1,approvalStatus:"Approved",status:"Active",approvedBy:"Risk Management",approvedAt:stamp,lastUpdated:stamp};
+      saveRecordMeta(type,row.key,next);
+      saveApprovedMasterSnapshot(type,row);
+      appendMasterAudit({type,key:row.key,action:"BULK_IMPORT_APPROVED",version:next.version,approvalStatus:"Approved"});
+      updated++;
     }
   });
   cleanseMasterData();
   buildProductIntegrationMappings();
+  return updated;
 }
 function ProductIntegrationTable({view}){
   const mappings=productIntegrationMappings[view]||[];
@@ -993,8 +1006,44 @@ function ProductIntegrationTable({view}){
 }
 
 
+function MasterCreateForm({type,onCreated,onCancel}){
+  const [draft,setDraft]=useState({key:"",name:"",category:"Asing",country:"",ccl:"",contractual:"",group:"",entity:"BMRI",masterLimitSetting:"",ic:"",multiplier:"0.03",eilBmri:"",sector:"",segment:"",capacityLimit:"",Bankwide:""});
+  const update=(k,v)=>setDraft(x=>({...x,[k]:v}));
+  const create=()=>{
+    try{
+      const values={
+        ...(type==="Country"?{key:draft.key,name:draft.name,capacityLimit:draft.capacityLimit===""?0:Number(draft.capacityLimit)}:{}),
+        ...(type==="CCL"?{key:draft.key,name:draft.name,category:draft.category,country:draft.country,ccl:draft.ccl===""?0:Number(draft.ccl),contractual:draft.contractual===""?0:Number(draft.contractual)}:{}),
+        ...(type==="MLK"?{key:draft.key,name:draft.name,group:draft.group||"",groupUsahaHolding:draft.group||"",entity:draft.entity,masterLimitSetting:draft.masterLimitSetting===""?0:Number(draft.masterLimitSetting)}:{}),
+        ...(type==="CIL"?{key:draft.key,name:draft.name,type:draft.category||"Asuransi",ic:draft.ic===""?0:Number(draft.ic),multiplier:draft.multiplier===""?0:Number(draft.multiplier),eils:{BMRI:draft.eilBmri===""?0:Number(draft.eilBmri||0),"Mandiri Taspen":0,MTF:0,MUF:0}}:{}),
+        ...(type==="LPG"?{sector:draft.sector,segment:draft.segment,limits:{Bankwide:draft.Bankwide===""?0:Number(draft.Bankwide)}}:{})
+      };
+      createMasterRecord(type,values);
+      onCreated();
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const fields=type==="Country"
+    ? [["key","Unique Key"],["name","Nama Negara"],["capacityLimit","Capacity Limit (Rp Juta)"]]
+    : type==="CCL"
+    ? [["key","Swift / Unique Key"],["name","Nama Bank"],["category","Kategori"],["country","Negara"],["ccl","CCL (Rp Miliar)"],["contractual","Limit Contractual (Rp Miliar)"]]
+    : type==="MLK"
+    ? [["key","CIF"],["name","Nama Debitur"],["group","Group Usaha"],["entity","Entitas"],["masterLimitSetting","Master Limit Setting (Rp Juta)"]]
+    : type==="CIL"
+    ? [["key","Insurance Company ID"],["name","Perusahaan Asuransi"],["category","Jenis Perusahaan"],["ic","Insurance Capacity / IC (Rp Juta)"],["multiplier","Multiplier (decimal)"],["eilBmri","EIL BMRI (Rp Juta)"]]
+    : [["sector","Ecosystem LPG (Sektor)"],["segment","Segmen LPG"],["Bankwide","Bankwide Limit (Rp Juta)"]];
+  return <section className="card" style={{marginTop:16,border:"1px solid var(--line)"}}>
+    <div className="head"><div><h2>Tambah Master {type}</h2><p>Record baru disimpan sebagai master <b>Approved</b> versi 1. Unique key tidak boleh duplikat.</p></div><button className="btn ghost" onClick={onCancel}>Batal</button></div>
+    <div className="body">
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
+        {fields.map(([key,label])=><div key={key}><label className="muted-small">{label}</label><input className="input compact" value={draft[key]||""} onChange={e=>update(key,e.target.value)} /></div>)}
+      </div>
+      <div className="toolbar" style={{marginTop:12}}><button className="btn primary" onClick={create}>Simpan & Approve</button></div>
+    </div>
+  </section>;
+}
+
 function Setup({nav,setSel}){
-  const [type,setType]=useState("Country"),[query,setQuery]=useState(""),[status,setStatus]=useState("Active");
+  const [type,setType]=useState("Country"),[query,setQuery]=useState(""),[status,setStatus]=useState("Active"),[creating,setCreating]=useState(false);
   const [,forceRefresh]=useState(0);
   const info=domains[type],linkedProducts=domainIntegrationProducts[type]||[],rows=limasDemoData[type]||[];
   const q=query.trim().toLowerCase();
@@ -1012,9 +1061,9 @@ function Setup({nav,setSel}){
     reader.onload=()=>{
       try{
         const records=parseCsv(String(reader.result||""));
-        applyMasterCsv(type,records);
+        const updated=applyMasterCsv(type,records);
         forceRefresh(x=>x+1);
-        alert(String(records.length)+" row upload diproses untuk "+type+".");
+        alert(String(updated)+" row master approved di-update dari upload ("+String(records.length)+" row file).");
       }catch(err){alert("Upload gagal: "+(err?.message||err));}
     };
     reader.readAsText(file);
@@ -1022,37 +1071,52 @@ function Setup({nav,setSel}){
   };
   return <Layout screen="setup" onNav={nav}>
     <Header title="Master Limit Setup" subtitle="Repository master limit per domain • utilization product diintegrasikan terpisah"/>
-    <div className="page"><section className="card">
-      <div className="head">
-        <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • hanya approved master limit dan parameter yang disimpan. {type==="LPG"?"Outstanding Bankwide/Region dihitung dari product debtor records.":""}</p></div>
-        <div className="toolbar">
-          <button className="btn secondary" onClick={doDownload}>Download Template</button>
-          <label className="btn primary" style={{display:"inline-flex",alignItems:"center",cursor:"pointer"}}>Upload Master Limit<input type="file" accept=".csv,text/csv" onChange={doUpload} style={{display:"none"}}/></label>
+    <div className="page">
+      <section className="card">
+        <div className="head">
+          <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • approved master limit, lifecycle, version dan audit disimpan terpisah dari Product Database.</p></div>
+          <div className="toolbar">
+            <button className="btn secondary" onClick={doDownload}>Download Template</button>
+            <label className="btn primary" style={{display:"inline-flex",alignItems:"center",cursor:"pointer"}}>Bulk Update (Approved)<input type="file" accept=".csv,text/csv" onChange={doUpload} style={{display:"none"}}/></label>
+            <button className="btn ghost" onClick={()=>setCreating(x=>!x)}>{creating?"Tutup Form":"Tambah Master"}</button>
+          </div>
         </div>
-      </div>
-      <div className="body">
-        <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>{setType(d);setQuery("");setStatus("Active");}}>{d}</button>)}</div>
-        <div className="toolbar" style={{marginBottom:14}}>
-          <input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder={"Cari "+info.key}/>
-          <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>Active</option><option>Inactive</option><option>All</option></select>
-          <button className="btn ghost" onClick={()=>{setQuery("");setStatus("Active");}}>Reset</button>
-          <span className="muted-small">{filtered.length+" / "+rows.length+" records"}</span>
+        <div className="body">
+          <div className="tabs">{Object.keys(domains).map(d=><button className={"tab "+(d===type?"active":"")} key={d} onClick={()=>{setType(d);setQuery("");setStatus("Active");setCreating(false);}}>{d}</button>)}</div>
+          <div className="toolbar" style={{marginBottom:14}}>
+            <input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder={"Cari "+info.key}/>
+            <select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>Active</option><option>Inactive</option><option>All</option></select>
+            <button className="btn ghost" onClick={()=>{setQuery("");setStatus("Active");}}>Reset</button>
+            <span className="muted-small">{filtered.length+" / "+rows.length+" records"}</span>
+          </div>
         </div>
-        <div className="table-wrap"><table className="table">
-          <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Status</th><th>Detail</th></tr></thead>
-          <tbody>{filtered.map((r,i)=><tr key={String(r.key)+i}>
-            <td className="key">{r.key}</td><td>{type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector)}</td>
-            <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
-            <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
-            <td>v{loadRecordMeta(type,r.key).version||1}</td><td><Status v={recordStatus(type,r)==="Data Issue"?"Data Issue":(loadRecordMeta(type,r.key).status||"Active")}/></td>
-            <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
-          </tr>)}</tbody>
-        </table></div>
-        <div className="field-help">Master Limit menyimpan limit/parameter. Outstanding, utilization dan EWS berasal dari Product Utilization Integration. Upload CSV pada prototype ini hanya memperbarui master key yang sudah ada; record baru tidak dibuat.</div>
-      </div>
-    </section></div>
+      </section>
+
+      {creating&&<MasterCreateForm type={type} onCancel={()=>setCreating(false)} onCreated={()=>{setCreating(false);forceRefresh(x=>x+1);}}/>}
+
+      <section className="card">
+        <div className="body">
+          <div className="table-wrap"><table className="table">
+            <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Lifecycle</th><th>Approval</th><th>Detail</th></tr></thead>
+            <tbody>{filtered.map((r,i)=>{
+              const gov=loadRecordMeta(type,r.key);
+              return <tr key={String(r.key)+i}>
+                <td className="key">{r.key}</td><td>{type==="LPG"?(r.sector+" / "+r.segment):(r.name||r.sector)}</td>
+                <td>{recordLimit(type,r).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+                <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
+                <td>v{gov.version||1}</td><td><Status v={gov.status||"Active"}/></td>
+                <td><span className="chip blue">{gov.approvalStatus||"Approved"}</span>{gov.pendingValues&&<div className="muted-small">Draft perubahan tersimpan</div>}</td>
+                <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
+              </tr>;
+            })}</tbody>
+          </table></div>
+          <div className="field-help">CRUD: Read daftar master, Create record baru, Update melalui Draft → Approval, Delete dibatasi jika master masih direferensikan integration mapping. Bulk CSV diperlakukan sebagai Approved import dan dicatat ke audit.</div>
+        </div>
+      </section>
+    </div>
   </Layout>;
 }
+
 
 function sampleKey(t){const m={Country:'AE',CCL:'ANZBAU3M',MLK:'4000264485',CIL:'TUGU + BMRI',LPG:'BATUBARA + Corporate'};return m[t]}
 function sampleName(t){const m={Country:'United Arab Emirates',CCL:'Australia and New Zealand Banking Group Limited',MLK:'DJARUM',CIL:'PT Asuransi Tugu Pratama Indonesia Tbk',LPG:'BATUBARA'};return m[t]}
@@ -1243,6 +1307,216 @@ function loadFieldMeta(type){
 }
 function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
+const MASTER_VALUE_STORE_KEY="limas_master_values_v6";
+const MASTER_AUDIT_STORE_KEY="limas_master_audit_v6";
+
+const MASTER_EDITABLE_FIELDS={
+  Country:[
+    {section:"Identitas",field:"Negara",path:["name"],kind:"text"},
+    {section:"Limit & Gap",field:"Capacity Limit",path:["capacityLimit"],kind:"number"}
+  ],
+  CCL:[
+    {section:"Bank Profile",field:"Nama bank",path:["name"],kind:"text"},
+    {section:"Bank Profile",field:"Kategori Bank",path:["category"],kind:"text"},
+    {section:"Bank Profile",field:"Negara",path:["country"],kind:"text"},
+    {section:"Limit",field:"CCL",path:["ccl"],kind:"number"},
+    {section:"Limit",field:"Limit Contractual",path:["contractual"],kind:"number"}
+  ],
+  MLK:[
+    {section:"Profil Debitur",field:"Nama Debitur",path:["name"],kind:"text"},
+    {section:"Profil Debitur",field:"Group Usaha",path:["groupUsahaHolding"],kind:"text"},
+    {section:"Profil Debitur",field:"Entitas",path:["entity"],kind:"text"},
+    {section:"Master Limit",field:"Master Limit Setting",path:["masterLimitSetting"],kind:"number"}
+  ],
+  CIL:[
+    {section:"Insurance Profile",field:"Perusahaan Asuransi",path:["name"],kind:"text"},
+    {section:"Insurance Profile",field:"Jenis Perusahaan (Asuransi/Penjaminan)",path:["type"],kind:"text"},
+    {section:"Capacity & Threshold",field:"Insurance Capacity (IC) (Rp Juta)",path:["ic"],kind:"number"},
+    {section:"Capacity & Threshold",field:"Multiplier Terpakai (%)",path:["multiplier"],kind:"number"},
+    {section:"Entity Limit (EIL)",field:"EIL BMRI",path:["eils","BMRI"],kind:"number"},
+    {section:"Entity Limit (EIL)",field:"EIL Mandiri Taspen",path:["eils","Mandiri Taspen"],kind:"number"},
+    {section:"Entity Limit (EIL)",field:"EIL MTF",path:["eils","MTF"],kind:"number"},
+    {section:"Entity Limit (EIL)",field:"EIL MUF",path:["eils","MUF"],kind:"number"}
+  ],
+  LPG:[
+    {section:"Identitas",field:"Ecosystem LPG (Sektor)",path:["sector"],kind:"text"},
+    {section:"Identitas",field:"Segmen LPG",path:["segment"],kind:"text"},
+    {section:"Bankwide Limit",field:"Bankwide / Limit",path:["limits","Bankwide"],kind:"number"},
+    ...LPG_REGIONAL_SCOPES.map(scope=>({section:"Regional Limit",field:scope+" / Limit",path:["limits",scope],kind:"number"}))
+  ]
+};
+
+function getPathValue(obj,path){
+  return path.reduce((acc,k)=>acc===undefined||acc===null?undefined:acc[k],obj);
+}
+function setPathValue(obj,path,value){
+  if(path.length===1){obj[path[0]]=value;return;}
+  let cur=obj;
+  path.slice(0,-1).forEach(k=>{if(!cur[k]||typeof cur[k]!=="object")cur[k]={};cur=cur[k];});
+  cur[path[path.length-1]]=value;
+}
+function masterFieldBinding(type,section,field){
+  return (MASTER_EDITABLE_FIELDS[type]||[]).find(x=>x.section===section&&x.field===field)||null;
+}
+function masterEditableFields(type){return MASTER_EDITABLE_FIELDS[type]||[];}
+function masterValueSnapshot(type,row){
+  return Object.fromEntries(masterEditableFields(type).map(def=>[
+    def.field,
+    JSON.parse(JSON.stringify(getPathValue(row,def.path)))
+  ]));
+}
+function normalizeMasterEditableInput(def,value){
+  if(def.kind==="number"){
+    if(value===""||value===null||value===undefined)return value;
+    const n=Number(String(value).replace(/,/g,""));
+    if(!Number.isFinite(n))throw new Error("Nilai "+def.field+" harus numerik.");
+    return n;
+  }
+  return def.field==="Segmen LPG"?normalizeLpgSegment(value):String(value??"").trim();
+}
+function masterDraftFromRow(type,row){
+  return Object.fromEntries(masterEditableFields(type).map(def=>[
+    def.field,
+    getPathValue(row,def.path)===null||getPathValue(row,def.path)===undefined?"":getPathValue(row,def.path)
+  ]));
+}
+function applyMasterDraftValues(type,row,draft){
+  masterEditableFields(type).forEach(def=>{
+    const raw=draft?.[def.field];
+    if(raw===undefined)return;
+    setPathValue(row,def.path,normalizeMasterEditableInput(def,raw));
+  });
+  if(type==="MLK"){
+    row.group=row.groupUsahaHolding||row.group||"";
+    row.masterLimit=row.masterLimitSetting??row.masterLimit;
+  }
+  if(type==="LPG"){
+    row.segment=normalizeLpgSegment(row.segment);
+    row.key=String(row.sector||"").trim()+"|"+String(row.segment||"").trim();
+  }
+}
+function loadMasterValueStore(){
+  try{const raw=window.localStorage.getItem(MASTER_VALUE_STORE_KEY);return raw?JSON.parse(raw):{};}catch(e){return {};}
+}
+function saveMasterValueStore(store){try{window.localStorage.setItem(MASTER_VALUE_STORE_KEY,JSON.stringify(store));}catch(e){}}
+function saveApprovedMasterSnapshot(type,row){
+  const store=loadMasterValueStore();
+  store[type]=store[type]||{};
+  store[type][String(row.key)]=masterValueSnapshot(type,row);
+  saveMasterValueStore(store);
+}
+function removeMasterSnapshot(type,key){
+  const store=loadMasterValueStore();
+  if(store[type])delete store[type][String(key)];
+  saveMasterValueStore(store);
+}
+function applyPersistedMasterValues(){
+  const store=loadMasterValueStore();
+  Object.entries(store).forEach(([type,rows])=>{
+    const masters=limasDemoData[type]||[];
+    Object.entries(rows||{}).forEach(([key,values])=>{
+      const row=masters.find(r=>String(r.key)===String(key));
+      if(row)applyMasterDraftValues(type,row,values);
+    });
+  });
+}
+function loadMasterAudit(){
+  try{const raw=window.localStorage.getItem(MASTER_AUDIT_STORE_KEY);return raw?JSON.parse(raw):[];}catch(e){return [];}
+}
+function saveMasterAudit(rows){try{window.localStorage.setItem(MASTER_AUDIT_STORE_KEY,JSON.stringify(rows.slice(0,250)));}catch(e){}}
+function appendMasterAudit(event){
+  const row={id:String(Date.now())+"-"+Math.random().toString(36).slice(2,8),timestamp:nowLabel(),...event};
+  const rows=loadMasterAudit();
+  rows.unshift(row);
+  saveMasterAudit(rows);
+}
+function masterAuditFor(type,key){
+  return loadMasterAudit().filter(x=>x.type===type&&String(x.key)===String(key)).slice(0,12);
+}
+function masterReferenceCount(type,key){
+  return Object.values(productIntegrationMappings||{}).flat().filter(a=>a.limitType===type&&String(a.key)===String(key)).length;
+}
+function saveMasterDraft(type,key,draft){
+  const current=loadRecordMeta(type,key);
+  const next={
+    ...current,
+    version:Math.max(1,Number(current.version||1))+1,
+    approvalStatus:"Pending Approval",
+    pendingValues:draft,
+    lastUpdated:nowLabel()
+  };
+  saveRecordMeta(type,key,next);
+  appendMasterAudit({type,key,action:"UPDATE_SUBMITTED",version:next.version,approvalStatus:next.approvalStatus});
+  return next;
+}
+function approveMasterDraft(type,key){
+  const row=getDemoRecord(type,key);
+  const current=loadRecordMeta(type,key);
+  if(!row||!current.pendingValues)return null;
+  applyMasterDraftValues(type,row,current.pendingValues);
+  cleanseMasterData();
+  buildProductIntegrationMappings();
+  saveApprovedMasterSnapshot(type,row);
+  const now=nowLabel();
+  const next={...current,approvalStatus:"Approved",approvedBy:"Risk Management",approvedAt:now,lastUpdated:now};
+  delete next.pendingValues;
+  saveRecordMeta(type,key,next);
+  appendMasterAudit({type,key,action:"APPROVED",version:next.version,approvalStatus:"Approved"});
+  return next;
+}
+function rejectMasterDraft(type,key){
+  const current=loadRecordMeta(type,key);
+  if(!current.pendingValues)return current;
+  const next={...current,approvalStatus:"Approved",lastUpdated:nowLabel()};
+  delete next.pendingValues;
+  saveRecordMeta(type,key,next);
+  appendMasterAudit({type,key,action:"REJECTED",version:current.version,approvalStatus:"Approved"});
+  return next;
+}
+function createMasterRecord(type,values){
+  const input=values||{};
+  let key=String(input.key||"").trim();
+  if(type==="LPG"){
+    const sector=String(input.sector||"").trim(),segment=normalizeLpgSegment(input.segment||"");
+    if(!sector||!segment)throw new Error("Ecosystem dan Segmen LPG wajib diisi.");
+    key=sector+"|"+segment;
+  }else if(!key){throw new Error("Unique Key wajib diisi.");}
+  if((limasDemoData[type]||[]).some(r=>String(r.key).toLowerCase()===key.toLowerCase()))throw new Error("Unique Key sudah ada.");
+  const defaults={
+    Country:{key,name:"New Country",statusMaster:"Exist",capacityLimit:0,capacityDistribution:{domesticLimit:null,overseasLimit:null},productAllocations:{},dataQuality:"Normal"},
+    CCL:{key,name:"New Counterparty",category:"Asing",country:"",countryRating:"—",bobot:null,rating:"—",position:"—",ratingIndex:null,inhouse:0,tier1:0,capacity:0,adjusted:0,globalParent:"—",top200:"—",ccl:0,contractual:0,dataQuality:"Normal"},
+    MLK:{key,name:"New Debtor",group:"",groupUsahaHolding:"",subGroup:"",entity:"BMRI",unitKerja:null,bumnSwasta:"",tier:"",clLimit:0,nclLimit:0,treasuryLine:0,masterLimitSetting:0,dataQuality:"Normal"},
+    CIL:{key,name:"New Insurance Company",type:"Asuransi",ic:0,multiplier:0,cit:0,cil:0,eils:{BMRI:0,"Mandiri Taspen":0,MTF:0,MUF:0},score:null,action:"Monitoring as usual / no specific action",dataQuality:"Normal"},
+    LPG:{key,sector:String(input.sector||""),segment:normalizeLpgSegment(input.segment||""),limits:{Bankwide:0,...Object.fromEntries(LPG_REGIONAL_SCOPES.map(scope=>[scope,0])),"KP + OVS":0},dataQuality:"Normal"}
+  };
+  const row={...(defaults[type]||{key}),...input,key};
+  if(type==="CIL")row.eils={...(defaults.CIL.eils||{}),...(input.eils||{})};
+  if(type==="LPG")row.limits={...(defaults.LPG.limits||{}),...(input.limits||{})};
+  applyMasterDraftValues(type,row,masterDraftFromRow(type,{...row}));
+  (limasDemoData[type]||(limasDemoData[type]=[])).push(row);
+  if(type==="Country")hydrateCountryPrototypeAllocations();
+  cleanseMasterData();
+  buildProductIntegrationMappings();
+  const now=nowLabel();
+  saveApprovedMasterSnapshot(type,row);
+  saveRecordMeta(type,key,{version:1,status:"Active",approvalStatus:"Approved",effectiveDate:now,expiryDate:"",approvedBy:"Risk Management",approvedAt:now,lastUpdated:now});
+  appendMasterAudit({type,key,action:"CREATE_APPROVED",version:1,approvalStatus:"Approved"});
+  return row;
+}
+function deleteMasterRecord(type,key){
+  const refs=masterReferenceCount(type,key);
+  if(refs>0)throw new Error("Master "+key+" masih direferensikan oleh "+refs+" mapping. Hapus mapping/reference terlebih dahulu.");
+  const rows=limasDemoData[type]||[];
+  const index=rows.findIndex(r=>String(r.key)===String(key));
+  if(index<0)throw new Error("Master record tidak ditemukan.");
+  rows.splice(index,1);
+  removeMasterSnapshot(type,key);
+  try{window.localStorage.removeItem(recordMetaKey(type,key));}catch(e){}
+  appendMasterAudit({type,key,action:"DELETE",version:0,approvalStatus:"Deleted"});
+  cleanseMasterData();
+  buildProductIntegrationMappings();
+}
+
 function getDemoRecord(type,key){
   const rows=limasDemoData[type]||[];
   if(key!==undefined&&key!==null&&key!==""){
@@ -1373,19 +1647,33 @@ function Detail({nav,type="Country",recordKey=""}){
   const [recordMeta,setRecordMeta]=useState(()=>loadRecordMeta(safeType,recordKey));
   const [fieldMeta,setFieldMeta]=useState(()=>loadFieldMeta(safeType));
   const [editing,setEditing]=useState(false);
+  const [editingMaster,setEditingMaster]=useState(false);
+  const [masterDraft,setMasterDraft]=useState(()=>masterDraftFromRow(safeType,selectedRecord||{}));
   const [savedAt,setSavedAt]=useState("");
+  const [,refresh]=useState(0);
   const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
   const startEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
   const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
-  const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const nextRecord={...recordMeta,version:Number(recordMeta.version||1)+1,lastUpdated:nowLabel(),approvedBy:"Risk Management"};saveRecordMeta(safeType,recordKey,nextRecord);setRecordMeta(nextRecord);setEditing(false);setSavedAt(nextRecord.lastUpdated);};
+  const startMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setEditingMaster(true);};
+  const cancelMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setEditingMaster(false);};
+  const saveMasterDraftChanges=()=>{try{const next=saveMasterDraft(safeType,recordKey,masterDraft);setRecordMeta(next);setEditingMaster(false);setSavedAt(next.lastUpdated);refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
+  const approvePending=()=>{if(window.confirm("Approve perubahan master ini? Perubahan akan menjadi approved dan mempengaruhi monitoring.")){const next=approveMasterDraft(safeType,recordKey);setRecordMeta(next||loadRecordMeta(safeType,recordKey));setMasterDraft(masterDraftFromRow(safeType,selectedRecord));setSavedAt(next?.lastUpdated||nowLabel());refresh(x=>x+1);}};
+  const rejectPending=()=>{if(window.confirm("Reject draft perubahan master?")){const next=rejectMasterDraft(safeType,recordKey);setRecordMeta(next);setMasterDraft(masterDraftFromRow(safeType,selectedRecord));refresh(x=>x+1);}};
+  const deleteRecord=()=>{try{if(window.confirm("Hapus master record ini? Hanya bisa bila tidak ada integration mapping.")){deleteMasterRecord(safeType,recordKey);nav("setup");}}catch(e){alert(e?.message||String(e));}};
+  const saveChanges=()=>{saveFieldMeta(safeType,fieldMeta);const nextRecord={...recordMeta,lastUpdated:nowLabel()};saveRecordMeta(safeType,recordKey,nextRecord);setRecordMeta(nextRecord);setEditing(false);setSavedAt(nextRecord.lastUpdated);};
   const linkedProducts=domainIntegrationProducts[safeType]||[];
   return <Layout screen="detail" onNav={nav}>
     <Header title={`${safeType} • Master Limit Detail`} subtitle={safeType==="Country"?"Approved country capacity, distribution, product allocation dan parameter.":"Approved master limit dan parameter. Utilisasi product dikelola melalui integration layer."}/>
     <div className="page">
       <section className="card">
         <div className="head">
-          <div><h2>{safeType==="LPG"?(selectedRecord?.sector+" / "+selectedRecord?.segment):(selectedRecord?.name||selectedRecord?.sector||sampleName(safeType))}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span></p></div>
-          <div className="toolbar">{!editing?<button className="btn primary" onClick={startEdit}>Edit Provenance Metadata</button>:<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Perubahan</button></>}</div>
+          <div><h2>{safeType==="LPG"?(selectedRecord?.sector+" / "+selectedRecord?.segment):(selectedRecord?.name||selectedRecord?.sector||sampleName(safeType))}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span> <span className="chip blue" style={{marginLeft:6}}>{recordMeta.approvalStatus||"Approved"}</span></p></div>
+          <div className="toolbar">
+            {!editing&&!editingMaster&&<><button className="btn primary" onClick={startMasterEdit}>Edit Master Limit</button><button className="btn secondary" onClick={startEdit}>Edit Provenance Metadata</button><button className="btn ghost" onClick={deleteRecord}>Hapus Master</button></>}
+            {editingMaster&&<><button className="btn ghost" onClick={cancelMasterEdit}>Batal</button><button className="btn primary" onClick={saveMasterDraftChanges}>Simpan Draft</button></>}
+            {editing&&<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Metadata</button></>}
+            {!editing&&!editingMaster&&recordMeta.pendingValues&&<><button className="btn secondary" onClick={approvePending}>Approve Draft</button><button className="btn ghost" onClick={rejectPending}>Reject</button></>}
+          </div>
         </div>
         <div className="body">
           <div className="tabs">{Object.keys(masterSections).map(s=><button className={`tab ${tab===s?'active':''}`} key={s} onClick={()=>setTab(s)}>{s}</button>)}</div>
@@ -1393,8 +1681,17 @@ function Detail({nav,type="Country",recordKey=""}){
             <table className="table field-table"><thead><tr><th>Field</th><th>Sample Value</th><th>Source Data</th><th>Keterangan</th></tr></thead>
               <tbody>{(masterSections[tab]||[]).map(([f,v])=>{
                 const id=`${tab}||${f}`;
-                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)}; const displayValue=masterFieldValue(safeType,tab,f,v,selectedRecord,selectedIndex);
-                return <tr key={f}><td><b>{f}</b></td><td>{displayValue}</td><td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td><td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td></tr>;
+                const fm=fieldMeta[id]||{source:mdFieldSource[safeType]?.[id]||defaultFieldSource(safeType,tab),note:mdFieldDescription[safeType]?.[id]||defaultFieldNote(safeType,tab,f)};
+                const binding=masterFieldBinding(safeType,tab,f);
+                const displayValue=masterFieldValue(safeType,tab,f,v,selectedRecord,selectedIndex);
+                const draftValue=binding?(masterDraft?.[binding.field]??""):"";
+                const inputValue=typeof draftValue==="number"?draftValue:String(draftValue??"");
+                return <tr key={f}>
+                  <td><b>{f}</b>{binding&&<div className="muted-small">Editable master field</div>}</td>
+                  <td>{editingMaster&&binding?<input className="input compact field-input" type={binding.kind==="number"?"number":"text"} value={inputValue} onChange={e=>setMasterDraft(d=>({...d,[binding.field]:e.target.value}))}/>:displayValue}</td>
+                  <td>{editing?<input className="input compact field-input" value={fm.source||""} onChange={e=>updateField(tab,f,"source",e.target.value)}/>:<span className="source-text">{fm.source||"—"}</span>}</td>
+                  <td>{editing?<textarea className="textarea compact-area" value={fm.note||""} onChange={e=>updateField(tab,f,"note",e.target.value)}/>:<span className="note-text">{fm.note||"—"}</span>}</td>
+                </tr>;
               })}</tbody>
             </table>
           </div>
@@ -1407,6 +1704,18 @@ function Detail({nav,type="Country",recordKey=""}){
         <div className="head"><div><h2>Linked Product Integration</h2><p>Hanya ringkasan koneksi; detail source field dikelola pada Product Source & Mapping.</p></div><button className="btn secondary" onClick={()=>nav('products')}>Buka Product Mapping</button></div>
         <div className="body"><div className="integration-chip-grid">{linkedProducts.map(p=><div className="mini integration-chip" key={p}><b>{integrationLabel(p)}</b><div style={{fontSize:10,color:"var(--muted)",marginTop:4}}>Product utilization terintegrasi • {p==="CREDIT LINE"?"Commercial + Treasury scope":"linked exposure"}</div></div>)}</div></div>
       </section>
+      <section className="card" style={{marginTop:16}}>
+        <div className="head"><div><h2>Master Governance</h2><p>Lifecycle perubahan value master: draft → approval → effective. Active monitoring hanya memakai approved values.</p></div><div className="toolbar">{recordMeta.effectiveDate&&<span className="chip blue">Effective {recordMeta.effectiveDate}</span>}{recordMeta.approvedBy&&<span className="chip blue">Approved by {recordMeta.approvedBy}</span>}</div></div>
+        <div className="body">
+          {recordMeta.pendingValues&&<div className="mini" style={{marginBottom:10}}><b>Pending Approval</b><div className="muted-small">Draft version v{recordMeta.version} tersimpan dan belum diaplikasikan ke monitoring sampai di-approve.</div></div>}
+          <div className="table-wrap"><table className="table">
+            <thead><tr><th>Timestamp</th><th>Action</th><th>Version</th><th>Approval</th></tr></thead>
+            <tbody>{masterAuditFor(safeType,selectedRecord?.key||recordKey).map(a=><tr key={a.id}><td>{a.timestamp}</td><td>{a.action}</td><td>v{a.version||1}</td><td>{a.approvalStatus||"—"}</td></tr>)}{masterAuditFor(safeType,selectedRecord?.key||recordKey).length===0&&<tr><td colSpan="4" className="muted-small">Belum ada audit event.</td></tr>}</tbody>
+          </table></div>
+          <div className="field-help">Version adalah version business master, bukan version metadata provenance. Pending draft disimpan persisten pada browser; monitoring tetap menggunakan approved master sampai approval.</div>
+        </div>
+      </section>
+
       <section className="card">
         <div className="head"><div><h2>Data Provenance</h2><p>Provenance master limit; Source Data dan Keterangan tersedia per field.</p></div>{savedAt&&<span className="chip blue">Tersimpan {savedAt}</span>}</div>
         <div className="body"><div className="provenance-grid">
@@ -2055,8 +2364,9 @@ function canonicalPipelineControls(){
 
 // Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
 installE2EDummyDataset();
-buildProductIntegrationMappings();
+applyPersistedMasterValues();
 cleanseMasterData();
+buildProductIntegrationMappings();
 
 const CANONICAL_BUSINESS_LABELS={
   countryExposure:"Country Exposure",
@@ -2423,7 +2733,8 @@ function productBookingSplit(view,rows){
       return;
     }
     const amount=productExposureAmount(view,r);
-    const type=["Domestic","Overseas"].includes(r.bookingOfficeType)?r.bookingOfficeType:"Needs Mapping";
+    const mapping=(productIntegrationMappings[view]||[]).find(a=>a.limitType==="Country"&&String(a.recordId)===String(r.recordId));
+    const type=["Domestic","Overseas"].includes(mapping?.bookingOfficeType)?mapping.bookingOfficeType:"Needs Mapping";
     split[type]+=amount;
   });
   return split;
