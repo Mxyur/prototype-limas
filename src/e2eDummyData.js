@@ -217,23 +217,23 @@ cilSpecs.forEach(([key,insurer,ents])=>ents.forEach(([entity,amount],i)=>p["Nomi
 // LPG source records are ordinary debtor-level Cash Loan/NCL rows with explicit LPG classification.
 // LPG monitoring aggregates these raw source records.
 const lpgDebtors=[
-  // BATUBARA — Commercial: regional utilization is kept within a realistic monitoring range, with one controlled breach scenario.
-  ["16000000201","PT Borneo Prima Energi",1800,1200000000,"Region I","Commercial"],
-
-  ["16000000202","PT Kaltara Mineral Abadi",1400,1100000000,"Region II","Commercial"],
-  ["16000000203","PT Bara Nusantara Makmur",1100,900000000,"Region III","Commercial"],
-  ["16000000204","PT Kalimantan Coal Trading",16000,2000000000,"KP + OVS","Corporate"],
-  ["16000000205","PT Arunika Energi Resources",14000,2000000000,"Region IV","Corporate"],
-  ["16000000206","PT Mandala Tambang Sejahtera",7000,1000000000,"Region V","Corporate"],
-  // ENERGI & AIR — Corporate: populated intentionally to demonstrate a healthy/warning master.
-  ["16000000207","PT Tirta Energi Nusantara",12000,4000000000,"KP + OVS","Corporate"],
-  ["16000000208","PT Cakrawala Power Resources",11000,7000000000,"KP + OVS","Corporate"]
+  // BATUBARA — Commercial: controlled regional utilization scenarios.
+  ["16000000201","PT Borneo Prima Energi",1800,1200000000,"Region I","Commercial","BATUBARA"],
+  ["16000000202","PT Kaltara Mineral Abadi",1400,1100000000,"Region II","Commercial","BATUBARA"],
+  ["16000000203","PT Bara Nusantara Makmur",1100,900000000,"Region III","Commercial","BATUBARA"],
+  // BATUBARA — Corporate.
+  ["16000000204","PT Kalimantan Coal Trading",16000,2000000000,"KP + OVS","Corporate","BATUBARA"],
+  ["16000000205","PT Arunika Energi Resources",14000,2000000000,"Region IV","Corporate","BATUBARA"],
+  ["16000000206","PT Mandala Tambang Sejahtera",7000,1000000000,"Region V","Corporate","BATUBARA"],
+  // ENERGI & AIR — Corporate.
+  ["16000000207","PT Tirta Energi Nusantara",12000,4000000000,"KP + OVS","Corporate","ENERGI & AIR"],
+  ["16000000208","PT Cakrawala Power Resources",11000,7000000000,"KP + OVS","Corporate","ENERGI & AIR"]
 ];
-lpgDebtors.forEach(([cif,name,clAmt,nclIdr,region,segment],i)=>{
+lpgDebtors.forEach(([cif,name,clAmt,nclIdr,region,segment,sector],i)=>{
   const baseId=String(i+1).padStart(3,"0");
   p.CASHLOAN.push(cl(
     {no_cus:cif,nm_cus:name,no_rek:"6090"+baseId+"000"+(i+1),total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID",
-      ecosystem_lpg:"BATUBARA",segmen_lpg:segment,region_lpg:region},
+      ecosystem_lpg:sector,segmen_lpg:segment,region_lpg:region},
     "ID",clAmt,"Country",
     {recordId:"CL-LPG-DEBTOR-"+baseId,sourceSystem:"DWH",countryExposure:"ID"}
   ));
