@@ -2,7 +2,7 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
-import {E2E_DUMMY_META,E2E_MASTER_DATA,E2E_DUMMY_PRODUCT_DATA,E2E_COUNTRY_MONITORING_POLICY,E2E_ENTITY_MASTER,E2E_MLK_ENTITY_SCOPE,E2E_CCL_ENTITY_SCOPE,E2E_CCL_LIMIT_SCOPE} from './e2eDummyData';
+import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE} from './e2eDummyData';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
@@ -13,6 +13,14 @@ const LIMAS_RUNTIME_MODE=String(
 ).trim().toUpperCase();
 const IS_E2E_RUNTIME=LIMAS_RUNTIME_MODE==="E2E";
 const IS_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION";
+const E2E_DUMMY_META=IS_E2E_RUNTIME?E2E_DUMMY_META_FIXTURE:{period:"",datasetId:"",asOfDate:""};
+const E2E_MASTER_DATA=IS_E2E_RUNTIME?E2E_MASTER_DATA_FIXTURE:{};
+const E2E_DUMMY_PRODUCT_DATA=IS_E2E_RUNTIME?E2E_DUMMY_PRODUCT_DATA_FIXTURE:{};
+const E2E_COUNTRY_MONITORING_POLICY=IS_E2E_RUNTIME?E2E_COUNTRY_MONITORING_POLICY_FIXTURE:{homeCountryCode:"ID",excludedCountryCodes:[]};
+const E2E_ENTITY_MASTER=IS_E2E_RUNTIME?E2E_ENTITY_MASTER_FIXTURE:[];
+const E2E_MLK_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_MLK_ENTITY_SCOPE_FIXTURE:[];
+const E2E_CCL_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_CCL_ENTITY_SCOPE_FIXTURE:[];
+const E2E_CCL_LIMIT_SCOPE=IS_E2E_RUNTIME?E2E_CCL_LIMIT_SCOPE_FIXTURE:[];
 if(!IS_E2E_RUNTIME&&!IS_PRODUCTION_RUNTIME){
   throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E or PRODUCTION.");
 }
@@ -2833,28 +2841,6 @@ function initializeRuntimeDataset(){
 
   applyPersistedSourceRemediations();
 }
-  Object.keys(limasDemoData).forEach(k=>delete limasDemoData[k]);
-  Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{
-    limasDemoData[type]=JSON.parse(JSON.stringify(rows));
-  });
-  Object.keys(productDatabase).forEach(k=>delete productDatabase[k]);
-  Object.keys(productIntegrationMappings).forEach(k=>delete productIntegrationMappings[k]);
-
-  Object.entries(E2E_DUMMY_PRODUCT_DATA).forEach(([productId,specs])=>{
-    productDatabase[productId]=specs.map(spec=>{
-      const record=makeProductRecord(productId,spec.data||{},[],spec.meta||{});
-      const fields=productSchemaFields[productId]||[];
-      record.data=Object.fromEntries(fields.map(f=>{
-        const canonical=productId==="CREDIT LINE"?creditLineCanonicalFields.find(x=>x.key===f):null;
-        const sourceKey=canonical?.source||f;
-        return [f,spec.data?.[f]??spec.data?.[sourceKey]??''];
-      }));
-      return record;
-    });
-    if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
-  });
-  applyPersistedSourceRemediations();
-}
 
 
 // Production invariant: E2E fixtures are compile-time available for local reproducibility,
@@ -3000,7 +2986,7 @@ function buildProductIntegrationMappings(){
     const d=r.data||{},code=String(d.code||"").trim(),cif=String(d.no_cus||"").trim();
     if(code&&countryMonitoringEligible(code))addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> eligible foreign Country Code"});
     const entity=String(r.meta?.reportingEntity||"").toUpperCase()||null;
-    if(cif&&E2E_MASTER_DATA.MLK.some(x=>String(x.key)===cif))
+    if(cif&&(limasDemoData.MLK||[]).some(x=>String(x.key)===cif))
       addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF",entity:mlkEntityEligible(entity)?entity:null});
   });
 
