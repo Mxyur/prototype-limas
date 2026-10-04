@@ -1890,7 +1890,7 @@ function MasterCreateForm({type,onCreated,onCancel}){
 }
 
 
-function LimitAllocationSetup({type,onTypeChange}){
+function LimitAllocationSetup({type,onTypeChange,nav}){
   const [type,setType]=useState("MLK"),[entityFilter,setEntityFilter]=useState("ALL"),[query,setQuery]=useState("");
   const [selectedCcl,setSelectedCcl]=useState(()=>String((limasDemoData.CCL||[])[0]?.key||""));
   const [editingKey,setEditingKey]=useState(""),[draft,setDraft]=useState({});
@@ -2110,7 +2110,7 @@ function Setup({nav,setSel}){
           </div>
         </div>
       </section>
-      {mode==="allocation"&&<LimitAllocationSetup type={type} onTypeChange={setType}/>}
+      {mode==="allocation"&&<LimitAllocationSetup type={type} onTypeChange={setType} nav={nav}/>}
       {mode==="master"&&<section className="card">
         <div className="head">
           <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • approved master limit, lifecycle, version dan audit disimpan terpisah dari Product Database.</p></div>
