@@ -616,7 +616,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['ingestion','⇩','Data Ingestion'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
 function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -928,6 +928,134 @@ function DataRemediation({nav,initialIssueId=""}){
       </section>}
 
       {!selected&&<section className="card"><div className="body"><div className="mini">Pilih issue dari Remediation Queue untuk memulai correction.</div></div></section>}
+    </div>
+  </Layout>;
+}
+
+function DataIngestion({nav}){
+  const [productId,setProductId]=useState("CASHLOAN"),[sourceSystem,setSourceSystem]=useState(""),[asOfDate,setAsOfDate]=useState(todayIso()),[batches,setBatches]=useState(()=>loadIngestionBatches()),[selectedId,setSelectedId]=useState(""),[refresh,setRefresh]=useState(0);
+  const selected=batches.find(x=>x.batchId===selectedId)||null;
+  const refreshBatches=()=>{setBatches(loadIngestionBatches());setRefresh(x=>x+1);};
+  const template=()=>{
+    const fields=productSchemaFields[productId]||[];
+    const sample=productDatabase[productId]?.[0]?.data||productSample[productId]||{};
+    downloadCsv("LIMAS_"+productId.replaceAll(" ","_")+"_Source_Template.csv",fields,[Object.fromEntries(fields.map(f=>[f,sample[f]??""]))]);
+  };
+  const upload=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const records=parseCsv(String(reader.result||""));
+        if(!records.length)throw new Error("CSV tidak memiliki data rows.");
+        const headers=Object.keys(records[0]||{});
+        if(!sourceSystem.trim())throw new Error("Source System wajib diisi sebelum upload.");
+        const batch=createIngestionBatch(productId,records,headers,{sourceSystem,asOfDate,fileName:file.name});
+        const next=[batch,...loadIngestionBatches()];
+        saveIngestionBatches(next);setBatches(next);setSelectedId(batch.batchId);alert("File masuk staging. Product Database belum berubah.");
+      }catch(err){alert("Upload gagal: "+(err?.message||err));}
+    };
+    reader.readAsText(file);e.target.value="";
+  };
+  const runValidation=()=>{
+    if(!selected)return;
+    const next=validateIngestionBatch(selected);
+    const all=batches.map(x=>x.batchId===selected.batchId?next:x);
+    saveIngestionBatches(all);setBatches(all);setRefresh(x=>x+1);
+  };
+  const reject=()=>{
+    if(!selected)return;
+    const reason=window.prompt("Alasan reject batch:","");
+    if(reason===null)return;
+    const next=rejectIngestionBatch(selected,reason),all=batches.map(x=>x.batchId===selected.batchId?next:x);
+    saveIngestionBatches(all);setBatches(all);setRefresh(x=>x+1);
+  };
+  const promote=()=>{
+    if(!selected)return;
+    try{
+      const current=validateIngestionBatch(selected);
+      if(current.status!=="Validated")throw new Error("Batch belum lulus validation.");
+      const promoted=promoteIngestionBatch(current);
+      const next=batches.map(x=>x.batchId===selected.batchId?promoted:x);
+      saveIngestionBatches(next);setBatches(next);
+      cleanseMasterData();buildProductIntegrationMappings();setRefresh(x=>x+1);
+      alert("Batch berhasil dipromosikan ke Product Database. Integration mapping dibangun ulang.");
+    }catch(err){alert(err?.message||String(err));}
+  };
+  const statusCounts=INGESTION_STATUSES.reduce((a,s)=>({...a,[s]:batches.filter(b=>b.status===s).length}),{});
+  const productRows=productDatabase[productId]||[];
+  const selectedRows=(selected?.rows||[]);
+  return <Layout screen="ingestion" onNav={nav}>
+    <Header title="Source Data Ingestion & Staging" subtitle="Upload → Staging → Validation → Approval/Promotion → Product Database → Integration Rebuild"/>
+    <div className="page">
+      <div className="metric-grid">
+        <DomainKpi label="Uploaded" value={statusCounts.Uploaded} sub="Awaiting validation"/>
+        <DomainKpi label="Validated" value={statusCounts.Validated} sub="Ready for promotion"/>
+        <DomainKpi label="Promoted" value={statusCounts.Promoted} sub="Applied to Product Database"/>
+        <DomainKpi label="Rejected" value={statusCounts.Rejected} sub="Blocked batches" accent="red"/>
+        <DomainKpi label="Current Product Records" value={productRows.length} sub={productId}/>
+      </div>
+
+      <section className="card">
+        <div className="head">
+          <div><h2>1. Create Source Batch</h2><p>Upload source file ke staging. Data belum masuk Product Database sampai checker melakukan promotion.</p></div>
+          <button className="btn secondary" onClick={template}>Download Source Template</button>
+        </div>
+        <div className="body">
+          <div className="toolbar">
+            <select className="select" value={productId} onChange={e=>setProductId(e.target.value)}>
+              {productMasterCatalog.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
+            </select>
+            <input className="input" value={sourceSystem} onChange={e=>setSourceSystem(e.target.value)} placeholder="Source System / Feed"/>
+            <input className="input" type="date" value={asOfDate} onChange={e=>setAsOfDate(e.target.value)}/>
+            <label className="btn primary" style={{display:"inline-flex",alignItems:"center",cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={upload} style={{display:"none"}}/></label>
+          </div>
+          <div className="field-help"><b>Control:</b> Source field names mengikuti schema product apa adanya. Unknown header menjadi warning; required field, duplicate record, invalid exposure, dan reconciliation failure menjadi blocking error.</div>
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="head"><div><h2>2. Staging Queue</h2><p>Batch masih terpisah dari canonical Product Database.</p></div><span className="chip blue">{batches.length} batches</span></div>
+        <div className="body"><div className="table-wrap"><table className="table">
+          <thead><tr><th>Batch</th><th>Product</th><th>File</th><th>Source System</th><th>As-of</th><th>Rows</th><th>Accepted</th><th>Rejected</th><th>Warnings</th><th>Status</th><th>Detail</th></tr></thead>
+          <tbody>{batches.map(b=><tr key={b.batchId}>
+            <td className="key">{b.batchId}</td><td>{integrationLabel(b.productId)}</td><td>{b.fileName}</td><td>{b.sourceSystem}</td><td>{b.asOfDate}</td><td>{b.summary?.total||0}</td><td>{b.summary?.accepted||0}</td><td>{b.summary?.rejected||0}</td><td>{b.summary?.warnings||0}</td><td><Status v={b.status==="Rejected"?"Data Issue":b.status==="Promoted"?"Normal":b.status==="Validated"?"Normal":"Warning"}/></td><td><button className="btn ghost" onClick={()=>setSelectedId(b.batchId)}>Open</button></td>
+          </tr>)}</tbody></table></div></div>
+      </section>
+
+      {selected&&<section className="card">
+        <div className="head">
+          <div><h2>3. Batch Validation & Promotion</h2><p><span className="key">{selected.batchId}</span> • {integrationLabel(selected.productId)} • {selected.status}</p></div>
+          <div className="toolbar">
+            {selected.status!=="Promoted"&&selected.status!=="Rejected"&&<button className="btn ghost" onClick={runValidation}>Run Validation</button>}
+            {selected.status==="Validated"&&<button className="btn primary" onClick={promote}>Approve & Promote</button>}
+            {selected.status!=="Promoted"&&selected.status!=="Rejected"&&<button className="btn secondary" onClick={reject}>Reject Batch</button>}
+          </div>
+        </div>
+        <div className="body">
+          <div className="integration-chip-grid">
+            <div className="mini integration-chip"><b>Source Isolation</b><div className="muted-small">{selected.status==="Promoted"?"Promoted to Product Database":"Still in staging"}</div></div>
+            <div className="mini integration-chip"><b>Validation</b><div className="muted-small">{selected.summary?.rejected||0} blocking row(s) • {selected.summary?.warnings||0} warning(s)</div></div>
+            <div className="mini integration-chip"><b>Promotion Gate</b><div className="muted-small">Only Validated batch can be promoted.</div></div>
+            <div className="mini integration-chip"><b>Target</b><div className="muted-small">Product Database → Integration Mapping → Read Model</div></div>
+          </div>
+          {selected.history?.length>0&&<div className="field-help" style={{marginTop:12}}><b>Batch history:</b> {selected.history.map((h,i)=>h.at+" • "+h.action+" • "+h.by+" • "+h.detail+(i<selected.history.length-1?" | ":"")).join("")}</div>}
+          <div className="table-wrap" style={{marginTop:12}}><table className="table">
+            <thead><tr><th>Row</th><th>Record ID</th><th>Status</th><th>Issues</th></tr></thead>
+            <tbody>{selectedRows.map(r=><tr key={selected.batchId+"-"+r.rowNumber}><td>{r.rowNumber}</td><td className="key">{r.recordId}</td><td><Status v={r.status==="Accepted"?"Normal":"Data Issue"}/></td><td className="muted-small">{r.issues.length?r.issues.map(x=>x.severity+": "+x.detail).join(" • "):"Ready for promotion"}</td></tr>)}</tbody>
+          </table></div>
+        </div>
+      </section>}
+
+      <section className="card">
+        <div className="head"><div><h2>4. Runtime Control</h2><p>Setelah batch Promoted, Product Database dan seluruh domain integration menghitung ulang dari source terbaru.</p></div></div>
+        <div className="body"><div className="integration-chip-grid">
+          <div className="mini integration-chip"><b>Product Database</b><div className="muted-small">{productRows.length} current records for {integrationLabel(productId)}</div></div>
+          <div className="mini integration-chip"><b>Integration</b><div className="muted-small">Mapping rebuilt after promotion; source record tidak diduplikasi untuk setiap domain.</div></div>
+          <div className="mini integration-chip"><b>Data Quality</b><div className="muted-small">Canonical validators membaca runtime data terbaru.</div></div>
+          <div className="mini integration-chip"><b>Monitoring / Report</b><div className="muted-small">Read model berikutnya menggunakan Product Database setelah promotion.</div></div>
+        </div></div>
+      </section>
     </div>
   </Layout>;
 }
@@ -2515,6 +2643,111 @@ const EXCEPTION_ACTION_STATUSES=["Open","In Progress","Resolved","Closed"];
 
 const SOURCE_REMEDIATION_STORE_KEY="limas_source_remediations_v1";
 const MAPPING_REMEDIATION_STORE_KEY="limas_mapping_remediations_v1";
+const SOURCE_INGESTION_STORE_KEY="limas_source_ingestion_batches_v1";
+const INGESTION_STATUSES=["Uploaded","Validated","Rejected","Promoted"];
+
+function loadIngestionBatches(){
+  try{const raw=window.localStorage.getItem(SOURCE_INGESTION_STORE_KEY);return raw?JSON.parse(raw):[];}catch(e){return [];}
+}
+function saveIngestionBatches(batches){try{window.localStorage.setItem(SOURCE_INGESTION_STORE_KEY,JSON.stringify(batches));}catch(e){}}
+function ingestionRequiredFields(productId){
+  const map={
+    "CASHLOAN":["no_cus","no_rek","code","total_bade"],
+    "NON CASH LOAN":["CUSTID","TRXREF","Country Code","EQVIDR"],
+    "CREDIT LINE":["Swift Code Vlookup","Code","Credit Line Total Utilisasi"],
+    "Investment Line":["Nama Bank","Nama Entity (Scope Entity : AKK)","Switftcode","Amount Invesment Line"],
+    "BONDS":["Securities Name","Issuer Country","Amount Eq. IDR Juta"],
+    "NOSTRO":["SwfitCode","Bank Country","CCY","Balance","FX Rate to IDR","FX Rate Date"],
+    "Nominal Pertanggungan":["Perusahaan Asuransi","Entitas","Nominal Pertanggungan 2025 (Rp Juta)"]
+  };
+  return map[productId]||[];
+}
+function sourceIngestionValidation(productId,records,headers=[]){
+  const fields=productSchemaFields[productId]||[],allowed=new Set(fields),required=ingestionRequiredFields(productId),seen=new Set(),rowResults=[];
+  const unknownHeaders=headers.filter(h=>!allowed.has(h));
+  records.forEach((raw,index)=>{
+    const data=Object.fromEntries(fields.map(f=>[f,raw?.[f]??""]));
+    const recordId=String(raw?.recordId||raw?.["Record ID"]||raw?.TRXREF||raw?.["Swift Code Vlookup"]||raw?.SwfitCode||("ROW-"+(index+2))).trim();
+    const issues=[];
+    if(!recordId)issues.push({code:"MISSING_RECORD_ID",severity:"Error",detail:"Technical Record ID cannot be determined."});
+    if(seen.has(recordId))issues.push({code:"DUPLICATE_RECORD_ID",severity:"Error",detail:"Record ID is duplicated inside this source file."});
+    seen.add(recordId);
+    const currentIds=new Set((productDatabase[productId]||[]).map(r=>String(r.recordId)));
+    if(currentIds.has(recordId))issues.push({code:"RECORD_ALREADY_EXISTS",severity:"Error",detail:"Record ID already exists in Product Database; use a new batch with a new record or replace explicitly via controlled process."});
+    required.forEach(field=>{if(String(data[field]??"").trim()==="")issues.push({code:"MISSING_REQUIRED_FIELD",severity:"Error",detail:"Required source field '"+field+"' is blank."});});
+    const numericExposure={
+      "CASHLOAN":"total_bade","NON CASH LOAN":"EQVIDR","CREDIT LINE":"Credit Line Total Utilisasi",
+      "Investment Line":"Amount Invesment Line","BONDS":"Amount Eq. IDR Juta","NOSTRO":"Balance",
+      "Nominal Pertanggungan":"Nominal Pertanggungan 2025 (Rp Juta)"
+    }[productId];
+    if(numericExposure&&String(data[numericExposure]??"").trim()!==""&&(!Number.isFinite(Number(String(data[numericExposure]).replace(/,/g,"")))) )issues.push({code:"INVALID_EXPOSURE_VALUE",severity:"Error",detail:"Exposure field '"+numericExposure+"' is not numeric."});
+    if(productId==="NOSTRO"&&String(data["FX Rate to IDR"]??"").trim()!==""&&!(Number(data["FX Rate to IDR"])>0))issues.push({code:"INVALID_FX_RATE",severity:"Error",detail:"FX Rate to IDR must be greater than zero."});
+    if(productId==="CREDIT LINE"){
+      const audit=creditLineAuditRows([{recordId,data}])[0];
+      if(audit.status==="Data Issue")issues.push({code:"CREDIT_LINE_RECONCILIATION",severity:"Error",detail:audit.issues.join(" • ")});
+    }
+    rowResults.push({rowNumber:index+2,recordId,data,status:issues.some(x=>x.severity==="Error")?"Rejected":"Accepted",issues});
+  });
+  if(unknownHeaders.length) rowResults.forEach(x=>x.issues.push({code:"UNKNOWN_SOURCE_FIELD",severity:"Warning",detail:"Header tidak ada pada Product Schema: "+unknownHeaders.join(", ")}));
+  return {rowResults,summary:{
+    total:rowResults.length,accepted:rowResults.filter(x=>x.status==="Accepted").length,
+    rejected:rowResults.filter(x=>x.status==="Rejected").length,
+    warnings:rowResults.reduce((n,x)=>n+x.issues.filter(i=>i.severity==="Warning").length,0),unknownHeaders
+  }};
+}
+function createIngestionBatch(productId,records,headers,meta={}){
+  const validation=sourceIngestionValidation(productId,records,headers);
+  const stamp=nowLabel(),batchId="BATCH-"+Date.now();
+  return {
+    batchId,productId,status:"Uploaded",uploadedBy:"Risk Management",uploadedAt:stamp,
+    sourceSystem:String(meta.sourceSystem||"").trim()||"Source system / feed belum ditetapkan",
+    asOfDate:String(meta.asOfDate||"").trim()||todayIso(),
+    fileName:String(meta.fileName||"source.csv"),
+    headers,rows:validation.rowResults,summary:validation.summary,
+    history:[{at:stamp,action:"UPLOADED",by:"Risk Management",detail:"Source file masuk ke staging; belum mengubah Product Database."}]
+  };
+}
+function validateIngestionBatch(batch){
+  const validation=sourceIngestionValidation(batch.productId,(batch.rows||[]).map(x=>x.data||{}),batch.headers||[]);
+  const stamp=nowLabel();
+  return {...batch,status:validation.summary.rejected===0?"Validated":"Uploaded",validatedAt:stamp,validatedBy:"Risk Management",rows:validation.rowResults,summary:validation.summary,
+    history:[...(batch.history||[]),{at:stamp,action:"VALIDATED",by:"Risk Management",detail:validation.summary.rejected===0?"Validation passed":validation.summary.rejected+" row(s) rejected"}]};
+}
+function rejectIngestionBatch(batch,reason){
+  const stamp=nowLabel();
+  return {...batch,status:"Rejected",rejectedAt:stamp,rejectedBy:"Risk Management",rejectReason:String(reason||"Batch rejected").trim(),
+    history:[...(batch.history||[]),{at:stamp,action:"REJECTED",by:"Risk Management",detail:String(reason||"Batch rejected").trim()}]};
+}
+function promoteIngestionBatch(batch){
+  if(batch.status!=="Validated")throw new Error("Batch harus berstatus Validated sebelum dipromosikan.");
+  if(Number(batch.summary?.rejected||0)>0)throw new Error("Batch masih memiliki rejected rows.");
+  const rows=batch.rows||[],target=productDatabase[batch.productId]??(productDatabase[batch.productId]=[]);
+  rows.forEach(item=>{
+    const record={
+      recordId:item.recordId,productId:batch.productId,data:{...item.data},
+      applied:[],sourceSystem:batch.sourceSystem,asOfDate:batch.asOfDate,status:"Normal",
+      ingestionBatchId:batch.batchId,ingestionStatus:"Promoted"
+    };
+    const idx=target.findIndex(x=>String(x.recordId)===String(item.recordId));
+    if(idx>=0)target[idx]=record;else target.push(record);
+  });
+  const stamp=nowLabel();
+  const promoted={...batch,status:"Promoted",promotedAt:stamp,promotedBy:"Checker (Risk Management)",
+    history:[...(batch.history||[]),{at:stamp,action:"PROMOTED",by:"Checker (Risk Management)",detail:rows.length+" row(s) promoted to Product Database and integration rebuild requested."}]};
+  return promoted;
+}
+function applyPersistedIngestionBatches(){
+  const batches=loadIngestionBatches().filter(b=>b?.status==="Promoted");
+  batches.forEach(batch=>{
+    const target=productDatabase[batch.productId]??(productDatabase[batch.productId]=[]);
+    (batch.rows||[]).forEach(item=>{
+      const record={recordId:item.recordId,productId:batch.productId,data:{...item.data},applied:[],sourceSystem:batch.sourceSystem,asOfDate:batch.asOfDate,status:"Normal",ingestionBatchId:batch.batchId,ingestionStatus:"Promoted"};
+      const idx=target.findIndex(x=>String(x.recordId)===String(item.recordId));
+      if(idx>=0)target[idx]=record;else target.push(record);
+    });
+  });
+}
+
 
 function remediationKey(productId,recordId){return [productId||"—",recordId||"—"].join("||");}
 function loadSourceRemediations(){
@@ -2824,6 +3057,7 @@ function canonicalPipelineControls(){
 // Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
 installE2EDummyDataset();
 applyPersistedMasterValues();
+applyPersistedIngestionBatches();
 cleanseMasterData();
 buildProductIntegrationMappings();
 
@@ -3276,11 +3510,11 @@ function ProductDatabaseTable({view}){
       </div>
       <div className="table-wrap product-db-wrap">
         <table className="table product-db-table">
-          <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>As-of Date</th><th>Correction</th></tr></thead>
+          <thead><tr><th>Record ID</th>{fields.map(f=><th key={f}>{f}</th>)}<th>Runtime Source</th><th>As-of Date</th><th>Source Batch</th><th>Correction</th></tr></thead>
           <tbody>{rows.map(r=><tr key={r.recordId}>
             <td className="key">{r.recordId}</td>
             {fields.map(f=><td key={f}>{productDatabaseDisplayValue(view,r,f)}</td>)}
-            <td>{r.sourceSystem||"—"}</td><td>{r.asOfDate||"—"}</td><td>{getSourceRemediation(view,r.recordId)?.status==="Applied"?<span className="chip blue">Remediated</span>:"—"}</td>
+            <td>{r.sourceSystem||"—"}</td><td>{r.asOfDate||"—"}</td><td>{r.ingestionBatchId||"Baseline / E2E"}</td><td>{getSourceRemediation(view,r.recordId)?.status==="Applied"?<span className="chip blue">Remediated</span>:"—"}</td>
           </tr>)}</tbody>
         </table>
       </div>
@@ -3425,6 +3659,7 @@ function App(){
   if(screen==="warning") return <Warning nav={nav}/>;
   if(screen==="quality") return <DataQuality nav={nav}/>;
   if(screen==="remediation") return <DataRemediation nav={nav} initialIssueId={navPayload?.issueId||""}/>;
+  if(screen==="ingestion") return <DataIngestion nav={nav}/>;
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
