@@ -3049,17 +3049,19 @@ function buildProductIntegrationMappings(){
     if(swift){
       const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
       const limitType=r.meta?.cclLimitType||"DIRECT";
-      const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
-        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
+      const lineageToken=(recordId)=>String(recordId||"").toUpperCase()
+        .replace(/^PRD-(CL|NCL|CRL)-/,"")
+        .replace(/^(CL|NCL|CRL)-/,"");
+      const targetToken=lineageToken(r.recordId);
+      const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>
+        String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-        (String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()) ||
-         String(x.data?.no_cus||"").toUpperCase()===("CCL-"+String(swift)).toUpperCase())
+        lineageToken(x.recordId)===targetToken
       ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
-      const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
-        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
+      const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
+        String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-        (String(x.data?.CPNM||"").toUpperCase()===String(swift).toUpperCase() ||
-         String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()))
+        lineageToken(x.recordId)===targetToken
       ).reduce((s,x)=>(s+(Number(x.data?.EQVIDR)||0))/1000000,0);
       const treasuryUtil=Number(String(d["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const derivedCreditLineTotal=clUpstream+nclUpstream+treasuryUtil;
@@ -4362,16 +4364,20 @@ function cclCreditLineLineageAuditRows(){
     if(!swift)return;
     const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
     const limitType=r.meta?.cclLimitType||"DIRECT";
-    const cl=(productDatabase.CASHLOAN||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
-      String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+    const lineageToken=(recordId)=>String(recordId||"").toUpperCase()
+      .replace(/^PRD-(CL|NCL|CRL)-/,"")
+      .replace(/^(CL|NCL|CRL)-/,"");
+    const targetToken=lineageToken(r.recordId);
+    const cl=(productDatabase.CASHLOAN||[]).filter(x=>
+      String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-      (String(x.recordId||"").toUpperCase().includes(swift.toUpperCase()) || String(x.data?.no_cus||"").toUpperCase()===("CCL-"+swift).toUpperCase()))
-      .reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
-    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
-      String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+      lineageToken(x.recordId)===targetToken
+    ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
+    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
+      String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-      (String(x.data?.CPNM||"").toUpperCase()===swift.toUpperCase() || String(x.recordId||"").toUpperCase().includes(swift.toUpperCase())))
-      .reduce((s,x)=>s+(Number(x.data?.EQVIDR)||0)/1000000,0);
+      lineageToken(x.recordId)===targetToken
+    ).reduce((s,x)=>s+(Number(x.data?.EQVIDR)||0)/1000000,0);
     const treasury=(Number(d["Treasury DN Utilisasi"]||0)||0)+(Number(d["Treasury LN Utilisasi"]||0)||0);
     const commercial=Number(d["Comm Line Total Utilisasi"]||0)||0;
     const sourceTotal=Number(d["Credit Line Total Utilisasi"]||0)||0;
