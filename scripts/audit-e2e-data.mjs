@@ -19,14 +19,31 @@ for(const code of E2E_MLK_ENTITY_SCOPE) assert.ok(entityCodes.has(code),"MLK sco
 for(const s of E2E_CCL_ENTITY_SCOPE){ assert.ok(entityCodes.has(s.entityCode),"CCL scope entity "+s.entityCode+" missing from Entity Master"); assert.ok(Boolean(s.direct)||Boolean(s.indirect),"CCL scope entity "+s.entityCode+" must have Direct or Indirect applicability"); }
 for(const x of E2E_CCL_LIMIT_SCOPE){ assert.ok(entityCodes.has(x.entityCode),"CCL limit references unknown entity "+x.entityCode); assert.ok(["DIRECT","INDIRECT"].includes(x.limitType),"CCL limit type invalid for "+x.counterpartyId+"/"+x.entityCode); const scope=cclScope.get(x.entityCode); assert.ok(scope && Boolean(scope[x.limitType.toLowerCase()]),"CCL limit scope not enabled for "+x.entityCode+"/"+x.limitType); near(x.facility,(Number(x.bankLoan)||0)+(Number(x.commercialLine)||0)+(Number(x.treasuryLine)||0),"CCL facility components must reconcile for "+x.counterpartyId+"/"+x.entityCode+"/"+x.limitType); }
 for(const master of E2E_MASTER_DATA.CCL||[]){ const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(master.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0); near(master.ccl,direct,"CCL direct entity allocation must reconcile for "+master.key); }
-// CCL NCL allocation rows may not carry a Swift Code in the source; CPNM is the counterparty key and must resolve to a CCL master.
+// CCL upstream lineage: raw FI CL/NCL must not be direct CCL utilization.
+// They feed Credit Line as Bank Loan / Commercial Line; only Credit Line carries cclLimitType.
 for(const r of E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]){
-  if(!r.meta?.cclLimitType)continue;
+  const rid=String(r.meta?.recordId||"");
+  if(!rid.startsWith("NCL-CCL-"))continue;
+  assert.equal(r.meta?.cclExposureRole,undefined,"NCL CCL upstream rows must not carry direct CCL exposure role: "+rid);
+  assert.ok(r.meta?.creditLineLimitType,"NCL CCL upstream rows must carry Credit Line scope metadata: "+rid);
+}
+for(const r of E2E_DUMMY_PRODUCT_DATA.CASHLOAN||[]){
+  const rid=String(r.meta?.recordId||"");
+  if(!rid.startsWith("CL-CCL-"))continue;
+  assert.equal(r.meta?.cclLimitType,undefined,"CL CCL upstream rows must not carry direct CCL scope metadata: "+rid);
+  assert.ok(r.meta?.creditLineLimitType,"CL CCL upstream rows must carry Credit Line scope metadata: "+rid);
+}
+for(const r of E2E_DUMMY_PRODUCT_DATA["CREDIT LINE"]||[]){
+  const rid=String(r.meta?.recordId||"");
+  if(!rid.startsWith("CRL-CCL-"))continue;
+  assert.ok(r.meta?.cclLimitType,"CCL Credit Line rows must carry direct CCL scope metadata: "+rid);
   const d=r.data||{};
-  const swift=String(d["Swift Code"]||"").trim(),cpnm=String(d.CPNM||"").trim();
-  const master=(E2E_MASTER_DATA.CCL||[]).find(m=>String(m.key).toUpperCase()===String(swift||cpnm).toUpperCase());
-  assert.ok(master,"CCL NCL source reference must resolve to CCL master for "+(r.meta?.recordId||"unknown"));
-  assert.equal(r.meta?.cclExposureRole,"LINEAGE_ONLY","NCL CCL rows must be lineage-only and cannot independently contribute to CCL utilization: "+(r.meta?.recordId||"unknown"));
+  near(Number(d["Comm Line Total Utilisasi"]||0),[...E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]]
+    .filter(n=>String(n.meta?.recordingEntity||n.meta?.reportingEntity||"BMRI").toUpperCase()===String(r.meta?.reportingEntity||"BMRI").toUpperCase() &&
+      String(n.meta?.creditLineLimitType||"DIRECT")===String(r.meta?.cclLimitType||"DIRECT") &&
+      String(n.meta?.recordId||"").replace(/^NCL-/i,"CRL-")===rid)
+    .reduce((s,n)=>s+Number(n.data?.EQVIDR||0)/1e6,0),
+    "CCL Commercial Line must reconcile to FI NCL upstream for "+rid);
 }
 
 
