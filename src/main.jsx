@@ -8,6 +8,23 @@ const LPG_REGIONAL_SCOPES=["Region I","Region II","Region III","Region IV","Regi
 const LPG_SCOPES=[LPG_BANK_SCOPE,...LPG_REGIONAL_SCOPES];
 const lpgScopeKey=(scope)=>String(scope).replace(/[^A-Za-z0-9]+/g,"_");
 
+const RBAC_SESSION_KEY="limas_rbac_session_v1";
+const RBAC_ROLES={Maker:{label:"Maker",user:"Risk Management Maker"},Checker:{label:"Checker",user:"Risk Management Checker"},Viewer:{label:"Viewer",user:"Risk Management Viewer"}};
+const RBAC_PERMISSIONS={
+  masterDraft:["Maker"],masterApprove:["Checker"],masterReject:["Checker"],masterCreate:["Checker"],masterDelete:["Checker"],
+  metadataEdit:["Maker"],productMetadataEdit:["Maker"],
+  ingestionUpload:["Maker"],ingestionValidate:["Maker","Checker"],ingestionReject:["Checker"],ingestionPromote:["Checker"],
+  remediationStart:["Maker","Checker"],remediationEdit:["Maker"],remediationResolve:["Checker"],remediationClose:["Checker"]
+};
+let limasSession={role:"Maker",user:RBAC_ROLES.Maker.user};
+function loadLimasSession(){try{const s=window.localStorage.getItem(RBAC_SESSION_KEY);if(s){const p=JSON.parse(s);if(RBAC_ROLES[p?.role])limasSession={role:p.role,user:p.user||RBAC_ROLES[p.role].user};}}catch(e){}return limasSession;}
+function setLimasSession(role,user){if(!RBAC_ROLES[role])throw new Error("Role LIMAS tidak valid.");limasSession={role,user:String(user||RBAC_ROLES[role].user)};try{window.localStorage.setItem(RBAC_SESSION_KEY,JSON.stringify(limasSession));}catch(e){}}
+function currentLimasRole(){return loadLimasSession().role;}
+function currentLimasUser(){return loadLimasSession().user;}
+function canLimas(permission){return (RBAC_PERMISSIONS[permission]||[]).includes(currentLimasRole());}
+function requireLimasPermission(permission){if(!canLimas(permission))throw new Error("Akses ditolak untuk role "+currentLimasRole()+": "+permission+".");}
+function roleLabel(){return RBAC_ROLES[currentLimasRole()]?.label||currentLimasRole();}
+
 const domains={"Country": {"sheet": "COUNTRY_MONITORING", "key": "Country Code", "name": "Negara", "products": ["CASHLOAN", "NON CASH LOAN", "CREDIT LINE", "BONDS", "NOSTRO"], "sections": {"Identitas": [["No", "1", "Data/master/reference"], ["Negara", "United Arab Emirates", "Data/master/reference"], ["Code", "AE", "Data/master/reference"], ["Status", "Exist", "Data/master/reference"]], "Limit & Gap": [["Capacity Limit", "35,941", "Data/master/reference"], ["Capacity Distribution / Domestic", "—", "Data/master/reference"], ["Capacity Distribution / Overseas", "—", "Data/master/reference"], ["Product Distribution / CASHLOAN / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / CASHLOAN / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / CASHLOAN / Total Product Limit", "—", "Calculated"], ["Product Distribution / NON CASH LOAN / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / NON CASH LOAN / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / NON CASH LOAN / Total Product Limit", "—", "Calculated"], ["Product Distribution / CREDIT LINE / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / CREDIT LINE / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / CREDIT LINE / Total Product Limit", "—", "Calculated"], ["Product Distribution / BONDS / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / BONDS / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / BONDS / Total Product Limit", "—", "Calculated"], ["Product Distribution / NOSTRO / Domestic Limit", "—", "Data/master/reference"], ["Product Distribution / NOSTRO / Overseas Limit", "—", "Data/master/reference"], ["Product Distribution / NOSTRO / Total Product Limit", "—", "Calculated"], ["Allocated Capacity", "—", "Calculated"], ["Unallocated Capacity", "—", "Calculated"]]}}, "CCL": {"sheet": "CCL_MONITORING", "key": "Kode Bank / Swift Code", "name": "Nama bank", "products": ["CASHLOAN", "NON CASH LOAN", "CREDIT LINE"], "sections": {"Bank Profile": [["Nama bank", "ABN Amro Bank NV", "Data/master/reference"], ["CIF/Swift", "-", "Data/master/reference"], ["Kategori Bank", "Asing", "Data/master/reference"], ["Negara", "Netherlands", "Data/master/reference"], ["Global Parent Bank", "—", "Data/master/reference"], ["Apakah Bank termasuk Top 200 Bank Besar Dunia berdasarkan total aset menurut Banker's Almanac", "—", "Data/master/reference"]], "Risk & Capacity": [["Country Rating", "AAA", "Data/master/reference"], ["Bobot", "0.55", "Data/master/reference"], ["Rating", "AA-", "Data/master/reference"], ["Posisi Rating", "31/12/2023", "Data/master/reference"], ["Rating Index", "90.23%", "Data/master/reference"], ["Limit Inhouse (Rp Miliar)", "68,498", "Data/master/reference"], ["Tier 1 Capital (Rp Miliar)", "403,594", "Data/master/reference"], ["Capacity", "200,290", "Data/master/reference"], ["Capacity Limit Adjusted", "68,498", "Data/master/reference"]], "Limit": [["CCL", "500", "Data/master/reference"], ["Utilisasi Capacity", "0.73%", "Data/master/reference"], ["Limit Contractual", "500", "Data/master/reference"]], "BMRI Exposure": [["Outstanding", "13", "Data/master/reference"], ["Jenis Limit", "Direct", "Data/master/reference"], ["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Outstanding Maksimum", "13", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]], "Perusahaan Anak": [["Limit", "500", "Data/master/reference"], ["Total", "500", "Data/master/reference"], ["Bank Loan", "-", "Data/master/reference"], ["Commercial Line", "500", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Utilisasi CCL", "100%", "Data/master/reference"], ["Utilisasi Limit Kontraktual", "100%", "Data/master/reference"], ["Utilisasi Maksimum Limit Kontraktual", "2.53%", "Data/master/reference"]]}}, "MLK": {"sheet": "MLK_Master", "key": "CIF", "name": "Nama Debitur", "products": ["CASHLOAN", "NON CASH LOAN", "CREDIT LINE"], "sections": {"Profil Debitur": [["Entitas", "BMRI", "Data/master/reference"], ["CIF", "4000264485", "Data/master/reference"], ["Nama Debitur", "DJARUM", "Data/master/reference"], ["Group Usaha", "DJARUM GROUP", "Data/master/reference"], ["Unit Kerja Pengelola", "CB6", "Data/master/reference"], ["Group", "DJARUM GROUP", "Data/master/reference"], ["BUMN/Swasta Flag", "Swasta", "Data/master/reference"], ["Tier", "B", "Data/master/reference"]], "Risk & Regulatory": [["BMPK Konsol", "67,204", "Data/master/reference"], ["Inhouse Limit Konsol", "60,484", "Data/master/reference"], ["BMPK/BMPP/BMPD Entitas", "55,993", "Data/master/reference"], ["Inhouse Limit Entitas", "50,394", "Data/master/reference"], ["Sektor DC", "INDUSTRI ROKOK", "Data/master/reference"], ["DC Sectoral", "3", "Data/master/reference"], ["Rating", "A+", "Data/master/reference"], ["Rating Multiplier", "2.67", "Data/master/reference"], ["Watchlist", "HIJAU", "Data/master/reference"], ["Discount Factor", "1", "Data/master/reference"]], "Financial & Capacity": [["EBITDA/Pengganti EBITDA", "1,938", "Data/master/reference"], ["Kredit Bank Lain", "12,010", "Data/master/reference"], ["Total Debt", "-", "Data/master/reference"], ["Borrowing Capacity", "15,523.38", "Data/master/reference"], ["Available BC", "(2,183.62)", "Data/master/reference"], ["Status Perhitungan", "-", "Data/master/reference"]], "Product Limit & Exposure": [["CL Bade", "500", "Data/master/reference"], ["CL Limit", "587", "Data/master/reference"], ["NCL Bade", "-", "Data/master/reference"], ["NCL Limit", "121", "Data/master/reference"], ["Treasury Line", "-", "Data/master/reference"], ["Bade Treasury Line", "-", "Data/master/reference"], ["Total Limit Existing", "-", "Data/master/reference"], ["Total Bade Existing", "-", "Data/master/reference"]], "Master Limit": [["Master Limit Setting", "5,110", "Data/master/reference"], ["Master Limit", "5,818", "Data/master/reference"]]}}, "CIL": {"sheet": "CIL_Master", "key": "Insurance Company ID / Entity", "name": "Perusahaan Asuransi", "products": ["Nominal Pertanggungan"], "sections": {"Insurance Profile": [["No", "1", "Data/master/reference"], ["Perusahaan Asuransi", "PT Asuransi Tugu Pratama Indonesia Tbk", "Data/master/reference"], ["Jenis Perusahaan (Asuransi/Penjaminan)", "Asuransi", "Data/master/reference"], ["Jenis Produk Asuransi", "Asuransi Kredit", "Data/master/reference"]], "Capacity & Threshold": [["Insurance Capacity (IC) (Rp Juta)", "3,605,020,000", "Data/master/reference"], ["Multiplier Terpakai (%)", "3.00%", "Data/master/reference"], ["Consolidated Insurance Threshold (CIT) (Rp Juta)", "108,150,600", "Parameter monitoring"]], "BMRI": [["Nominal Pertanggungan BMRI 2025", "11,573,402.55", "Data/master/reference"], ["EIL BMRI", "60,093,270.28", "Data/master/reference"]], "Mandiri Taspen": [["Nominal Pertanggungan Mandiri Taspen 2025", "BUKAN REKANAN", "Data/master/reference"], ["EIL Mandiri Taspen", "26,999,429.42", "Data/master/reference"]], "MTF": [["Nominal Pertanggungan MTF 2025", "285,708.13", "Data/master/reference"], ["EIL MTF", "10,591,613.12", "Data/master/reference"]], "MUF": [["Nominal Pertanggungan MUF 2025", "21,313", "Data/master/reference"], ["EIL MUF", "10,129,963.92", "Data/master/reference"]], "Consolidated": [["Consolidated Insurance Limit (CIL) (Rp Juta)", "107,814,276.74", "Data/master/reference"], ["Total Nominal Pertanggungan All Entitas 2025 (Rp Juta)", "11,880,423.68", "Data/master/reference"], ["Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)", "13,060,790.52", "Data/master/reference"], ["Skor Akreditasi (PCP)", "79.38", "Data/master/reference"], ["Klasifikasi EWS (PCP)", "Monitoring", "Data/master/reference"]]}}, "LPG": {"sheet":"LPG_Loanportfolio","key":"Ecosystem LPG + Segmen LPG","name":"Ecosystem LPG","products":["CASHLOAN","NON CASH LOAN"],"sections":{"Identitas":[["No","1","Data/master/reference"],["Ecosystem LPG (Sektor)","BATUBARA","Data/master/reference"],["Segmen LPG","Corporate","Data/master/reference"]],"Bankwide Limit":[["Bankwide / Limit","65,140","Data/master/reference"],["Bankwide / Outstanding","Derived from CL + NCL debtor classification","Calculated"]],"Regional Limit":[["Region I / Limit","—","Data/master/reference"],["Region II / Limit","—","Data/master/reference"],["Region III / Limit","—","Data/master/reference"],["Region IV / Limit","—","Data/master/reference"],["Region V / Limit","—","Data/master/reference"],["Region VI / Limit","—","Data/master/reference"],["Region VII / Limit","—","Data/master/reference"],["Region VIII / Limit","—","Data/master/reference"],["Region IX / Limit","—","Data/master/reference"],["Region X / Limit","—","Data/master/reference"],["Region XI / Limit","—","Data/master/reference"],["Region XII / Limit","—","Data/master/reference"],["KP + OVS / Limit","—","Data/master/reference"]]}}};
 const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_rek", "gas_reporting", "buc_reporting", "jns_krd", "src", "j_guna", "revolv", "bilokj", "total_limit", "total_bade", "project_location", "code", "MatDate/Jatem", "ecosystem_lpg", "segmen_lpg", "region_lpg", "unit_pengelola"], "NON CASH LOAN": ["NO", "MODULE", "Swift Code", "REPORTTYPE", "TRXREF", "RELREF", "CUSTID", "CUSTNM", "CPNM", "CPCNTY", "CPBK", "BKCNTRY", "Country Code", "Country Name", "Type of Judgment", "TRXTYPE", "CCY", "AMOUNT", "BALANCE", "EXCHANGERT", "EQVIDR", "FINTYPE", "TRXDATE", "DUEDATE", "SERVCODE", "SERVNM", "PCCD", "PCNM", "BUCD", "SOF", "INTRT", "ecosystem_lpg", "segmen_lpg", "region_lpg"], "COMMERCIAL LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "Treasury DN", "Treasury DN Utilisasi", "Treasury LN", "Treasury LN Utilisasi", "Treasury Line Total", "Treasury Line Total Utilisasi", "Comm DN", "Comm DN Utilisasi", "Comm LN", "Comm LN Utilisasi", "Comm Line Total", "Comm Line Total Utilisasi", "Corporate Card", "Credit Line Total", "Credit Line Total Utilisasi"], "Investment Line": ["No", "Nama Bank", "Nama Entity (Scope Entity : AKK)", "Switftcode", "Jenis Invesment Line", "Amount Invesment Line", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"], "BONDS": ["Date", "Branch", "Securities Type", "Securities Name", "Issuer Name", "Issuer Country", "Issuer Type", "Portfolio", "CCY", "Amount", "Amount Eq. IDR Juta", "Maturity Date", "Coupon", "Potential P/L (Eq. IDR Juta)"], "NOSTRO": ["Year", "Branch", "SwfitCode", "Bank Name", "Bank Country", "CCY", "Balance", "FX Rate to IDR", "FX Rate Date", "Balance IDR"]};
 const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT Asuransi Tugu Pratama Indonesia Tbk","Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":"BMRI","EIL Entitas (Rp Juta)":"60093270.28","Nominal Pertanggungan 2025 (Rp Juta)":"11573402.55","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":"13060790.52","Utilisasi EIL (%)":"21.73%","CIL (Rp Juta)":"107814276.74","CIT (Rp Juta)":"108150600","Utilisasi CIL (%)":"11.02%","% Utilisasi (Nominal Pertanggungan/CIL)":"10.74%","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)":"12.12%","Skor Akreditasi (PCP)":"79.38","Klasifikasi EWS (PCP)":"Monitoring","Status / Rekomendasi Action Plan":"Monitoring as usual / no specific action"},"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "286035.62", "total_bade": "286035.62", "project_location": "China", "code": "CN", "MatDate/Jatem": "", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "24532.90", "BALANCE": "24532.90", "EXCHANGERT": "17310", "EQVIDR": "425000000", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "FABIAEAA", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "CCY": "AED", "Balance": "26.64", "FX Rate to IDR": "4700", "FX Rate Date": "2026-04-30", "Balance IDR": "125208"}};
@@ -616,9 +633,9 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
-function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
-function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development Environment</div></div></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>{currentLimasUser()}</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS • {roleLabel()}</div></div></div></div>}
+function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user);return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><button className="btn primary" onClick={()=>{setLimasSession(role,user);go();}}>Masuk ke LIMAS</button><div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div></div></div>}
 
 function DomainKpi({label,value,sub,accent=""}){return <div className="metric"><div className="label">{label}</div><div className="value" style={accent?{color:`var(--${accent})`}:{}}>{value}</div><div className="sub">{sub}</div></div>}
 
@@ -1810,6 +1827,7 @@ function masterReferenceCount(type,key){
   return Object.values(productIntegrationMappings||{}).flat().filter(a=>a.limitType===type&&String(a.key)===String(key)).length;
 }
 function saveMasterDraft(type,key,draft,lifecycle={}){
+  requireLimasPermission("masterDraft");
   const current=loadRecordMeta(type,key);
   const next={
     ...current,
@@ -1821,7 +1839,7 @@ function saveMasterDraft(type,key,draft,lifecycle={}){
       effectiveDate:dateOnlyValue(lifecycle.effectiveDate)||dateOnlyValue(current.effectiveDate)||todayIso(),
       expiryDate:dateOnlyValue(lifecycle.expiryDate)||dateOnlyValue(current.expiryDate)||""
     },
-    submittedBy:"Maker (Risk Management)",
+    submittedBy:currentLimasUser(),
     submittedAt:nowLabel(),
     lastUpdated:nowLabel()
   };
@@ -1830,6 +1848,7 @@ function saveMasterDraft(type,key,draft,lifecycle={}){
   return next;
 }
 function approveMasterDraft(type,key){
+  requireLimasPermission("masterApprove");
   const row=getDemoRecord(type,key);
   const current=loadRecordMeta(type,key);
   if(!row||!current.pendingValues)return null;
@@ -1846,7 +1865,7 @@ function approveMasterDraft(type,key){
     effectiveDate:dateOnlyValue(lifecycle.effectiveDate)||dateOnlyValue(current.effectiveDate)||todayIso(),
     expiryDate:dateOnlyValue(lifecycle.expiryDate)||dateOnlyValue(current.expiryDate)||"",
     approvalStatus:"Approved",
-    approvedBy:"Checker (Risk Management)",
+    approvedBy:currentLimasUser(),
     approvedAt:now,
     lastUpdated:now
   };
@@ -1857,6 +1876,7 @@ function approveMasterDraft(type,key){
   return next;
 }
 function rejectMasterDraft(type,key){
+  requireLimasPermission("masterReject");
   const current=loadRecordMeta(type,key);
   if(!current.pendingValues)return current;
   const next={...current,approvalStatus:"Approved",lastUpdated:nowLabel()};
@@ -1867,6 +1887,7 @@ function rejectMasterDraft(type,key){
   return next;
 }
 function createMasterRecord(type,values){
+  requireLimasPermission("masterCreate");
   const input=values||{};
   let key=String(input.key||"").trim();
   if(type==="LPG"){
@@ -1897,6 +1918,7 @@ function createMasterRecord(type,values){
   return row;
 }
 function deleteMasterRecord(type,key){
+  requireLimasPermission("masterDelete");
   const refs=masterReferenceCount(type,key);
   if(refs>0)throw new Error("Master "+key+" masih direferensikan oleh "+refs+" mapping. Hapus mapping/reference terlebih dahulu.");
   const rows=limasDemoData[type]||[];
@@ -2708,10 +2730,11 @@ function sourceIngestionValidation(productId,records,headers=[]){
   }};
 }
 function createIngestionBatch(productId,records,headers,meta={}){
+  requireLimasPermission("ingestionUpload");
   const validation=sourceIngestionValidation(productId,records,headers);
   const stamp=nowLabel(),batchId="BATCH-"+Date.now();
   return {
-    batchId,productId,status:"Uploaded",uploadedBy:"Risk Management",uploadedAt:stamp,
+    batchId,productId,status:"Uploaded",uploadedBy:currentLimasUser(),uploadedAt:stamp,
     sourceSystem:String(meta.sourceSystem||"").trim()||"Source system / feed belum ditetapkan",
     asOfDate:String(meta.asOfDate||"").trim()||todayIso(),
     fileName:String(meta.fileName||"source.csv"),
@@ -2720,17 +2743,20 @@ function createIngestionBatch(productId,records,headers,meta={}){
   };
 }
 function validateIngestionBatch(batch){
+  requireLimasPermission("ingestionValidate");
   const validation=sourceIngestionValidation(batch.productId,(batch.rows||[]).map(x=>x.data||{}),batch.headers||[]);
   const stamp=nowLabel();
-  return {...batch,status:validation.summary.rejected===0?"Validated":"Uploaded",validatedAt:stamp,validatedBy:"Risk Management",rows:validation.rowResults,summary:validation.summary,
+  return {...batch,status:validation.summary.rejected===0?"Validated":"Uploaded",validatedAt:stamp,validatedBy:currentLimasUser(),rows:validation.rowResults,summary:validation.summary,
     history:[...(batch.history||[]),{at:stamp,action:"VALIDATED",by:"Risk Management",detail:validation.summary.rejected===0?"Validation passed":validation.summary.rejected+" row(s) rejected"}]};
 }
 function rejectIngestionBatch(batch,reason){
+  requireLimasPermission("ingestionReject");
   const stamp=nowLabel();
   return {...batch,status:"Rejected",rejectedAt:stamp,rejectedBy:"Risk Management",rejectReason:String(reason||"Batch rejected").trim(),
     history:[...(batch.history||[]),{at:stamp,action:"REJECTED",by:"Risk Management",detail:String(reason||"Batch rejected").trim()}]};
 }
 function promoteIngestionBatch(batch){
+  requireLimasPermission("ingestionPromote");
   if(batch.status!=="Validated")throw new Error("Batch harus berstatus Validated sebelum dipromosikan.");
   if(Number(batch.summary?.rejected||0)>0)throw new Error("Batch masih memiliki rejected rows.");
   const rows=batch.rows||[],target=productDatabase[batch.productId]??(productDatabase[batch.productId]=[]);
@@ -2744,7 +2770,7 @@ function promoteIngestionBatch(batch){
     if(idx>=0)target[idx]=record;else target.push(record);
   });
   const stamp=nowLabel();
-  const promoted={...batch,status:"Promoted",promotedAt:stamp,promotedBy:"Checker (Risk Management)",
+  const promoted={...batch,status:"Promoted",promotedAt:stamp,promotedBy:currentLimasUser(),
     history:[...(batch.history||[]),{at:stamp,action:"PROMOTED",by:"Checker (Risk Management)",detail:rows.length+" row(s) promoted to Product Database and integration rebuild requested."}]};
   return promoted;
 }
@@ -2790,6 +2816,7 @@ function applyPersistedSourceRemediations(){
   Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
 }
 function saveProductSourceCorrection(productId,recordId,changes,reason){
+  requireLimasPermission("remediationEdit");
   const row=(productDatabase[productId]||[]).find(r=>String(r.recordId)===String(recordId));
   if(!row)throw new Error("Source record tidak ditemukan.");
   const fields=productSchemaFields[productId]||[];
@@ -2811,6 +2838,7 @@ function saveProductSourceCorrection(productId,recordId,changes,reason){
   return store[key];
 }
 function saveMappingCorrection(productId,recordId,limitType,key,changes,reason){
+  requireLimasPermission("remediationEdit");
   if(!productId||!recordId||!limitType||!key)throw new Error("Mapping remediation reference tidak lengkap.");
   const sanitized={
     bookingOffice:String(changes?.bookingOffice??"").trim(),
@@ -2851,6 +2879,8 @@ function getExceptionAction(row){
   return store[key]||{status:"Open",owner:"Risk Management",notes:"",updatedAt:"",resolvedAt:"",closedAt:""};
 }
 function setExceptionAction(row,nextStatus,notes="",options={}){
+  const permission=nextStatus==="In Progress"?"remediationStart":nextStatus==="Resolved"?"remediationResolve":nextStatus==="Closed"?"remediationClose":"remediationStart";
+  requireLimasPermission(permission);
   const key=exceptionKey(row),store=loadExceptionActions(),current=store[key]||{status:"Open",owner:"Risk Management",notes:"",updatedAt:"",resolvedAt:"",closedAt:""};
   const order=EXCEPTION_ACTION_STATUSES.indexOf(nextStatus);
   const previous=EXCEPTION_ACTION_STATUSES.indexOf(current.status||"Open");
@@ -2862,7 +2892,7 @@ function setExceptionAction(row,nextStatus,notes="",options={}){
   if(nextStatus==="In Progress"&&current.status==="Closed")throw new Error("Issue yang sudah Closed tidak dapat dibuka kembali dari flow ini.");
   const stamp=nowLabel();
   const rowRef={domain:row.domain||"—",key:row.key||"—",detail:row.detail||"—",layer:row.layer||"",issueType:row.issueType||"",productId:row.productId||null,recordId:row.recordId||null,object:row.object||"—"};
-  const event={at:stamp,from:current.status||"Open",to:nextStatus,by:current.owner||"Risk Management",notes:String(notes??current.notes??"").trim()};
+  const event={at:stamp,from:current.status||"Open",to:nextStatus,by:currentLimasUser(),notes:String(notes??current.notes??"").trim()};
   const next={...current,status:nextStatus,notes:String(notes??current.notes??"").trim(),owner:current.owner||"Risk Management",updatedAt:stamp,rowRef,history:[...(current.history||[]),event]};
   if(nextStatus==="Resolved")next.resolvedAt=stamp;
   if(nextStatus==="Closed")next.closedAt=stamp;
@@ -3209,6 +3239,7 @@ function loadProductFieldMeta(tab,group,field){
   return {source:"master_dataproduk.xlsx • "+sheet,note};
 }
 function saveProductFieldMeta(tab,group,field,meta){
+  requireLimasPermission("productMetadataEdit");
   try{window.localStorage.setItem(productMetaKey(tab,group,field),JSON.stringify(meta));}catch(e){}
 }
 function catalogMetaKey(id){return `limas_product_catalog_v2_${id}`;}
@@ -3220,6 +3251,7 @@ function loadProductCatalogMeta(item){
   return {source:item.source,note:item.note};
 }
 function saveProductCatalogMeta(item,meta){
+  requireLimasPermission("productMetadataEdit");
   try{window.localStorage.setItem(catalogMetaKey(item.id),JSON.stringify(meta));}catch(e){}
 }
 
@@ -3641,6 +3673,20 @@ function Products({nav}){
   </Layout>;
 }
 
+function AccessControl({nav}){
+  const [role,setRole]=useState(currentLimasRole()),[user,setUser]=useState(currentLimasUser());
+  const apply=()=>{setLimasSession(role,user);alert("Demo session role diubah menjadi "+role+".");};
+  const rows=Object.entries(RBAC_PERMISSIONS).map(([permission,roles])=>({permission,Maker:roles.includes("Maker"),Checker:roles.includes("Checker"),Viewer:roles.includes("Viewer")}));
+  return <Layout screen="access" onNav={nav}><Header title="Access Control & RBAC" subtitle="Role-based access dan segregation of duties untuk prototype LIMAS"/><div className="page">
+    <section className="card"><div className="head"><div><h2>Current Session</h2><p>Role switch tersedia untuk demonstrasi prototype; function-level gate tetap berlaku.</p></div><span className="chip blue">{roleLabel()}</span></div>
+      <div className="body"><div className="toolbar"><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><input className="input" value={user} onChange={e=>setUser(e.target.value)} placeholder="Session user"/><button className="btn primary" onClick={apply}>Apply Demo Session</button></div></div>
+    </section>
+    <section className="card"><div className="head"><div><h2>Permission Matrix</h2><p>Maker mengajukan/perbaiki; Checker melakukan approval, promotion dan final resolution; Viewer read-only.</p></div></div>
+      <div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Permission</th><th>Maker</th><th>Checker</th><th>Viewer</th></tr></thead><tbody>{rows.map(r=><tr key={r.permission}><td className="key">{r.permission}</td><td>{r.Maker?"✓":"—"}</td><td>{r.Checker?"✓":"—"}</td><td>{r.Viewer?"✓":"—"}</td></tr>)}</tbody></table></div></div>
+    </section>
+  </div></Layout>;
+}
+
 class AppErrorBoundary extends React.Component{
   constructor(props){super(props);this.state={error:null}}
   static getDerivedStateFromError(error){return {error}}
@@ -3672,6 +3718,7 @@ function App(){
   if(screen==="quality") return <DataQuality nav={nav}/>;
   if(screen==="remediation") return <DataRemediation nav={nav} initialIssueId={navPayload?.issueId||""}/>;
   if(screen==="ingestion") return <DataIngestion nav={nav}/>;
+  if(screen==="access") return <AccessControl nav={nav}/>;
   if(["Country","CCL","MLK","CIL","LPG"].includes(screen)) return <Monitor type={screen} nav={nav}/>;
   return <Dashboard nav={nav}/>;
 }
