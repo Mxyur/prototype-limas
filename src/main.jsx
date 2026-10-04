@@ -81,7 +81,8 @@ function getMasterSections(type){
       ["Commercial Line Limit (Rp Miliar)","—"],
       ["Treasury DN Limit (Rp Miliar)","—"],
       ["Treasury LN Limit (Rp Miliar)","—"],
-      ["Treasury Line Limit (Rp Miliar)","—"]
+      ["Treasury Line Limit (Rp Miliar)","—"],
+      ["Credit Line Total (Rp Miliar)","—"]
     ],
     "Entity Scope":[["Direct Limit Entities","—"],["Indirect Limit Entities","—"]]
   };
@@ -511,10 +512,25 @@ function cclScopeContractual(counterpartyKey,entityCode,limitType="DIRECT"){
   const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
   return row?normalizeMasterLimit("CCL",row.contractual).amount:null;
 }
+function cclEntityFacility(counterpartyKey,entityCode,limitType="DIRECT"){
+  const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
+  return row?{
+    ccl:Number(row.ccl)||0,
+    contractual:Number(row.contractual)||0,
+    facility:Number(row.facility)||0,
+    bankLoan:Number(row.bankLoan)||0,
+    commercialLine:Number(row.commercialLine)||0,
+    treasuryLine:Number(row.treasuryLine)||0
+  }:null;
+}
 function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
   return productApplicationsFor("CCL",counterpartyKey)
     .filter(a=>String(a.entity||"")===String(entityCode)&&String(a.cclLimitType||"DIRECT")===String(limitType))
     .reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
+}
+function cclScopeRecordsForCategory(category,entityCode=null,limitType="DIRECT"){
+  const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
+  return E2E_CCL_LIMIT_SCOPE.filter(x=>x.limitType===limitType&&(!entityCode||x.entityCode===entityCode)&&masters.some(m=>String(m.key)===String(x.counterpartyId)));
 }
 function cclCategoryMetric(category,entityCode=null,limitType="DIRECT",includeParent=false){
   const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
@@ -540,10 +556,13 @@ function buildCCLDirectReportRows(){
     const cons=cclCategoryAllMetric(category,"DIRECT");
     const bmri=cclCategoryMetric(category,"BMRI","DIRECT");
     const subsidiaries={counterpartyCount:0,ccl:0,contractual:0,os:0,osMax:0,util:0};
+    const subsidiaryCounterparties=new Set();
     E2E_CCL_ENTITY_SCOPE.filter(x=>x.entityCode!=="BMRI"&&x.direct).forEach(x=>{
       const m=cclCategoryMetric(category,x.entityCode,"DIRECT");
-      subsidiaries.counterpartyCount+=m.counterpartyCount;subsidiaries.ccl+=m.ccl;subsidiaries.contractual+=m.contractual;subsidiaries.os+=m.os;subsidiaries.osMax+=m.osMax;
+      cclScopeRecordsForCategory(category,x.entityCode,"DIRECT").forEach(s=>subsidiaryCounterparties.add(String(s.counterpartyId)));
+      subsidiaries.ccl+=m.ccl;subsidiaries.contractual+=m.contractual;subsidiaries.os+=m.os;subsidiaries.osMax+=m.osMax;
     });
+    subsidiaries.counterpartyCount=subsidiaryCounterparties.size;
     subsidiaries.util=subsidiaries.contractual?subsidiaries.os/subsidiaries.contractual:0;
     return {
       no:i+1,category,counterpartyCount:cons.counterpartyCount,
@@ -558,7 +577,8 @@ function buildCCLIndirectReportRows(){
   const cats=[...new Set((limasDemoData.CCL||[]).map(r=>r.category).filter(Boolean))];
   return cats.map((category,i)=>{
     const mmi=cclCategoryMetric(category,"MMI","INDIRECT"),amfs=cclCategoryMetric(category,"AMFS","INDIRECT");
-    const cons={counterpartyCount:mmi.counterpartyCount+amfs.counterpartyCount,ccl:mmi.ccl+amfs.ccl,contractual:mmi.contractual+amfs.contractual,os:mmi.os+amfs.os,osMax:mmi.osMax+amfs.osMax};
+    const indirectCounterparties=new Set([...cclScopeRecordsForCategory(category,"MMI","INDIRECT"),...cclScopeRecordsForCategory(category,"AMFS","INDIRECT")].map(x=>String(x.counterpartyId)));
+    const cons={counterpartyCount:indirectCounterparties.size,ccl:mmi.ccl+amfs.ccl,contractual:mmi.contractual+amfs.contractual,os:mmi.os+amfs.os,osMax:mmi.osMax+amfs.osMax};
     cons.util=cons.contractual?cons.os/cons.contractual:0;
     return {
       no:i+1,category,counterpartyCount:cons.counterpartyCount,
@@ -639,6 +659,14 @@ function cilProjection(key){
     return a+(Number(x.normalizedAmount??x.amount)||0)*factor;
   },0);
 }
+const MLK_METRIC_AS_OF={
+  bmpkKonsol:"2026-03-31",
+  bmpkEntitas:"2026-05-31",
+  facilityLimit:"2026-05-31",
+  totalBade:"2026-05-31",
+  borrowingCapacity:"2026-05-31",
+  masterLimit:"2026-05-31"
+};
 function mlkNum(v){return v===null||v===undefined||v===""?null:Number(v);}
 function mlkSum(rows,field){const vals=rows.map(r=>mlkNum(r[field])).filter(v=>v!==null&&Number.isFinite(v));return vals.length?vals.reduce((a,v)=>a+v,0):null;}
 function mlkFacilityMetrics(row){
@@ -657,7 +685,7 @@ function mlkMonitoringRows(rows){
     const f=mlkFacilityMetrics(r),bmpkKonsol=mlkNum(r.bmpkKonsol),bmpkEntitas=mlkNum(r.bmpkEntitas),borrowing=mlkNum(r.borrowingCapacity),masterLimit=mlkNum(r.masterLimit),setting=mlkNum(r.masterLimitSetting);
     const mlkValue=masterLimit;
     const utilMlkBmpk=bmpkEntitas&&mlkValue?mlkValue/bmpkEntitas:null,utilMlkBmpkConsol=bmpkKonsol&&mlkValue?mlkValue/bmpkKonsol:null;
-    out.push({no:out.length+1,tier:r.tier,holding:r.groupUsahaHolding||r.group,subGroup:r.subGroup||r.group,flag:r.bumnSwasta,unit:r.unitKerja,entity:r.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:mlkValue,utilBade:f.totalLimitExisting&&f.totalBadeExisting!==null?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk,utilMlkBmpkConsol,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:productContributionMap("MLK",r.key),rowType:"Debtor"});
+    out.push({no:out.length+1,tier:r.tier,holding:r.groupUsahaHolding||r.group,subGroup:r.subGroup||r.group,flag:r.bumnSwasta,unit:r.unitKerja,entity:r.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:mlkValue,utilBade:f.totalLimitExisting&&f.totalBadeExisting!==null?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk,utilMlkBmpkConsol,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:productContributionMap("MLK",r.key),metricAsOf:MLK_METRIC_AS_OF,rowType:"Debtor"});
   });
   const groups=new Map();
   rows.forEach(r=>{const h=r.groupUsahaHolding||r.group||"—";if(!groups.has(h))groups.set(h,[]);groups.get(h).push(r);});
@@ -751,7 +779,7 @@ function Report({nav}){
   return <Layout screen="report" onNav={nav}><Header title="Generate Monitoring Report" subtitle="Generate report monitoring dengan struktur yang mengikuti master report masing-masing limit"/><div className="page">
     <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Generate report dari monitoring read model yang sama dengan halaman Monitoring.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
       <div className="report-controls">
-        <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>CCL_DIRECT</option><option>CCL_INDIRECT</option><option>MLK</option><option>MLK_CONSOLIDATED</option><option>CIL</option><option>LPG</option></select></div>
+        <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option value="CCL_DIRECT">CCL Direct Limit</option><option value="CCL_INDIRECT">CCL Indirect Limit</option><option>MLK</option><option value="MLK_CONSOLIDATED">MLK Consolidated</option><option>CIL</option><option>LPG</option></select></div>
         <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>{E2E_DUMMY_META.period}</option></select></div>
         <div><label>Status</label><select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select></div>
         <div className="report-actions"><button className="btn primary" onClick={generate}>Generate Report</button><button className="btn secondary" onClick={()=>downloadReportCsv(type,filtered)}>Download CSV</button></div>
@@ -777,7 +805,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['subsidiaries','♙','Perusahaan Anak'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['subsidiaries','♙','Perusahaan Anak'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===6&&<div className="section">Reporting</div>}{i===11&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>{currentLimasUser()}</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS • {roleLabel()}</div></div></div></div>}
 function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user);return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><button className="btn primary" onClick={()=>{setLimasSession(role,user);go();}}>Masuk ke LIMAS</button><div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -1329,8 +1357,8 @@ function LPGMonitor({nav}){
 
 function MLKMonitor({nav}){
   const [entity,setEntity]=useState("ALL");
-  const allRows=mlkMonitoringRows(limasDemoData.MLK||[]);
-  const rows=allRows.filter(r=>r.rowType!=="Debtor"||entity==="ALL"||String(r.entity)===entity);
+  const filteredMasters=entity==="ALL"?(limasDemoData.MLK||[]):(limasDemoData.MLK||[]).filter(r=>String(r.entity)===entity);
+  const rows=mlkMonitoringRows(filteredMasters);
   const debtors=rows.filter(r=>r.rowType==="Debtor");
   const totalLimit=debtors.reduce((a,r)=>a+(Number(r.masterLimit)||0),0),totalExposure=debtors.reduce((a,r)=>a+(Number(r.bade)||0),0),util=totalLimit?totalExposure/totalLimit:0;
   return <Layout screen="MLK" onNav={nav}><Header title="Debtor / MLK Monitoring" subtitle="Holding → Sub-Group → Entitas → Debtor/CIF • Facility Limit + Bade + Master Limit"/><div className="page">
@@ -1343,34 +1371,67 @@ function MLKMonitor({nav}){
 
 function CCLMonitor({nav}){
   const [limitType,setLimitType]=useState("DIRECT"),[entityScope,setEntityScope]=useState("CONSOLIDATED");
-  const entityOptions=limitType==="DIRECT"?["CONSOLIDATED","BMRI","SUBSIDIARIES",...E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).map(x=>x.entityCode)]:["CONSOLIDATED","MMI","AMFS"];
+  const entityOptions=limitType==="DIRECT"
+    ?["CONSOLIDATED","BMRI","SUBSIDIARIES",...E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).map(x=>x.entityCode)]
+    :["CONSOLIDATED","MMI","AMFS"];
   const rows=limasDemoData.CCL||[];
+  const enabledScope=s=>limitType==="DIRECT"?Boolean(s.direct):Boolean(s.indirect);
+  const metricFor=(r)=>{
+    const scopes=E2E_CCL_ENTITY_SCOPE.filter(enabledScope);
+    if(entityScope==="CONSOLIDATED"){
+      const vals=scopes.map(x=>cclEntityFacility(r.key,x.entityCode,limitType)).filter(Boolean);
+      return {
+        limit:vals.reduce((s,x)=>s+x.ccl*1000,0),
+        contractual:vals.reduce((s,x)=>s+x.contractual*1000,0),
+        os:scopes.reduce((s,x)=>s+cclEntityExposure(r.key,x.entityCode,limitType),0),
+        facility:vals.reduce((s,x)=>s+x.facility*1000,0),
+        bankLoan:vals.reduce((s,x)=>s+x.bankLoan*1000,0),
+        commercialLine:vals.reduce((s,x)=>s+x.commercialLine*1000,0),
+        treasuryLine:vals.reduce((s,x)=>s+x.treasuryLine*1000,0)
+      };
+    }
+    if(entityScope==="SUBSIDIARIES"){
+      const sub=E2E_CCL_ENTITY_SCOPE.filter(x=>x.entityCode!=="BMRI"&&enabledScope(x));
+      const vals=sub.map(x=>cclEntityFacility(r.key,x.entityCode,limitType)).filter(Boolean);
+      return {
+        limit:vals.reduce((s,x)=>s+x.ccl*1000,0),
+        contractual:vals.reduce((s,x)=>s+x.contractual*1000,0),
+        os:sub.reduce((s,x)=>s+cclEntityExposure(r.key,x.entityCode,limitType),0),
+        facility:vals.reduce((s,x)=>s+x.facility*1000,0),
+        bankLoan:vals.reduce((s,x)=>s+x.bankLoan*1000,0),
+        commercialLine:vals.reduce((s,x)=>s+x.commercialLine*1000,0),
+        treasuryLine:vals.reduce((s,x)=>s+x.treasuryLine*1000,0)
+      };
+    }
+    const x=cclEntityFacility(r.key,entityScope,limitType);
+    return x
+      ?{limit:x.ccl*1000,contractual:x.contractual*1000,os:cclEntityExposure(r.key,entityScope,limitType),facility:x.facility*1000,bankLoan:x.bankLoan*1000,commercialLine:x.commercialLine*1000,treasuryLine:x.treasuryLine*1000}
+      :{limit:null,contractual:null,os:0,facility:0,bankLoan:0,commercialLine:0,treasuryLine:0};
+  };
   const visible=rows.map(r=>{
-    const metric=entityScope==="CONSOLIDATED"
-      ?{limit:recordLimit("CCL",r),os:recordExposure("CCL",r),contractual:normalizeMasterLimit("CCL",r.contractual).amount}
-      :entityScope==="BMRI"
-        ?{limit:cclScopeLimit(r.key,"BMRI",limitType),os:cclEntityExposure(r.key,"BMRI",limitType),contractual:cclScopeContractual(r.key,"BMRI",limitType)}
-        :entityScope==="SUBSIDIARIES"
-          ?(()=>{const scopes=E2E_CCL_ENTITY_SCOPE.filter(x=>x.entityCode!=="BMRI"&&x[limitType.toLowerCase()]);const vals=scopes.map(x=>({limit:cclScopeLimit(r.key,x.entityCode,limitType),os:cclEntityExposure(r.key,x.entityCode,limitType),contractual:cclScopeContractual(r.key,x.entityCode,limitType)}));return {limit:vals.reduce((s,x)=>s+(x.limit||0),0),os:vals.reduce((s,x)=>s+x.os,0),contractual:vals.reduce((s,x)=>s+(x.contractual||0),0)}})()
-          :{limit:cclScopeLimit(r.key,entityScope,limitType),os:cclEntityExposure(r.key,entityScope,limitType),contractual:cclScopeContractual(r.key,entityScope,limitType)};
-    const util=metric.contractual?metric.os/metric.contractual:0;
+    const metric=metricFor(r),util=metric.contractual?metric.os/metric.contractual:0;
     return {...r,...metric,util,status:util>=1?"Breach":util>=.8?"Warning":"Normal"};
   }).filter(r=>r.limit!==null&&r.limit!==undefined);
   const total=visible.reduce((a,r)=>a+r.limit,0),os=visible.reduce((a,r)=>a+r.os,0),contractual=visible.reduce((a,r)=>a+(r.contractual||0),0),util=contractual?os/contractual:0;
-  return <Layout screen="CCL" onNav={nav}><Header title="Counterparty / CCL Monitoring" subtitle="Direct / Indirect • BMRI & Perusahaan Anak • Counterparty • Commercial / Treasury"/>
+  return <Layout screen="CCL" onNav={nav}>
+    <Header title="Counterparty / CCL Monitoring" subtitle="Direct / Indirect • BMRI & Perusahaan Anak • Counterparty • Commercial / Treasury"/>
     <div className="page">
       <section className="card"><div className="body"><div className="toolbar">
         <select className="select" value={limitType} onChange={e=>{setLimitType(e.target.value);setEntityScope(e.target.value==="DIRECT"?"CONSOLIDATED":"MMI");}}><option>DIRECT</option><option>INDIRECT</option></select>
         <select className="select" value={entityScope} onChange={e=>setEntityScope(e.target.value)}>{entityOptions.map(x=><option key={x}>{x}</option>)}</select>
         <span className="chip blue">Direct entities: {E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).length} • Indirect entities: {E2E_CCL_ENTITY_SCOPE.filter(x=>x.indirect).length}</span>
       </div></div></section>
-      <div className="metric-grid"><DomainKpi label="Applicable Limit" value={total.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Rp Juta"/><DomainKpi label="OS" value={os.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Current exposure"/><DomainKpi label="Utilisasi" value={(util*100).toFixed(2)+"%"} sub="OS / Contractual" accent={util>=1?"red":util>=.8?"yellow":""}/><DomainKpi label="Counterparties" value={visible.length} sub="Current scope"/></div>
+      <div className="metric-grid">
+        <DomainKpi label="Applicable Limit" value={total.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Rp Juta"/>
+        <DomainKpi label="OS" value={os.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Current exposure"/>
+        <DomainKpi label="Utilisasi" value={(util*100).toFixed(2)+"%"} sub="OS / Contractual" accent={util>=1?"red":util>=.8?"yellow":""}/>
+        <DomainKpi label="Counterparties" value={visible.length} sub="Current scope"/>
+      </div>
       <section className="card"><div className="head"><div><h2>CCL Entity Scope</h2><p>Entity dan Direct/Indirect dipisahkan dari counterparty identity.</p></div></div><div className="body"><div className="integration-chip-grid">{E2E_CCL_ENTITY_SCOPE.map(x=><div className="mini integration-chip" key={x.entityCode}><b>{x.entityCode}</b><div className="muted-small">{entityMasterByCode[x.entityCode]?.entityName||"—"} • Direct: {x.direct?"Yes":"No"} • Indirect: {x.indirect?"Yes":"No"}</div></div>)}</div></div></section>
-      <section className="card"><div className="head"><div><h2>Monitoring Detail</h2><p>Commercial/Treasury hierarchy ada di Master dan utilization tetap berasal dari Product Database.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Swift</th><th>Bank</th><th>Entity Scope</th><th>Type</th><th>CCL</th><th>Contractual</th><th>OS</th><th>Utilisasi</th><th>Commercial</th><th>Treasury</th><th>Status</th></tr></thead><tbody>{visible.map((r,i)=><tr key={r.key+"-"+i}><td className="key">{r.key}</td><td>{r.name}</td><td>{entityScope}</td><td>{limitType}</td><td>{r.limit?.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{r.contractual?.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{r.os?.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{(r.util*100).toFixed(2)}%</td><td>{fmtReport(r.commercialLineLimit*1000)}</td><td>{fmtReport(r.treasuryLineLimit*1000)}</td><td><Status v={r.status}/></td></tr>)}</tbody></table></div></div></section>
+      <section className="card"><div className="head"><div><h2>Monitoring Detail</h2><p>Commercial/Treasury hierarchy berasal dari Master; utilization berasal dari Product Database melalui entity + Direct/Indirect mapping.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Swift</th><th>Bank</th><th>Entity Scope</th><th>Type</th><th>CCL</th><th>Contractual</th><th>OS</th><th>Utilisasi</th><th>Facility</th><th>Bank Loan</th><th>Commercial</th><th>Treasury</th><th>Status</th></tr></thead><tbody>{visible.map((r,i)=><tr key={r.key+"-"+i}><td className="key">{r.key}</td><td>{r.name}</td><td>{entityScope}</td><td>{limitType}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.contractual)}</td><td>{fmtReport(r.os)}</td><td>{(r.util*100).toFixed(2)}%</td><td>{fmtReport(r.facility)}</td><td>{fmtReport(r.bankLoan)}</td><td>{fmtReport(r.commercialLine)}</td><td>{fmtReport(r.treasuryLine)}</td><td><Status v={r.status}/></td></tr>)}</tbody></table></div></div></section>
     </div>
   </Layout>;
 }
-
 function Monitor({type,nav}){
   if(type==="LPG")return <LPGMonitor nav={nav}/>;
   if(type==="MLK")return <MLKMonitor nav={nav}/>;
@@ -2186,6 +2247,7 @@ function masterFieldValue(type,section,field,base,row,index){
       "Bank Loan Limit (Rp Miliar)":row.bankLoanLimit,"Commercial DN Limit (Rp Miliar)":row.commercialDnLimit,"Commercial LN Limit (Rp Miliar)":row.commercialLnLimit,
       "Commercial Line Limit (Rp Miliar)":row.commercialLineLimit,"Treasury DN Limit (Rp Miliar)":row.treasuryDnLimit,"Treasury LN Limit (Rp Miliar)":row.treasuryLnLimit,
       "Treasury Line Limit (Rp Miliar)":row.treasuryLineLimit,
+      "Credit Line Total (Rp Miliar)":row.creditLineLimit,
       "Direct Limit Entities":entityDirect.join(", ")||"—","Indirect Limit Entities":entityIndirect.join(", ")||"—",
       "Outstanding":total,"Limit":row.ccl,"Total":total,"Bank Loan":bankLoan,
       "Commercial Line":p["CREDIT LINE|Commercial"]||0,"Treasury Line":p["CREDIT LINE|Treasury"]||0,
@@ -2791,14 +2853,14 @@ function cleanseMasterData(){
     if(commDn!==null&&commLn!==null)r.commercialLineLimit=Number((commDn+commLn).toFixed(6));
     if(trsDn!==null&&trsLn!==null)r.treasuryLineLimit=Number((trsDn+trsLn).toFixed(6));
     const comm=mlkNum(r.commercialLineLimit),trs=mlkNum(r.treasuryLineLimit);
-    if(comm!==null&&trs!==null)r.creditLineLimit=Number((comm+trs+(mlkNum(r.bankLoanLimit)??0)).toFixed(6));
+    if(comm!==null&&trs!==null)r.creditLineLimit=Number((comm+trs).toFixed(6));
   });
   (limasDemoData.CCL||[]).forEach(r=>{
     const comm=(Number(r.commercialDnLimit)||0)+(Number(r.commercialLnLimit)||0);
     const trs=(Number(r.treasuryDnLimit)||0)+(Number(r.treasuryLnLimit)||0);
     if(r.commercialLineLimit!==undefined)check("Master","CCL","Commercial Line = Comm DN + Comm LN",Number(r.commercialLineLimit),comm,.01,"Rp Miliar");
     if(r.treasuryLineLimit!==undefined)check("Master","CCL","Treasury Line = Treasury DN + Treasury LN",Number(r.treasuryLineLimit),trs,.01,"Rp Miliar");
-    if(r.creditLineLimit!==undefined)check("Master","CCL","Facility Total = Bank Loan + Commercial + Treasury",Number(r.creditLineLimit),(Number(r.bankLoanLimit)||0)+comm+trs,.01,"Rp Miliar");
+    if(r.creditLineLimit!==undefined)check("Master","CCL","Credit Line Total = Commercial + Treasury",Number(r.creditLineLimit),comm+trs,.01,"Rp Miliar");
     const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0);
     check("Master","CCL","Direct entity CCL allocation = master CCL",direct,Number(r.ccl||0),.01,"Rp Miliar");
   });
@@ -3417,7 +3479,7 @@ function masterCanonicalQualityIssues(){
         const trs=(Number(r.treasuryDnLimit)||0)+(Number(r.treasuryLnLimit)||0);
         if(r.commercialLineLimit!==undefined&&Math.abs(Number(r.commercialLineLimit)-comm)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_COMMERCIAL_SPLIT_MISMATCH",detail:"Commercial Line ≠ Commercial DN + Commercial LN."});
         if(r.treasuryLineLimit!==undefined&&Math.abs(Number(r.treasuryLineLimit)-trs)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_TREASURY_SPLIT_MISMATCH",detail:"Treasury Line ≠ Treasury DN + Treasury LN."});
-        if(r.creditLineLimit!==undefined&&Math.abs(Number(r.creditLineLimit)-((Number(r.bankLoanLimit)||0)+comm+trs))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_FACILITY_TOTAL_MISMATCH",detail:"Credit Line hierarchy total does not reconcile."});
+        if(r.creditLineLimit!==undefined&&Math.abs(Number(r.creditLineLimit)-(comm+trs))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_FACILITY_TOTAL_MISMATCH",detail:"Credit Line Total ≠ Commercial Line + Treasury Line."});
         const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0);
         if(Math.abs(direct-(Number(r.ccl)||0))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_ENTITY_ALLOCATION_MISMATCH",detail:"Sum of Direct entity CCL allocations ≠ CCL master."});
       }
