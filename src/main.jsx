@@ -552,15 +552,18 @@ function cclScopeContractual(counterpartyKey,entityCode,limitType="DIRECT"){
   return row?normalizeMasterLimit("CCL",row.contractual).amount:null;
 }
 function cclEntityFacility(counterpartyKey,entityCode,limitType="DIRECT"){
+  const state=entityProductLimitState("CCL",counterpartyKey,entityCode,limitType);
+  if(!state.exists)return null;
   const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
-  return row?{
-    ccl:Number(row.ccl)||0,
-    contractual:Number(row.contractual)||0,
-    facility:Number(row.facility)||0,
-    bankLoan:Number(row.bankLoan)||0,
-    commercialLine:Number(row.commercialLine)||0,
-    treasuryLine:Number(row.treasuryLine)||0
-  }:null;
+  const v=state.approved||{};
+  return {
+    ccl:Number(v.ccl)||0,
+    contractual:Number(v.contractual)||0,
+    facility:Number(row?.facility??0)||0,
+    bankLoan:Number(v.bankLoan)||0,
+    commercialLine:Number(v.commercialLine)||0,
+    treasuryLine:Number(v.treasuryLine)||0
+  };
 }
 function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
   // CCL consumes the derived Credit Line layer only.
@@ -741,9 +744,11 @@ function recordExposure(type,row){
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
 }
 function effectiveCclMasterLimit(row){
-  const directScopeLimit=(E2E_CCL_LIMIT_SCOPE||[])
-    .filter(x=>String(x.counterpartyId)===String(row?.key)&&x.limitType==="DIRECT")
-    .reduce((s,x)=>s+(Number(x.ccl)||0),0);
+  const directScope=(E2E_CCL_LIMIT_SCOPE||[]).filter(x=>String(x.counterpartyId)===String(row?.key)&&x.limitType==="DIRECT");
+  const directScopeLimit=directScope.reduce((s,x)=>{
+    const v=effectiveEntityProductLimit("CCL",row?.key,x.entityCode,"DIRECT")||{};
+    return s+(Number(v.ccl)||0);
+  },0);
   return directScopeLimit>0?directScopeLimit:Number(row?.ccl)||0;
 }
 function recordLimit(type,row){
@@ -833,18 +838,19 @@ function mlkNum(v){return v===null||v===undefined||v===""?null:Number(v);}
 function mlkSum(rows,field){const vals=rows.map(r=>mlkNum(r[field])).filter(v=>v!==null&&Number.isFinite(v));return vals.length?vals.reduce((a,v)=>a+v,0):null;}
 function mlkFacilityMetrics(row){
   const p=productContributionMap("MLK",row.key);
-  const clLimit=mlkNum(row.clLimit),nclLimit=mlkNum(row.nclLimit),treasuryLimit=mlkNum(row.treasuryLine)??0;
+  const setup=effectiveEntityProductLimit("MLK",row.key,row.entity)||{};
+  const clLimit=mlkNum(setup.cashLoan??row.clLimit),nclLimit=mlkNum(setup.ncl??row.nclLimit),treasuryLimit=mlkNum(setup.treasuryLine??row.treasuryLine)??0;
   const clBade=mlkNum(p.CASHLOAN)??0;
   const nclBade=mlkNum(p["NON CASH LOAN"])??0;
   const treasuryBade=mlkNum(p["CREDIT LINE|Treasury"])??0;
-  const totalLimitExisting=mlkNum(row.totalLimitExisting) ?? (clLimit!==null&&nclLimit!==null?clLimit+nclLimit+treasuryLimit:null);
+  const totalLimitExisting=(clLimit!==null&&nclLimit!==null)?clLimit+nclLimit+treasuryLimit:null;
   const totalBadeExisting=clBade+nclBade+treasuryBade;
   return {clLimit,nclLimit,treasuryLimit,clBade,nclBade,treasuryBade,totalLimitExisting,totalBadeExisting};
 }
 function mlkMonitoringRows(rows){
   const out=[];
   rows.forEach(r=>{
-    const f=mlkFacilityMetrics(r),bmpkKonsol=mlkNum(r.bmpkKonsol),bmpkEntitas=mlkNum(r.bmpkEntitas),borrowing=mlkNum(r.borrowingCapacity),masterLimit=mlkNum(r.masterLimit),setting=mlkNum(r.masterLimitSetting);
+    const f=mlkFacilityMetrics(r),bmpkKonsol=mlkNum(r.bmpkKonsol),bmpkEntitas=mlkNum(r.bmpkEntitas),borrowing=mlkNum(r.borrowingCapacity),masterLimit=effectiveMlkMasterLimit(r),setting=mlkNum(r.masterLimitSetting);
     const mlkValue=masterLimit;
     const utilMlkBmpk=bmpkEntitas&&mlkValue?mlkValue/bmpkEntitas:null,utilMlkBmpkConsol=bmpkKonsol&&mlkValue?mlkValue/bmpkKonsol:null;
     out.push({no:out.length+1,tier:r.tier,holding:r.groupUsahaHolding||r.group,subGroup:r.subGroup||r.group,flag:r.bumnSwasta,unit:r.unitKerja,entity:r.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:mlkValue,utilBade:f.totalLimitExisting&&f.totalBadeExisting!==null?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk,utilMlkBmpkConsol,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:productContributionMap("MLK",r.key),metricAsOf:MLK_METRIC_AS_OF,rowType:"Debtor"});
@@ -1870,8 +1876,141 @@ function MasterCreateForm({type,onCreated,onCancel}){
   </section>;
 }
 
+
+function EntityProductLimitSetup(){
+  const [type,setType]=useState("MLK"),[entityFilter,setEntityFilter]=useState("ALL"),[query,setQuery]=useState("");
+  const [selectedCcl,setSelectedCcl]=useState(()=>String((limasDemoData.CCL||[])[0]?.key||""));
+  const [editingKey,setEditingKey]=useState(""),[draft,setDraft]=useState({});
+  const [,refresh]=useState(0);
+  const productFields=ENTITY_PRODUCT_LIMIT_PRODUCTS(type);
+  const mlkRows=(limasDemoData.MLK||[]).filter(r=>entityFilter==="ALL"||String(r.entity)===String(entityFilter));
+  const cclMasterRows=limasDemoData.CCL||[];
+  const selectedCclRow=cclMasterRows.find(r=>String(r.key)===String(selectedCcl))||cclMasterRows[0];
+  const cclScopes=selectedCclRow
+    ? E2E_CCL_ENTITY_SCOPE.map(scope=>{
+        const limitType=scope.direct?"DIRECT":"INDIRECT";
+        const state=entityProductLimitState("CCL",selectedCclRow.key,scope.entityCode,limitType);
+        return {...scope,limitType,state};
+      }).filter(x=>x.state.exists)
+    : [];
+  const filteredMlk=mlkRows.filter(r=>!query.trim()||String(r.key+" "+r.name+" "+(r.groupUsahaHolding||r.group)+" "+r.entity).toLowerCase().includes(query.trim().toLowerCase()));
+  const configuredMlk=filteredMlk.filter(r=>entityProductSetupStatus("MLK",r.key,r.entity)==="Configured").length;
+  const pendingMlk=filteredMlk.filter(r=>entityProductSetupStatus("MLK",r.key,r.entity)==="Pending Approval").length;
+  const configuredCcl=cclScopes.length;
+  const possibleCcl=E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct||x.indirect).length;
+
+  const startEdit=(row,typeArg)=>{
+    const masterKey=typeArg==="MLK"?row.key:selectedCclRow?.key;
+    const entityCode=row.entityCode;
+    const limitType=typeArg==="MLK"?"DIRECT":row.limitType;
+    const state=entityProductLimitState(typeArg,masterKey,entityCode,limitType);
+    if(!state.exists)return;
+    setEditingKey(entityProductLimitKey(typeArg,masterKey,entityCode,limitType));
+    setDraft({...((state.pending&&state.approvalStatus==="Pending Approval")?state.pending:state.approved||state.base)});
+  };
+  const saveDraft=(row,typeArg)=>{
+    try{
+      const masterKey=typeArg==="MLK"?row.key:selectedCclRow.key;
+      const entityCode=row.entityCode,limitType=typeArg==="MLK"?"DIRECT":row.limitType;
+      saveEntityProductLimitDraft(typeArg,masterKey,entityCode,limitType,draft);
+      setEditingKey("");setDraft({});refresh(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const approve=(row,typeArg)=>{
+    try{
+      const masterKey=typeArg==="MLK"?row.key:selectedCclRow.key;
+      approveEntityProductLimitDraft(typeArg,masterKey,row.entityCode,typeArg==="MLK"?"DIRECT":row.limitType);
+      refresh(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const reject=(row,typeArg)=>{
+    try{
+      const masterKey=typeArg==="MLK"?row.key:selectedCclRow.key;
+      rejectEntityProductLimitDraft(typeArg,masterKey,row.entityCode,typeArg==="MLK"?"DIRECT":row.limitType);
+      refresh(x=>x+1);
+    }catch(e){alert(e?.message||String(e));}
+  };
+  const activeKey=(row,typeArg)=>entityProductLimitKey(typeArg,typeArg==="MLK"?row.key:selectedCclRow.key,row.entityCode,typeArg==="MLK"?"DIRECT":row.limitType);
+  const renderActions=(row,typeArg)=>{
+    const k=activeKey(row,typeArg),state=entityProductLimitState(typeArg,typeArg==="MLK"?row.key:selectedCclRow.key,row.entityCode,typeArg==="MLK"?"DIRECT":row.limitType),isEditing=editingKey===k;
+    return isEditing
+      ? <div className="toolbar"><button className="btn primary" disabled={!canLimas("masterDraft")} onClick={()=>saveDraft(row,typeArg)}>Submit Draft</button><button className="btn ghost" onClick={()=>{setEditingKey("");setDraft({});}}>Cancel</button></div>
+      : <div className="toolbar"><button className="btn ghost" disabled={!canLimas("masterDraft")} onClick={()=>startEdit(row,typeArg)}>Edit</button>{state.pending&&canLimas("masterApprove")&&<button className="btn secondary" onClick={()=>approve(row,typeArg)}>Approve</button>}{state.pending&&canLimas("masterReject")&&<button className="btn ghost" onClick={()=>reject(row,typeArg)}>Reject</button>}</div>;
+  };
+  const renderValues=(row,typeArg)=>{
+    const k=activeKey(row,typeArg),state=entityProductLimitState(typeArg,typeArg==="MLK"?row.key:selectedCclRow.key,row.entityCode,typeArg==="MLK"?"DIRECT":row.limitType),values=editingKey===k?draft:(state.approved||state.base||{});
+    return <>
+      {productFields.map(def=><td key={def.key}>{editingKey===k?<input className="input compact" type="number" step="any" value={draft[def.key]??""} onChange={e=>setDraft(d=>({...d,[def.key]:e.target.value}))}/>:values[def.key]===undefined||values[def.key]===null?"—":Number(values[def.key]).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>)}
+      {typeArg==="MLK"
+        ? <td>{(Number(values.cashLoan)||0)+(Number(values.ncl)||0)+(Number(values.treasuryLine)||0) ? ((Number(values.cashLoan)||0)+(Number(values.ncl)||0)+(Number(values.treasuryLine)||0)).toLocaleString("id-ID",{maximumFractionDigits:2}) : "0"}</td>
+        : null}
+      <td><span className={"chip "+(state.pending?"yellow":"blue")}>{state.pending?"Pending Approval":"Configured"}</span></td>
+      <td>{renderActions(row,typeArg)}</td>
+    </>;
+  };
+
+  return <section className="card">
+    <div className="head"><div><h2>Entity Product Limit Setup</h2><p>Level 2: approved limit allocation per Entitas/Perusahaan Anak. Tidak menyimpan current utilization.</p></div><span className="chip blue">Setup ≠ Utilization ≠ Monitoring</span></div>
+    <div className="body">
+      <div className="integration-chip-grid">
+        <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">Parent ceiling / policy. Atur di Master Limit Setup.</div></div>
+        <div className="mini integration-chip"><b>2. Entity Product Limit</b><div className="muted-small">Approved allocation per entity + product. Atur di menu ini.</div></div>
+        <div className="mini integration-chip"><b>3. Product Database</b><div className="muted-small">Source records dan actual utilization/outstanding. Tidak menyimpan limit.</div></div>
+        <div className="mini integration-chip"><b>4. Monitoring</b><div className="muted-small">Limit approved vs canonical product utilization → EWS/Breach.</div></div>
+      </div>
+      <div className="tabs" style={{marginTop:14}}>
+        <button className={"tab "+(type==="MLK"?"active":"")} onClick={()=>{setType("MLK");setEditingKey("");setDraft({});}}>MLK • Debtor Entity</button>
+        <button className={"tab "+(type==="CCL"?"active":"")} onClick={()=>{setType("CCL");setEditingKey("");setDraft({});}}>CCL • Counterparty Entity</button>
+      </div>
+
+      {type==="MLK"&&<div className="toolbar" style={{marginTop:12}}>
+        <select className="select" value={entityFilter} onChange={e=>setEntityFilter(e.target.value)}><option value="ALL">ALL ENTITIES</option>{E2E_MLK_ENTITY_SCOPE.map(x=><option key={x}>{x}</option>)}</select>
+        <input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cari CIF / Debitur / Group"/>
+        <span className="chip blue">{configuredMlk} configured</span><span className="chip yellow">{pendingMlk} pending</span><span className="muted-small">{[...new Set(mlkRows.map(r=>String(r.entity)))].length} entities with MLK master</span>
+      </div>}
+
+      {type==="CCL"&&<div className="toolbar" style={{marginTop:12}}>
+        <select className="select" value={selectedCclRow?.key||""} onChange={e=>{setSelectedCcl(e.target.value);setEditingKey("");setDraft({});}}>
+          {cclMasterRows.map(r=><option key={r.key} value={r.key}>{r.key} • {r.name}</option>)}
+        </select>
+        <span className="chip blue">{configuredCcl} configured scope</span><span className="muted-small">{possibleCcl} possible Direct/Indirect entity scope • unconfigured scopes are excluded until a source scope exists</span>
+      </div>}
+
+      {type==="MLK"&&<div className="table-wrap" style={{marginTop:12}}>
+        <table className="table"><thead><tr><th>CIF</th><th>Debtor</th><th>Group</th><th>Entity</th>{productFields.map(x=><th key={x.key}>{x.label}</th>)}<th>Total Product Limit</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>{filteredMlk.map(row=>{
+            const state=entityProductLimitState("MLK",row.key,row.entity,"DIRECT"),k=entityProductLimitKey("MLK",row.key,row.entity,"DIRECT"),values=editingKey===k?draft:(state.approved||state.base||{});
+            const total=(Number(values.cashLoan)||0)+(Number(values.ncl)||0)+(Number(values.treasuryLine)||0);
+            return <tr key={row.key}>
+              <td className="key">{row.key}</td><td>{row.name}</td><td>{row.groupUsahaHolding||row.group}</td><td>{row.entity}</td>
+              {productFields.map(def=><td key={def.key}>{editingKey===k?<input className="input compact" type="number" step="any" value={draft[def.key]??""} onChange={e=>setDraft(d=>({...d,[def.key]:e.target.value}))}/>:values[def.key]===undefined||values[def.key]===null?"—":Number(values[def.key]).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>)}
+              <td>{total.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td><span className={"chip "+(state.pending?"yellow":"blue")}>{state.pending?"Pending Approval":"Configured"}</span></td>
+              <td>{renderActions(row,"MLK")}</td>
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>}
+
+      {type==="CCL"&&<div className="table-wrap" style={{marginTop:12}}>
+        <table className="table"><thead><tr><th>Counterparty</th><th>Entity</th><th>Type</th>{productFields.map(x=><th key={x.key}>{x.label}</th>)}<th>Status</th><th>Action</th></tr></thead>
+          <tbody>{cclScopes.map(row=>{
+            const state=entityProductLimitState("CCL",selectedCclRow.key,row.entityCode,row.limitType),k=entityProductLimitKey("CCL",selectedCclRow.key,row.entityCode,row.limitType),values=editingKey===k?draft:(state.approved||state.base||{});
+            return <tr key={row.entityCode+"|"+row.limitType}>
+              <td className="key">{selectedCclRow.key}</td><td>{row.entityCode}</td><td>{row.limitType}</td>
+              {productFields.map(def=><td key={def.key}>{editingKey===k?<input className="input compact" type="number" step="any" value={draft[def.key]??""} onChange={e=>setDraft(d=>({...d,[def.key]:e.target.value}))}/>:values[def.key]===undefined||values[def.key]===null?"—":Number(values[def.key]).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>)}
+              <td><span className={"chip "+(state.pending?"yellow":"blue")}>{state.pending?"Pending Approval":"Configured"}</span></td>
+              <td>{renderActions(row,"CCL")}</td>
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>}
+      <div className="field-help" style={{marginTop:12}}><b>Governance:</b> Master Limit Setup menentukan ceiling parent. Entity Product Limit Setup menentukan approved limit allocation. Product Database hanya menampung source utilization. Monitoring hanya membandingkan approved limit dengan canonical utilization.</div>
+    </div>
+  </section>;
+}
+
 function Setup({nav,setSel}){
-  const [type,setType]=useState("Country"),[query,setQuery]=useState(""),[status,setStatus]=useState("Active"),[creating,setCreating]=useState(false);
+  const [mode,setMode]=useState("master"),[type,setType]=useState("Country"),[query,setQuery]=useState(""),[status,setStatus]=useState("Active"),[creating,setCreating]=useState(false);
   const [,forceRefresh]=useState(0);
   const info=domains[type],linkedProducts=domainIntegrationProducts[type]||[],rows=limasDemoData[type]||[];
   const q=query.trim().toLowerCase();
@@ -1898,9 +2037,20 @@ function Setup({nav,setSel}){
     e.target.value="";
   };
   return <Layout screen="setup" onNav={nav}>
-    <Header title="Master Limit Setup" subtitle="Repository master limit per domain • utilization product diintegrasikan terpisah"/>
+    <Header title="Limit Setup & Product Utilization" subtitle="Pisahkan setup master limit, entity-product allocation, source utilization, dan monitoring"/>
     <div className="page">
       <section className="card">
+        <div className="body">
+          <div className="tabs">
+            <button className={"tab "+(mode==="master"?"active":"")} onClick={()=>setMode("master")}>1. Master Limit Setup</button>
+            <button className={"tab "+(mode==="entity-product"?"active":"")} onClick={()=>setMode("entity-product")}>2. Entity Product Limit Setup</button>
+            <button className="tab" onClick={()=>nav("products")}>3. Product Database / Utilization</button>
+            <button className="tab" onClick={()=>nav("MLK")}>4. Monitoring</button>
+          </div>
+        </div>
+      </section>
+      {mode==="entity-product"&&<EntityProductLimitSetup/>}
+      {mode==="master"&&<section className="card">
         <div className="head">
           <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • approved master limit, lifecycle, version dan audit disimpan terpisah dari Product Database.</p></div>
           <div className="toolbar">
@@ -1940,7 +2090,7 @@ function Setup({nav,setSel}){
           </table></div>
           <div className="field-help">CRUD: Read daftar master, Create record baru, Update melalui Draft → Approval, Delete dibatasi jika master masih direferensikan integration mapping. Bulk CSV diperlakukan sebagai Approved import dan dicatat ke audit.</div>
         </div>
-      </section>
+      </section>}
     </div>
   </Layout>;
 }
@@ -2137,6 +2287,153 @@ function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_m
 
 const MASTER_VALUE_STORE_KEY="limas_master_values_v6_"+RUNTIME_STORAGE_NAMESPACE;
 const MASTER_AUDIT_STORE_KEY="limas_master_audit_v6_"+RUNTIME_STORAGE_NAMESPACE;
+
+/*
+ * Canonical Entity → Product Limit Setup
+ * --------------------------------------
+ * Level 1: Domain Master Limit / Capacity
+ * Level 2: Entity Product Limit Setup
+ * Level 3: Product Database / source utilization
+ * Level 4: Monitoring / limit-vs-utilization
+ *
+ * MLK: Entity + Debtor/CIF → Master Limit + Cash Loan + NCL + Treasury Line
+ * CCL: Counterparty + Entity + Direct/Indirect → CCL + Contractual +
+ *      Bank Loan + Commercial Line + Treasury Line
+ *
+ * Setup is stored separately from Product Database. Existing source data stays
+ * the baseline; approved browser overrides are persisted in a governance store.
+ */
+const ENTITY_PRODUCT_LIMIT_STORE_KEY="limas_entity_product_limit_setup_v1_"+RUNTIME_STORAGE_NAMESPACE;
+const ENTITY_PRODUCT_LIMIT_DEFINITION={
+  MLK:[
+    {key:"masterLimit",label:"Master Limit",unit:"Rp Juta"},
+    {key:"cashLoan",label:"Cash Loan Limit",unit:"Rp Juta"},
+    {key:"ncl",label:"Non Cash Loan Limit",unit:"Rp Juta"},
+    {key:"treasuryLine",label:"Treasury Line Limit",unit:"Rp Juta"}
+  ],
+  CCL:[
+    {key:"ccl",label:"CCL Limit",unit:"Rp Miliar"},
+    {key:"contractual",label:"Contractual Limit",unit:"Rp Miliar"},
+    {key:"bankLoan",label:"Bank Loan Limit",unit:"Rp Miliar"},
+    {key:"commercialLine",label:"Commercial Line Limit",unit:"Rp Miliar"},
+    {key:"treasuryLine",label:"Treasury Line Limit",unit:"Rp Miliar"}
+  ]
+};
+const ENTITY_PRODUCT_LIMIT_PRODUCTS=type=>(ENTITY_PRODUCT_LIMIT_DEFINITION[type]||[]);
+
+function entityProductLimitStore(){
+  try{
+    const raw=window.localStorage.getItem(ENTITY_PRODUCT_LIMIT_STORE_KEY);
+    return raw?JSON.parse(raw):{};
+  }catch(e){return {};}
+}
+function saveEntityProductLimitStore(store){
+  try{window.localStorage.setItem(ENTITY_PRODUCT_LIMIT_STORE_KEY,JSON.stringify(store));}catch(e){}
+}
+function entityProductLimitKey(type,masterKey,entityCode,limitType="DIRECT"){
+  return [type,masterKey,entityCode,limitType].map(x=>String(x??"—").trim()).join("||");
+}
+function entityProductLimitBase(type,masterKey,entityCode,limitType="DIRECT"){
+  if(type==="MLK"){
+    const row=(limasDemoData.MLK||[]).find(r=>String(r.key)===String(masterKey)&&String(r.entity)===String(entityCode));
+    if(!row)return null;
+    return {
+      masterLimit:Number(row.masterLimit??row.masterLimitSetting??0)||0,
+      cashLoan:Number(row.clLimit??0)||0,
+      ncl:Number(row.nclLimit??0)||0,
+      treasuryLine:Number(row.treasuryLine??0)||0
+    };
+  }
+  if(type==="CCL"){
+    const row=(E2E_CCL_LIMIT_SCOPE||[]).find(x=>
+      String(x.counterpartyId)===String(masterKey)&&
+      String(x.entityCode)===String(entityCode)&&
+      String(x.limitType||"DIRECT")===String(limitType||"DIRECT")
+    );
+    if(!row)return null;
+    return {
+      ccl:Number(row.ccl??0)||0,
+      contractual:Number(row.contractual??0)||0,
+      bankLoan:Number(row.bankLoan??0)||0,
+      commercialLine:Number(row.commercialLine??0)||0,
+      treasuryLine:Number(row.treasuryLine??0)||0
+    };
+  }
+  return null;
+}
+function entityProductLimitState(type,masterKey,entityCode,limitType="DIRECT"){
+  const base=entityProductLimitBase(type,masterKey,entityCode,limitType);
+  const store=entityProductLimitStore();
+  const item=store[entityProductLimitKey(type,masterKey,entityCode,limitType)]||null;
+  const approved=item?.approvalStatus==="Approved"?item.approvedValues:null;
+  const pending=item?.approvalStatus==="Pending Approval"?item.pendingValues:null;
+  return {
+    exists:Boolean(base||item),
+    base:base||{},
+    approved:approved?{...(base||{}),...approved}:(base?{...base}:null),
+    pending,
+    approvalStatus:item?.approvalStatus||"Approved",
+    version:Number(item?.version||1),
+    submittedBy:item?.submittedBy||"",
+    approvedBy:item?.approvedBy||"",
+    lastUpdated:item?.lastUpdated||""
+  };
+}
+function effectiveEntityProductLimit(type,masterKey,entityCode,limitType="DIRECT"){
+  return entityProductLimitState(type,masterKey,entityCode,limitType).approved;
+}
+function saveEntityProductLimitDraft(type,masterKey,entityCode,limitType,values){
+  requireLimasPermission("masterDraft");
+  const base=entityProductLimitBase(type,masterKey,entityCode,limitType);
+  if(!base)throw new Error("Setup Entity Product Limit belum memiliki scope dasar untuk record ini.");
+  const allowed=new Set(ENTITY_PRODUCT_LIMIT_PRODUCTS(type).map(x=>x.key));
+  const clean=Object.fromEntries(Object.entries(values||{}).filter(([k,v])=>allowed.has(k)&&v!==""&&Number.isFinite(Number(v))).map(([k,v])=>[k,Number(v)]));
+  if(!Object.keys(clean).length)throw new Error("Tidak ada perubahan limit yang valid.");
+  const store=entityProductLimitStore(),key=entityProductLimitKey(type,masterKey,entityCode,limitType);
+  const current=store[key]||{};
+  const currentApproved=current.approvedValues||base;
+  const next={
+    ...current,type,masterKey,entityCode,limitType,
+    version:Math.max(1,Number(current.version||1))+1,
+    approvalStatus:"Pending Approval",
+    approvedValues:currentApproved,
+    pendingValues:{...currentApproved,...clean},
+    submittedBy:currentLimasUser(),
+    submittedAt:nowLabel(),
+    lastUpdated:nowLabel()
+  };
+  store[key]=next;saveEntityProductLimitStore(store);return next;
+}
+function approveEntityProductLimitDraft(type,masterKey,entityCode,limitType){
+  requireLimasPermission("masterApprove");
+  const key=entityProductLimitKey(type,masterKey,entityCode,limitType);
+  const store=entityProductLimitStore(),current=store[key];
+  if(!current?.pendingValues)throw new Error("Tidak ada draft Entity Product Limit.");
+  const next={...current,approvalStatus:"Approved",approvedValues:{...current.pendingValues},approvedBy:currentLimasUser(),approvedAt:nowLabel(),lastUpdated:nowLabel()};
+  delete next.pendingValues;store[key]=next;saveEntityProductLimitStore(store);
+  appendMasterAudit({type,key,action:"ENTITY_PRODUCT_LIMIT_APPROVED",version:next.version,approvalStatus:"Approved",approvedBy:next.approvedBy,entityCode,limitType});
+  return next;
+}
+function rejectEntityProductLimitDraft(type,masterKey,entityCode,limitType){
+  requireLimasPermission("masterReject");
+  const key=entityProductLimitKey(type,masterKey,entityCode,limitType);
+  const store=entityProductLimitStore(),current=store[key];
+  if(!current)return null;
+  const next={...current,approvalStatus:"Approved",lastUpdated:nowLabel()};
+  delete next.pendingValues;store[key]=next;saveEntityProductLimitStore(store);
+  appendMasterAudit({type,key,action:"ENTITY_PRODUCT_LIMIT_REJECTED",version:next.version,approvalStatus:"Approved",entityCode,limitType});
+  return next;
+}
+function entityProductSetupStatus(type,masterKey,entityCode,limitType="DIRECT"){
+  const state=entityProductLimitState(type,masterKey,entityCode,limitType);
+  if(!state.exists)return "Not Configured";
+  if(state.pending)return "Pending Approval";
+  return "Configured";
+}
+function effectiveMlkMasterLimit(row){
+  const value=effectiveEntityProductLimit("MLK",row?.key,row?.entity);
+  return value?.masterLimit!==undefined?Number(value.masterLimit)||0:Number(row?.masterLimit??row?.masterLimitSetting??0)||0;
+}
 
 const MASTER_EDITABLE_FIELDS={
   Country:[
@@ -2459,7 +2756,7 @@ function masterFieldValue(type,section,field,base,row,index){
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
       "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
-      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":row.ccl,"Limit Contractual":row.contractual,
+      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":effectiveCclMasterLimit(row),"Limit Contractual":row.contractual,
       "Bank Loan Limit (Rp Miliar)":row.bankLoanLimit,"Commercial DN Limit (Rp Miliar)":row.commercialDnLimit,"Commercial LN Limit (Rp Miliar)":row.commercialLnLimit,
       "Commercial Line Limit (Rp Miliar)":row.commercialLineLimit,"Treasury DN Limit (Rp Miliar)":row.treasuryDnLimit,"Treasury LN Limit (Rp Miliar)":row.treasuryLnLimit,
       "Treasury Line Limit (Rp Miliar)":row.treasuryLineLimit,
@@ -2484,7 +2781,7 @@ function masterFieldValue(type,section,field,base,row,index){
       "Sektor DC":row.sektorDC,"DC Sectoral":row.dcSectoral,"Rating":row.rating,"Rating Multiplier":row.ratingMultiplier,"Watchlist":row.watchlist,"Discount Factor":row.discountFactor,
       "EBITDA/Pengganti EBITDA":row.ebitda,"Kredit Bank Lain":row.kreditBankLain,"Total Debt":row.totalDebt,"Borrowing Capacity":row.borrowingCapacity,"Available BC":row.availableBC,"Status Perhitungan":row.statusPerhitungan,
       "CL Bade":clBade,"CL Limit":row.clLimit,"NCL Bade":nclBade,"NCL Limit":row.nclLimit,"Treasury Line":treasuryLine,"Bade Treasury Line":badeTreasuryLine,
-      "Total Limit Existing":totalLimitExisting,"Total Bade Existing":totalBadeExisting,"Master Limit Setting":row.masterLimitSetting,"Master Limit":row.masterLimit};
+      "Total Limit Existing":totalLimitExisting,"Total Bade Existing":totalBadeExisting,"Master Limit Setting":row.masterLimitSetting,"Master Limit":effectiveMlkMasterLimit(row)};
     return Object.prototype.hasOwnProperty.call(map,field)?map[field]:base;
   }
   if(type==="CIL"){
