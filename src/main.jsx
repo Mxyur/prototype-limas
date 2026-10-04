@@ -2406,7 +2406,7 @@ const productCanonicalTransform=(domain,productId,row)=>{
   if(productId==="NON CASH LOAN"){
     const dwhIdr=String(row?.sourceSystem||"").startsWith("DWH")&&String(d.CCY||"").toUpperCase()==="IDR";
     return dwhIdr
-      ? {sourceUnit:"Rp Juta",targetUnit,factor:1,description:"DWH IDR context: use BALANCE already expressed in Rp Juta."}
+      ? {sourceUnit:"Rp",targetUnit,factor:0.000001,description:"DWH IDR source balance is Rp; normalize to canonical Rp Juta."}
       : {sourceUnit:"Rp",targetUnit,factor:0.000001,description:"Normalize EQVIDR from IDR (Rp) to canonical Rp Juta."};
   }
   if(productId==="NOSTRO"){
