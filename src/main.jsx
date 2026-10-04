@@ -532,7 +532,7 @@ function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
     .filter(a=>
       String(a.entity||"")===String(entityCode) &&
       String(a.cclLimitType||"DIRECT")===String(limitType) &&
-      ["CASHLOAN","CREDIT LINE"].includes(a.productId)
+      ["CASHLOAN","CREDIT LINE"].includes(a.productId) && a.cclExposureRole!=="LINEAGE_ONLY"
     )
     .reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
 }
@@ -2940,6 +2940,7 @@ function addIntegrationMapping(productId,row,config){
     sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
     scope:config.scope||null,entity:config.entity||null,cclLimitType:config.cclLimitType||(config.limitType==="CCL"?"DIRECT":null),masterMatch:Boolean(master),
     masterObject:master?.name||master?.sector||master?.key||"—",
+    cclExposureRole:config.cclExposureRole||row.meta?.cclExposureRole||null,
     bookingOffice:(override?.bookingOffice||config.bookingOffice||booking.bookingOffice),
     bookingOfficeType:(override?.bookingOfficeType||config.bookingOfficeType||booking.bookingOfficeType),
     bookingOfficeStatus:override?.status==="Applied"?"Remediated":(config.bookingOfficeStatus??booking.bookingOfficeStatus),
