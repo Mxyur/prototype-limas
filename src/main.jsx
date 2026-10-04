@@ -3942,7 +3942,7 @@ function DataContract({nav}){
         <div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Field / Alias</th><th>Canonical Meaning</th><th>Calculation / Role</th></tr></thead><tbody>{CREDIT_LINE_CONTRACT.map(r=><tr key={r[0]}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td></tr>)}</tbody></table></div></div>
       </section>
       <section className="card"><div className="head"><div><h2>Contoh LPG: Mengapa tidak boleh 2.000.000%</h2><p>Source NCL DWH menggunakan Rupiah penuh, sedangkan master LPG menggunakan Rp Juta.</p></div></div>
-        <div className="body"><div className="grid-3">
+        <div className="body"><div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12}}>
           <div className="mini"><b>Source</b><span>Rp 1.200.000.000</span></div>
           <div className="mini"><b>Normalize</b><span>÷ 1.000.000 = Rp 1.200 Juta</span></div>
           <div className="mini"><b>Compare</b><span>terhadap master dalam Rp Juta</span></div>
