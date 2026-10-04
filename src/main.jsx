@@ -587,8 +587,9 @@ function cclCategoryMetric(category,entityCode=null,limitType="DIRECT",includePa
   const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
   const scopes=E2E_CCL_LIMIT_SCOPE.filter(x=>x.limitType===limitType&&(!entityCode||x.entityCode===entityCode)&&masters.some(m=>String(m.key)===String(x.counterpartyId)));
   const counterpartyCount=new Set(scopes.map(x=>String(x.counterpartyId))).size;
-  const ccl=scopes.reduce((s,x)=>s+(Number(x.ccl)||0),0)*1000;
-  const contractual=scopes.reduce((s,x)=>s+(Number(x.contractual)||0),0)*1000;
+  const facilities=scopes.map(x=>cclEntityFacility(x.counterpartyId,x.entityCode,x.limitType)).filter(Boolean);
+  const ccl=facilities.reduce((s,x)=>s+(Number(x.ccl)||0),0)*1000;
+  const contractual=facilities.reduce((s,x)=>s+(Number(x.contractual)||0),0)*1000;
   const os=scopes.reduce((s,x)=>s+cclEntityExposure(x.counterpartyId,x.entityCode,x.limitType),0);
   return {counterpartyCount,ccl,contractual,os,osMax:os,util:contractual?os/contractual:0};
 }
@@ -596,8 +597,9 @@ function cclCategoryAllMetric(category,limitType="DIRECT"){
   const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
   const scopes=E2E_CCL_LIMIT_SCOPE.filter(x=>x.limitType===limitType&&masters.some(m=>String(m.key)===String(x.counterpartyId)));
   const counterpartyCount=new Set(scopes.map(x=>String(x.counterpartyId))).size;
-  const ccl=scopes.reduce((s,x)=>s+(Number(x.ccl)||0),0)*1000;
-  const contractual=scopes.reduce((s,x)=>s+(Number(x.contractual)||0),0)*1000;
+  const facilities=scopes.map(x=>cclEntityFacility(x.counterpartyId,x.entityCode,x.limitType)).filter(Boolean);
+  const ccl=facilities.reduce((s,x)=>s+(Number(x.ccl)||0),0)*1000;
+  const contractual=facilities.reduce((s,x)=>s+(Number(x.contractual)||0),0)*1000;
   const os=scopes.reduce((s,x)=>s+cclEntityExposure(x.counterpartyId,x.entityCode,x.limitType),0);
   return {counterpartyCount,ccl,contractual,os,osMax:os,util:contractual?os/contractual:0};
 }
@@ -688,8 +690,11 @@ function monitoringScopeIntegrityIssues(){
       const scope=cclScopeRecords(master.key,limitType,entity)[0];
       if(!scope)
         add({layer:"Monitoring Scope",domain:"CCL",key:master.key,productId,recordId:row.recordId,issueType:"CCL_ENTITY_LIMIT_MISSING",object:master.name||master.key,detail:"Positive CCL exposure has no configured "+limitType+" limit for entity "+entity+".",amount:normalized});
-      else if(!isConfiguredLimit(scope.ccl))
-        add({layer:"Monitoring Scope",domain:"CCL",key:master.key,productId,recordId:row.recordId,issueType:"CCL_LIMIT_NOT_CONFIGURED",object:master.name||master.key,detail:"CCL scope row exists but limit is not configured for "+entity+" / "+limitType+".",amount:normalized});
+      else {
+        const facility=cclEntityFacility(master.key,entity,limitType);
+        if(!facility||!isConfiguredLimit(facility.ccl))
+          add({layer:"Monitoring Scope",domain:"CCL",key:master.key,productId,recordId:row.recordId,issueType:"CCL_LIMIT_NOT_CONFIGURED",object:master.name||master.key,detail:"CCL scope row exists but effective limit is not configured for "+entity+" / "+limitType+".",amount:normalized});
+      }
     });
   });
 
@@ -711,8 +716,8 @@ function monitoringScopeIntegrityIssues(){
       const master=(limasDemoData.MLK||[]).find(m=>String(m.key)===key);
       if(!master)
         add({layer:"Monitoring Scope",domain:"MLK",key,productId,recordId:row.recordId,issueType:"MLK_MASTER_MISSING",object:d.nm_cus||d.CUSTNM||d.Nama||key,detail:"Positive MLK source exposure has no corresponding MLK master.",amount:raw});
-      else if(!isConfiguredLimit(master.masterLimit))
-        add({layer:"Monitoring Scope",domain:"MLK",key,productId,recordId:row.recordId,issueType:"MLK_LIMIT_NOT_CONFIGURED",object:master.name||key,detail:"Positive MLK exposure has no configured Master Limit.",amount:raw});
+      else if(!isConfiguredLimit(effectiveMlkMasterLimit(master)))
+        add({layer:"Monitoring Scope",domain:"MLK",key,productId,recordId:row.recordId,issueType:"MLK_LIMIT_NOT_CONFIGURED",object:master.name||key,detail:"Positive MLK exposure has no configured effective Master Limit.",amount:raw});
     });
   });
 
@@ -751,10 +756,18 @@ function effectiveCclMasterLimit(row){
   },0);
   return directScopeLimit>0?directScopeLimit:Number(row?.ccl)||0;
 }
+function effectiveCclContractualLimit(row){
+  const directScope=(E2E_CCL_LIMIT_SCOPE||[]).filter(x=>String(x.counterpartyId)===String(row?.key)&&x.limitType==="DIRECT");
+  const limit=directScope.reduce((s,x)=>{
+    const v=effectiveEntityProductLimit("CCL",row?.key,x.entityCode,"DIRECT")||{};
+    return s+(Number(v.contractual)||0);
+  },0);
+  return limit>0?limit:Number(row?.contractual)||0;
+}
 function recordLimit(type,row){
   if(type==="Country")return normalizeMasterLimit("Country",row.capacityLimit).amount;
   if(type==="CCL")return normalizeMasterLimit("CCL",effectiveCclMasterLimit(row)).amount;
-  if(type==="MLK")return normalizeMasterLimit("MLK",row.masterLimit).amount;
+  if(type==="MLK")return normalizeMasterLimit("MLK",effectiveMlkMasterLimit(row)).amount;
   if(type==="CIL")return normalizeMasterLimit("CIL",row.cil).amount;
   if(type==="LPG")return normalizeMasterLimit("LPG",lpgScopeLimit(row,LPG_BANK_SCOPE)).amount;
   return Number(row.limit)||0;
@@ -782,7 +795,7 @@ function recordStatus(type,row){
   let maxUtil=type==="Country"?countryMaxUtilization(row):u;
 
   if(type==="CCL"){
-    const contractualLimit=Number(row.contractual||0)*1000;
+    const contractualLimit=effectiveCclContractualLimit(row)*1000;
     const contractualUtil=contractualLimit?recordExposure(type,row)/contractualLimit:0;
     maxUtil=Math.max(u,contractualUtil);
   }
@@ -2045,7 +2058,7 @@ function Setup({nav,setSel}){
             <button className={"tab "+(mode==="master"?"active":"")} onClick={()=>setMode("master")}>1. Master Limit Setup</button>
             <button className={"tab "+(mode==="entity-product"?"active":"")} onClick={()=>setMode("entity-product")}>2. Entity Product Limit Setup</button>
             <button className="tab" onClick={()=>nav("products")}>3. Product Database / Utilization</button>
-            <button className="tab" onClick={()=>nav("MLK")}>4. Monitoring</button>
+            <button className="tab" onClick={()=>nav("MLK")}>4. Monitoring</button><button className="tab" onClick={()=>nav("CCL")}>CCL Monitoring</button>
           </div>
         </div>
       </section>
@@ -2756,7 +2769,7 @@ function masterFieldValue(type,section,field,base,row,index){
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
       "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
-      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":effectiveCclMasterLimit(row),"Limit Contractual":row.contractual,
+      "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":effectiveCclMasterLimit(row),"Limit Contractual":effectiveCclContractualLimit(row),
       "Bank Loan Limit (Rp Miliar)":row.bankLoanLimit,"Commercial DN Limit (Rp Miliar)":row.commercialDnLimit,"Commercial LN Limit (Rp Miliar)":row.commercialLnLimit,
       "Commercial Line Limit (Rp Miliar)":row.commercialLineLimit,"Treasury DN Limit (Rp Miliar)":row.treasuryDnLimit,"Treasury LN Limit (Rp Miliar)":row.treasuryLnLimit,
       "Treasury Line Limit (Rp Miliar)":row.treasuryLineLimit,
