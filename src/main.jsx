@@ -3999,7 +3999,7 @@ function productExposureAmount(productId,r){
   return 0;
 }
 function productBookingSplit(view,rows){
-  const split={Domestic:0,Overseas:0,"Needs Mapping":0};
+  const split={Domestic:0,Overseas:0,"Needs Mapping":0,"Out of Scope":0};
   rows.forEach(r=>{
     if(view==="CREDIT LINE"){
       const n=v=>Number(String(v??"").replace(/,/g,""))||0;
@@ -4008,7 +4008,12 @@ function productBookingSplit(view,rows){
       return;
     }
     const amount=productExposureAmount(view,r);
-    const mapping=(productIntegrationMappings[view]||[]).find(a=>a.limitType==="Country"&&String(a.recordId)===String(r.recordId));
+    const mapping=(productIntegrationMappings[view]||[]).find(m=>m.limitType==="Country"&&String(m.recordId)===String(r.recordId));
+    const sourceCountry=String(r.data?.code||r.data?.["Country Code"]||r.data?.["Issuer Country"]||r.data?.["Bank Country"]||"").trim().toUpperCase();
+    if(sourceCountry===HOME_COUNTRY_CODE){
+      split["Out of Scope"]+=amount;
+      return;
+    }
     const type=["Domestic","Overseas"].includes(mapping?.bookingOfficeType)?mapping.bookingOfficeType:"Needs Mapping";
     split[type]+=amount;
   });
@@ -4022,7 +4027,8 @@ function ProductBookingClassification({view,rows}){
     const m=(productIntegrationMappings[view]||[]).find(a=>a.limitType==="Country"&&String(a.recordId)===String(r.recordId));
     return ["Domestic","Overseas"].includes(m?.bookingOfficeType);
   }).length;
-  const needs=rows.length-mapped;
+  const outOfScope=rows.filter(r=>view!=="CREDIT LINE"&&String(r.data?.code||r.data?.["Country Code"]||r.data?.["Issuer Country"]||r.data?.["Bank Country"]||"").trim().toUpperCase()===HOME_COUNTRY_CODE).length;
+  const needs=rows.length-mapped-outOfScope;
   const exposureField={
     "NON CASH LOAN":"EQVIDR / 1.000.000",
     "CREDIT LINE":"Credit Line Total Utilisasi",
@@ -4036,13 +4042,13 @@ function ProductBookingClassification({view,rows}){
         <h2>Domestic / Overseas Breakdown</h2>
         <p>Dimensi monitoring dipisahkan berdasarkan <b>Booking Office Type</b>. Country Exposure tetap memakai source country field dan tidak menentukan Domestic/Overseas.</p>
       </div>
-      <span className="chip blue">{isCreditLine?"DN/LN source-native":`${mapped} mapped / ${needs} needs mapping`}</span>
+      <span className="chip blue">{isCreditLine?"DN/LN source-native":`${mapped} mapped / ${needs} needs mapping / ${outOfScope} out of scope`}</span>
     </div>
     <div className="body">
       <div className="product-db-kpis">
         <div className="mini"><b>Domestic</b><strong>{split.Domestic.toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure</span></div>
         <div className="mini"><b>Overseas</b><strong>{split.Overseas.toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure</span></div>
-        <div className="mini"><b>Needs Mapping</b><strong>{split["Needs Mapping"].toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure belum terklasifikasi</span></div>
+        <div className="mini"><b>Needs Mapping</b><strong>{split["Needs Mapping"].toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Exposure belum terklasifikasi</span></div>\n        {!isCreditLine&&<div className="mini"><b>Out of Scope</b><strong>{split["Out of Scope"].toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><span className="muted-small">Home country {HOME_COUNTRY_CODE} excluded from Country monitoring</span></div>}
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table">
@@ -4050,7 +4056,9 @@ function ProductBookingClassification({view,rows}){
           <tbody>{rows.map(r=>{
             const amount=productExposureAmount(view,r);
             const mapping=(productIntegrationMappings[view]||[]).find(a=>a.limitType==="Country"&&String(a.recordId)===String(r.recordId));
-            const type=mapping?.bookingOfficeType==="Domestic"||mapping?.bookingOfficeType==="Overseas"?mapping.bookingOfficeType:"Needs Mapping";
+            const sourceCountry=String(r.data?.code||r.data?.["Country Code"]||r.data?.["Issuer Country"]||r.data?.["Bank Country"]||"").trim().toUpperCase();
+            const outOfScope=!isCreditLine&&sourceCountry===HOME_COUNTRY_CODE;
+            const type=outOfScope?"Out of Scope":(mapping?.bookingOfficeType==="Domestic"||mapping?.bookingOfficeType==="Overseas"?mapping.bookingOfficeType:"Needs Mapping");
             const creditSplit=view==="CREDIT LINE"?{
               domestic:(Number(String(r.data?.["Comm DN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(r.data?.["Treasury DN Utilisasi"]??"").replace(/,/g,""))||0),
               overseas:(Number(String(r.data?.["Comm LN Utilisasi"]??"").replace(/,/g,""))||0)+(Number(String(r.data?.["Treasury LN Utilisasi"]??"").replace(/,/g,""))||0)
@@ -4067,7 +4075,7 @@ function ProductBookingClassification({view,rows}){
         </table>
       </div>
       <div className="field-help">
-        Exposure basis: <b>{exposureField}</b>. Untuk Credit Line, Domestic/Overseas berasal langsung dari source: <b>DN = Domestic</b> dan <b>LN = Overseas</b>, baik pada Commercial Line maupun Treasury Line. Tidak ada Business Enrichment Booking Office untuk Credit Line. Untuk Non Cash Loan, Booking Office/Type tetap Business Enrichment karena source belum menyediakan atribut tersebut. Bonds/Nostro menggunakan source <b>Branch</b> sebagai Booking Office.
+        Exposure basis: <b>{exposureField}</b>. Untuk Country monitoring, home country <b>{HOME_COUNTRY_CODE}</b> ditandai <b>Out of Scope</b> dan tidak dianggap Needs Mapping. Untuk Credit Line, Domestic/Overseas berasal langsung dari source: <b>DN = Domestic</b> dan <b>LN = Overseas</b>, baik pada Commercial Line maupun Treasury Line. Tidak ada Business Enrichment Booking Office untuk Credit Line. Untuk Non Cash Loan, Booking Office/Type tetap Business Enrichment karena source belum menyediakan atribut tersebut. Bonds/Nostro menggunakan source <b>Branch</b> sebagai Booking Office.
       </div>
     </div>
   </section>;
