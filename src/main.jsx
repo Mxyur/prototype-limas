@@ -503,7 +503,7 @@ function recordStatus(type,row){
 
   if(type==="LPG"){
     const bankwideExposure=lpgScopeExposure(row,LPG_BANK_SCOPE);
-    if(bankwideExposure===null)return "Data Issue";
+    if(bankwideExposure===null)return "No Product Data";
     maxUtil=lpgMaxUtilization(row);
   }
 
@@ -2305,7 +2305,28 @@ function makeProductRecord(productId,overrides={},applied=[],meta={}){
   const base={};
   (productSchemaFields[productId]||[]).forEach(f=>{base[f]='';});
   Object.assign(base,productSample[productId]||{},overrides);
-  return {recordId:meta.recordId||productId+'-DEMO',productId,data:base,applied,sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",status:meta.status||'Normal'};
+  return {
+    recordId:meta.recordId||productId+'-DEMO',
+    productId,
+    data:base,
+    applied,
+    sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',
+    asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",
+    status:meta.status||'Normal',
+    integrationDomains:Array.isArray(meta.integrationDomains)?[...meta.integrationDomains]:null
+  };
+}
+
+const NCL_BOOKING_REFERENCE={
+  // Explicit LIMAS enrichment only; the golden NCL source fields remain untouched.
+  "NCL-EXCO-001":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
+  "NCL-EXCO-002":{bookingOffice:"Bank Mandiri Singapore",bookingOfficeType:"Overseas"},
+  "NCL-EXCO-003":{bookingOffice:"Bank Mandiri (Europe) Limited London",bookingOfficeType:"Overseas"}
+};
+
+function integrationDomainAllowed(row,domain){
+  const scopes=row?.integrationDomains;
+  return !Array.isArray(scopes)||scopes.length===0||scopes.includes(domain);
 }
 
 const productIntegrationMappings={};
@@ -2423,8 +2444,12 @@ function productRawExposure(productId,row,domain){
 function addIntegrationMapping(productId,row,config){
   const key=String(config.key??"").trim();
   if(!key)return;
+  if(!integrationDomainAllowed(row,config.limitType))return;
   const masterRows=limasDemoData[config.limitType]||[];
   const master=masterRows.find(m=>String(m.key).trim().toUpperCase()===key.toUpperCase());
+  // Do not create dangling product-to-master edges; an unconfigured master is an out-of-scope source reference,
+  // not a reason to fabricate a master limit.
+  if(!master)return;
   const booking=deriveBookingAttributes(productId,row.data||{},config.meta||{});
   const override=getMappingRemediation(productId,row.recordId,config.limitType,key);
   const raw=Number(config.amount??productRawExposure(productId,row,config.limitType))||0;
@@ -2453,7 +2478,18 @@ function buildProductIntegrationMappings(){
 
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
     const d=r.data||{},country=String(d["Country Code"]||"").trim(),cif=String(d.CUSTID||"").trim(),swift=String(d["Swift Code"]||"").trim();
-    if(country)addIntegrationMapping("NON CASH LOAN",r,{limitType:"Country",key:country,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Country Code",sourceValue:country,mappingRule:"NCL Country Code -> Country Code"});
+    if(country){
+      const booking=NCL_BOOKING_REFERENCE[r.recordId]||{};
+      addIntegrationMapping("NON CASH LOAN",r,{
+        limitType:"Country",key:country,amount:d.EQVIDR,label:"Non Cash Loan",
+        sourceField:"Country Code",sourceValue:country,
+        bookingOffice:booking.bookingOffice,
+        bookingOfficeType:booking.bookingOfficeType,
+        mappingRule:booking.bookingOffice
+          ?"NCL Country Code -> Country Code + explicit Booking Office enrichment"
+          :"NCL Country Code -> Country Code"
+      });
+    }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF"});
     if(swift)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code -> CCL Swift"});
     const sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
@@ -2624,9 +2660,14 @@ function reconciliationIssues(){
         const mappings=(productIntegrationMappings[productId]||[]).filter(a=>a.limitType==="Country"&&String(a.recordId)===String(row.recordId));
         if(!key){
           issues.push({status:"Data Issue",issueType:"MISSING_COUNTRY_KEY",productId,recordId:row.recordId,limitType:"Country",key:"—",object:"—",detail:productId+" does not have source Country Exposure in field "+field,amount:0});
-        }else if(!mappings.length){
-          issues.push({status:"Data Issue",issueType:"COUNTRY_MAPPING_MISSING",productId,recordId:row.recordId,limitType:"Country",key,object:"—",detail:"Source Country key exists but no mapping candidate was created.",amount:0});
-        }else if(productId!=="CREDIT LINE"&&mappings.some(a=>a.bookingOfficeType==="Needs Mapping")){
+        }else{
+          const masterExists=(limasDemoData.Country||[]).some(m=>String(m.key).trim().toUpperCase()===key.toUpperCase());
+          // Country codes absent from the configured master universe are treated as scope references.
+          // Do not turn a legitimate source row into a data-quality error merely because no master exists yet.
+          if(!masterExists)return;
+          if(!mappings.length){
+            issues.push({status:"Data Issue",issueType:"COUNTRY_MAPPING_MISSING",productId,recordId:row.recordId,limitType:"Country",key,object:"—",detail:"Source Country key exists but no mapping candidate was created.",amount:0});
+          }else if(productId!=="CREDIT LINE"&&mappings.some(a=>a.bookingOfficeType==="Needs Mapping")){
           const a=mappings.find(x=>x.bookingOfficeType==="Needs Mapping")||mappings[0];
           issues.push({status:"Data Issue",issueType:"MISSING_BOOKING_MAPPING",productId,recordId:row.recordId,limitType:"Country",key,object:a.masterObject||"—",detail:"Country mapping needs Booking Office Type from reference/enrichment; source record does not provide the classification.",amount:0});
         }
@@ -2644,13 +2685,7 @@ function reconciliationIssues(){
     if(Number(a.amount||0)<0){
       issues.push({status:"Data Issue",issueType:"NEGATIVE_EXPOSURE",productId,recordId:a.recordId,limitType:a.limitType,key:a.key,object:a.masterObject||"—",detail:"Integration exposure cannot be negative.",amount:Number(a.amount)||0});
     }
-    if(productId==="CREDIT LINE"&&a.limitType==="CCL"&&master&&row){
-      const sourceNameValue=String(row.data?.Nama||"").trim().toLowerCase();
-      const masterName=String(master.name||"").trim().toLowerCase();
-      if(sourceNameValue&&masterName&&sourceNameValue!==masterName){
-        issues.push({status:"Data Issue",issueType:"INVALID_IDENTITY",productId,recordId:a.recordId,limitType:"CCL",key:a.key,object:master.name,detail:"Nama product tidak sama dengan nama master untuk CCL mapping.",amount:0});
-      }
-    }
+    // CCL identity is keyed by Swift Code. Display-name aliases/abbreviations are not a source-data defect.
     if(productId==="Nominal Pertanggungan"&&a.limitType==="CIL"&&master&&row){
       const sourceName=String(row.data?.["Perusahaan Asuransi"]||"").trim().toLowerCase();
       const masterName=String(master.name||"").trim().toLowerCase();
