@@ -3491,6 +3491,8 @@ function masterCanonicalQualityIssues(){
       }
       if(type==="MLK"){
         if(r.entity&&!mlkEntityEligible(r.entity))issues.push({layer:"Master Limit",domain:type,key:r.key,type:"INVALID_ENTITY_SCOPE",detail:"MLK entity is outside the confirmed MLK entity universe."});
+        if(mlkEntityEligible(r.entity)&&(r.masterLimit===null||r.masterLimit===undefined||r.masterLimit===""))
+          issues.push({layer:"Master Limit",domain:type,key:r.key,type:"MLK_MASTER_LIMIT_MISSING",detail:"MLK master limit is not available for an entity in the confirmed monitoring scope."});
       }
       if(type==="CCL"){
         if(!cclEntityScopeByCode[String(r.entity||"").toUpperCase()]&&r.entity){
