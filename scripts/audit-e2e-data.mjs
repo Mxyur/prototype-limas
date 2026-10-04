@@ -8,7 +8,7 @@ const cclScope=new Map(E2E_CCL_ENTITY_SCOPE.map(x=>[x.entityCode,x]));
 const fs=await import("node:fs");
 const path=await import("node:path");
 const mainSource=fs.readFileSync(path.resolve(process.cwd(),"src/main.jsx"),"utf8");
-assert.ok(!/r\\.limits\\[\\s*["']KP \\+ OVS["']\\s*\\]\\s*=/.test(mainSource),"LPG cleanse must never overwrite explicit KP + OVS master values");
+assert.ok(!/r\.limits\[\s*["']KP \+ OVS["']\s*\]\s*=/.test(mainSource),"LPG cleanse must never overwrite explicit KP + OVS master values");
 assert.ok(mainSource.includes("const regionalValues=LPG_REGION_ONLY_SCOPES"),"LPG cleanse must calculate regional reconciliation from Region I–XII only");
 assert.ok(mainSource.includes("legacyCorruption"),"LPG persisted-master migration guard must exist for legacy zero snapshots");
 
