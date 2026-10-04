@@ -126,15 +126,23 @@ const nclCountry=[
 ];
 nclCountry.forEach(([country,eqvidr,office,type,cif,custnm,cpnm],i)=>p["NON CASH LOAN"].push(ncl({NO:String(i+1),MODULE:"EPLC",TRXREF:"NCL-C-"+country,CUSTID:cif,CUSTNM:custnm,CPNM:cpnm,"Country Code":country,"Country Name":country,CCY:"USD",AMOUNT:String(eqvidr/17310),BALANCE:String(eqvidr/17310),EXCHANGERT:"17310",EQVIDR:String(eqvidr),FINTYPE:"GUARANTEE",TRXTYPE:"BG"} ,country,eqvidr,"Country",{recordId:"NCL-COUNTRY-"+country,sourceSystem:"NTF -> Provided by DWB",bookingOffice:office,bookingOfficeType:type,countryExposure:country})));
 
-// CCL direct exposures: CL + NCL + Credit Line.
+// CCL upstream FI data: CL -> Bank Loan, NCL -> Commercial Line, Treasury -> Credit Line.
 const cclRows=[
-["ANZBAU3M","ANZ","AU",12000,18000000000,15000],["DBSSGSG","DBS","SG",10000,6000000000,16000],["MUFGJPJT","MUFG","JP",4000,2000000000,10000],["OCBCSGSG","OCBC","SG",1000,1000000000,5000]
+["ANZBAU3M","ANZ","AU",12000,10000000000,10000,3500],
+["DBSSGSG","DBS","SG",10000,8000000000,8000,4000],
+["MUFGJPJT","MUFG","JP",4000,5000000000,5000,3000],
+["OCBCSGSG","OCBC","SG",2000,2000000000,2000,250]
 ];
-cclRows.forEach(([swift,short,country,clAmt,nclEq,creditAmt],i)=>{
+cclRows.forEach(([swift,short,country,clAmt,nclEq,commAmt,treasuryAmt],i)=>{
   p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:short+" Bank Loan",no_rek:"CCL-CL-"+swift,total_limit:"",total_bade:String(clAmt),project_location:country,code:country},swift,clAmt,"CCL",{recordId:"CL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
   p["NON CASH LOAN"].push(ncl({NO:String(20+i),MODULE:"EPLC",TRXREF:"NCL-CCL-"+swift,CUSTID:"NCL-CCL-"+short,CUSTNM:["Australia and New Zealand Banking Group Limited","DBS Bank Ltd","MUFG Bank Ltd","Oversea-Chinese Banking Corporation"][i],CPNM:["Australia and New Zealand Banking Group Limited","DBS Bank Ltd","MUFG Bank Ltd","Oversea-Chinese Banking Corporation"][i],"Country Code":country,"Country Name":country,CCY:"USD",AMOUNT:String(nclEq/17310),BALANCE:String(nclEq/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"} ,swift,nclEq,"CCL",{recordId:"NCL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
-  const comm=Math.round(creditAmt*.75),treasury=creditAmt-comm;
-  p["CREDIT LINE"].push(credit({No:String(1+i),Nama:short+" Bank Ltd","Swift Code":swift,"Swift Code Vlookup":swift,Code:country,Negara:country,Bank:"Foreign","Comm DN":String(Math.round(comm*.7)),"Comm DN Utilisasi":String(Math.round(comm*.7)),"Comm LN":String(Math.round(comm*.3)),"Comm LN Utilisasi":String(Math.round(comm*.3)),"Comm Line Total":String(comm),"Comm Line Total Utilisasi":String(comm),"Treasury DN":String(treasury),"Treasury DN Utilisasi":String(treasury),"Treasury LN":"0","Treasury LN Utilisasi":"0","Treasury Line Total":String(treasury),"Treasury Line Total Utilisasi":String(treasury),"Credit Line Total":String(creditAmt),"Credit Line Total Utilisasi":String(creditAmt)},[apply("CCL",swift,creditAmt,"Credit Line")],{recordId:"CRL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
+  p["CREDIT LINE"].push(credit({No:String(1+i),Nama:short+" Bank Ltd","Swift Code":swift,"Swift Code Vlookup":swift,Code:country,Negara:country,Bank:"Foreign",
+    "Comm DN":String(commAmt*.7),"Comm DN Utilisasi":String(commAmt*.7),"Comm LN":String(commAmt*.3),"Comm LN Utilisasi":String(commAmt*.3),
+    "Comm Line Total":String(commAmt),"Comm Line Total Utilisasi":String(commAmt),
+    "Treasury DN":String(treasuryAmt),"Treasury DN Utilisasi":String(treasuryAmt),"Treasury LN":"0","Treasury LN Utilisasi":"0",
+    "Treasury Line Total":String(treasuryAmt),"Treasury Line Total Utilisasi":String(treasuryAmt),
+    "Credit Line Total":String(commAmt+treasuryAmt),"Credit Line Total Utilisasi":String(commAmt+treasuryAmt)
+  },[apply("CCL",swift,Number(commAmt+treasuryAmt),"Credit Line")],{recordId:"CRL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
 });
 
 // Country Credit Line monitoring is derived from raw Credit Line records; no derived country source rows.
@@ -171,27 +179,29 @@ mlkExtendedSourceRows.forEach(([cif,entity,group,clAmt,nclAmt,tlAmt,master])=>{
 
 // CCL entity-scoped source records. Entity/type are explicit enrichment metadata.
 const cclEntitySourceRows=[
-  ["ANZBAU3M","MTF","DIRECT",1000,500000000,500],
-  ["DBSSGSG","MANTAP","DIRECT",1000,500000000,1000],
-  ["MUFGJPJT","MCI","DIRECT",800,400000000,700],
-  ["OCBCSGSG","MMI","DIRECT",500,200000000,500],
-  ["DBSSGSG","AMFS","DIRECT",300,75000000,300],
-  ["ANZBAU3M","MMI","INDIRECT",0,800000000,500],
-  ["MUFGJPJT","AMFS","INDIRECT",0,300000000,600]
+  ["ANZBAU3M","MTF","DIRECT",1000,500000000,500,0],
+  ["DBSSGSG","MANTAP","DIRECT",2000,1000000000,1000,0],
+  ["MUFGJPJT","MCI","DIRECT",1000,1000000000,1000,0],
+  ["OCBCSGSG","MMI","DIRECT",500,250000000,250,0],
+  ["DBSSGSG","AMFS","DIRECT",400,400000000,400,200],
+  ["ANZBAU3M","MMI","INDIRECT",0,500000000,500,0],
+  ["MUFGJPJT","AMFS","INDIRECT",0,0,0,500]
 ];
-cclEntitySourceRows.forEach(([swift,entity,limitType,clAmt,nclEq,creditAmt],i)=>{
+cclEntitySourceRows.forEach(([swift,entity,limitType,clAmt,nclEq,commAmt,treasuryAmt],i)=>{
   const recKey=String(i+1).padStart(3,"0");
   p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:entity+" allocation / "+swift,no_rek:"CCL-PA-CL-"+recKey,total_limit:"",total_bade:String(clAmt),project_location:"Mapped",code:""},swift,Number(clAmt),"CCL",{recordId:"CL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
-  p["NON CASH LOAN"].push(ncl({NO:"PA-"+recKey,MODULE:"EPLC",TRXREF:"NCL-CCL-PA-"+recKey,CUSTID:"NCL-CCL-PA-"+recKey,CUSTNM:entity+" allocation",CPNM:swift,"Country Code":"", "Country Name":"—",CCY:"USD",AMOUNT:String(Number(nclEq)/17310),BALANCE:String(Number(nclEq)/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},swift,Number(nclEq),"CCL",{recordId:"NCL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType,cclExposureRole:"LINEAGE_ONLY"}));
+  p["NON CASH LOAN"].push(ncl({NO:"PA-"+recKey,MODULE:"EPLC",TRXREF:"NCL-CCL-PA-"+recKey,CUSTID:"NCL-CCL-PA-"+recKey,CUSTNM:entity+" allocation",CPNM:swift,"Country Code":"", "Country Name":"—",CCY:"USD",AMOUNT:String(Number(nclEq)/17310),BALANCE:String(Number(nclEq)/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},swift,Number(nclEq),"CCL",{recordId:"NCL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
   p["CREDIT LINE"].push(credit({No:"PA-"+recKey,Nama:entity+" / "+swift,"Swift Code":swift,"Swift Code Vlookup":swift,Code:"",Negara:"Mapped","Bank":"Foreign",
-    "Comm DN":String(creditAmt*.75),"Comm DN Utilisasi":String(creditAmt*.75),"Comm LN":String(creditAmt*.25),"Comm LN Utilisasi":String(creditAmt*.25),
-    "Comm Line Total":String(creditAmt),"Comm Line Total Utilisasi":String(creditAmt),
-    "Treasury DN":"0","Treasury DN Utilisasi":"0","Treasury LN":"0","Treasury LN Utilisasi":"0","Treasury Line Total":"0","Treasury Line Total Utilisasi":"0",
-    "Credit Line Total":String(creditAmt),"Credit Line Total Utilisasi":String(creditAmt)},[apply("CCL",swift,Number(creditAmt),"Credit Line",{entity, cclLimitType:limitType})],
-    {recordId:"CRL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
+    "Comm DN":String(commAmt),"Comm DN Utilisasi":String(commAmt),"Comm LN":"0","Comm LN Utilisasi":"0",
+    "Comm Line Total":String(commAmt),"Comm Line Total Utilisasi":String(commAmt),
+    "Treasury DN":String(treasuryAmt),"Treasury DN Utilisasi":String(treasuryAmt),"Treasury LN":"0","Treasury LN Utilisasi":"0",
+    "Treasury Line Total":String(treasuryAmt),"Treasury Line Total Utilisasi":String(treasuryAmt),
+    "Credit Line Total":String(commAmt+treasuryAmt),"Credit Line Total Utilisasi":String(commAmt+treasuryAmt)
+  },[apply("CCL",swift,Number(commAmt+treasuryAmt),"Credit Line",{entity,cclLimitType:limitType})],
+  {recordId:"CRL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
 });
 
-// Investment Line is source-only / scoped.
+// Investment Line is source-only/ / scoped.
 [["ANZ","Deposito","10000000000"],["DBS","Placement","5000000000"],["OCBC","Deposito","3500000000"]].forEach(([bank,type,amount],i)=>p["Investment Line"].push(rec("Investment Line",{No:String(i+1),"Nama Bank":bank,"Nama Entity (Scope Entity : AKK)":"DPBM","Switftcode":bank+"xx","Jenis Invesment Line":type,"Amount Invesment Line":amount},[],{recordId:"INV-"+(i+1),sourceSystem:"Investment source / Monthly"})));
 
 // Bonds / Nostro.
