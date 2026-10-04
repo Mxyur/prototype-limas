@@ -616,7 +616,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['ingestion','⇩','Data Ingestion'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===4&&<div className="section">Reporting</div>}{i===5&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>Risk Management</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS</div></div></div></div>}
 function Login({go}){return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input defaultValue="cpr.risk" placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><button className="btn primary" onClick={go}>Masuk ke LIMAS</button><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -2662,12 +2662,24 @@ function ingestionRequiredFields(productId){
   };
   return map[productId]||[];
 }
+function deriveIngestionRecordId(productId,data,index){
+  const val=(...fields)=>fields.map(f=>String(data?.[f]??"").trim()).filter(Boolean).join("|");
+  if(String(data?.recordId||"").trim())return String(data.recordId).trim();
+  if(productId==="CASHLOAN")return val("no_cus","no_rek")||"ROW-"+(index+2);
+  if(productId==="NON CASH LOAN")return val("TRXREF")||"ROW-"+(index+2);
+  if(productId==="CREDIT LINE")return val("Swift Code Vlookup","Code")||"ROW-"+(index+2);
+  if(productId==="Investment Line")return val("Nama Bank","Nama Entity (Scope Entity : AKK)","Switftcode")||"ROW-"+(index+2);
+  if(productId==="BONDS")return val("Date","Securities Name","Issuer Country")||"ROW-"+(index+2);
+  if(productId==="NOSTRO")return val("Year","SwfitCode","Bank Country")||"ROW-"+(index+2);
+  if(productId==="Nominal Pertanggungan")return val("Perusahaan Asuransi","Entitas")||"ROW-"+(index+2);
+  return "ROW-"+(index+2);
+}
 function sourceIngestionValidation(productId,records,headers=[]){
   const fields=productSchemaFields[productId]||[],allowed=new Set(fields),required=ingestionRequiredFields(productId),seen=new Set(),rowResults=[];
   const unknownHeaders=headers.filter(h=>!allowed.has(h));
   records.forEach((raw,index)=>{
     const data=Object.fromEntries(fields.map(f=>[f,raw?.[f]??""]));
-    const recordId=String(raw?.recordId||raw?.["Record ID"]||raw?.TRXREF||raw?.["Swift Code Vlookup"]||raw?.SwfitCode||("ROW-"+(index+2))).trim();
+    const recordId=String(raw?.recordId||raw?.["Record ID"]||deriveIngestionRecordId(productId,data,index)).trim();
     const issues=[];
     if(!recordId)issues.push({code:"MISSING_RECORD_ID",severity:"Error",detail:"Technical Record ID cannot be determined."});
     if(seen.has(recordId))issues.push({code:"DUPLICATE_RECORD_ID",severity:"Error",detail:"Record ID is duplicated inside this source file."});
