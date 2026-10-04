@@ -524,8 +524,16 @@ function cclEntityFacility(counterpartyKey,entityCode,limitType="DIRECT"){
   }:null;
 }
 function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
+  // CCL exposure is a controlled aggregation of Bank Loan (Cash Loan)
+  // plus Credit Line utilization. NCL is underlying lineage for Commercial
+  // Line and must not be added independently, otherwise the same exposure
+  // can be counted twice.
   return productApplicationsFor("CCL",counterpartyKey)
-    .filter(a=>String(a.entity||"")===String(entityCode)&&String(a.cclLimitType||"DIRECT")===String(limitType))
+    .filter(a=>
+      String(a.entity||"")===String(entityCode) &&
+      String(a.cclLimitType||"DIRECT")===String(limitType) &&
+      ["CASHLOAN","CREDIT LINE"].includes(a.productId)
+    )
     .reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
 }
 const CCL_REPORT_CATEGORIES=["Asing","KBMI IV","KBMI III","KBMI II","KBMI I"];
@@ -688,7 +696,9 @@ function monitoringScopeIntegrityIssues(){
 
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
-  if(type==="CCL") return E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).reduce((s,x)=>s+cclEntityExposure(row.key,x.entityCode,"DIRECT"),0);
+  if(type==="CCL") return E2E_CCL_ENTITY_SCOPE
+    .filter(x=>x.direct)
+    .reduce((s,x)=>s+cclEntityExposure(row.key,x.entityCode,"DIRECT"),0);
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
 }
 function recordLimit(type,row){
