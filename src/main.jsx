@@ -2996,6 +2996,7 @@ function addIntegrationMapping(productId,row,config){
   (productIntegrationMappings[productId]??=[]).push(entry);
 }
 function buildProductIntegrationMappings(){
+  const checks=[];
   Object.keys(productIntegrationMappings).forEach(k=>delete productIntegrationMappings[k]);
 
   (productDatabase.CASHLOAN||[]).forEach(r=>{
