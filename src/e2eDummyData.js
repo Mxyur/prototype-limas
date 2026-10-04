@@ -75,7 +75,7 @@ cclRows.forEach(([swift,short,country,clAmt,nclEq,creditAmt],i)=>{
   p["CREDIT LINE"].push(credit({No:String(1+i),Nama:short+" Bank Ltd","Swift Code":swift,"Swift Code Vlookup":swift,Code:country,Negara:country,Bank:"Foreign","Comm DN":String(Math.round(comm*.7)),"Comm DN Utilisasi":String(Math.round(comm*.7)),"Comm LN":String(Math.round(comm*.3)),"Comm LN Utilisasi":String(Math.round(comm*.3)),"Comm Line Total":String(comm),"Comm Line Total Utilisasi":String(comm),"Treasury DN":String(treasury),"Treasury DN Utilisasi":String(treasury),"Treasury LN":"0","Treasury LN Utilisasi":"0","Treasury Line Total":String(treasury),"Treasury Line Total Utilisasi":String(treasury),"Credit Line Total":String(creditAmt),"Credit Line Total Utilisasi":String(creditAmt)},[apply("CCL",swift,creditAmt,"Credit Line")],{recordId:"CRL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
 });
 
-// Country Credit Line monitoring is derived from raw Credit Line records; no synthetic country source rows.
+// Country Credit Line monitoring is derived from raw Credit Line records; no derived country source rows.
 // MLK CL + NCL + Treasury exposure rows.
 const mlkRows=[
 ["4000000001","DJARUM",1800,500,500],["1000000002","ANEKA TAMBANG",4000,800,700],["1600000003","TUNAS MOBILINDO PERKASA",8500,1000,2500],["2000000004","TUNAS RIDEAN",700,150,150]
@@ -142,7 +142,7 @@ lpgDebtors.forEach(([cif,name,clAmt,nclIdr,region,segment],i)=>{
     {recordId:"NCL-LPG-DEBTOR-"+baseId,sourceSystem:"DWH",countryExposure:"ID"}
   ));
 });
-const fillDemoProductData=()=>{
+const enrichProductData=()=>{
   const offices=[
     ["Menara Mandiri Jakarta","Domestic","Jakarta"],
     ["Bank Mandiri Singapore","Overseas","Singapore"],
@@ -316,7 +316,7 @@ const fillDemoProductData=()=>{
     d["Status / Rekomendasi Action Plan"]=master?.action||"Monitoring as usual";
   });
 };
-fillDemoProductData();
+enrichProductData();
 
 const sourceSpec=(r,recordId)=>{
   const meta={...(r.meta||{}),recordId};
@@ -346,7 +346,7 @@ const rebuildSourceOnlyProductData=()=>{
 
   // Product Database is source-only: retain the raw product records.
   // Mapping/application is rebuilt separately by buildProductIntegrationMappings().
-  // LPG is NOT a synthetic product; LPG-qualified debtor records remain in the
+  // LPG is an aggregation/classification over source debtor records; LPG-qualified debtor records remain in the
   // Cash Loan/NCL source universe with explicit LPG attributes.
 
   p.CASHLOAN.forEach((r,i)=>{
