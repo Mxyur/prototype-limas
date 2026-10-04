@@ -3004,6 +3004,53 @@ function reconciliationIssues(){
       }
     }
   }));
+  // CCL/MLK source-reference integrity. Entity scope and target master are part of the mapping contract.
+  (productDatabase.CASHLOAN||[]).forEach(row=>{
+    const d=row.data||{}, cif=String(d.no_cus||"").trim(), meta=row.meta||{};
+    const isCcl=Boolean(meta.cclLimitType)||/^CCL-/i.test(cif);
+    if(isCcl){
+      const key=String(meta.cclCounterpartyId||cif.replace(/^CCL-(?:DIRECT|INDIRECT)-[^-]+-/i,"").replace(/^CCL-/i,"")).trim();
+      const master=(limasDemoData.CCL||[]).find(m=>String(m.key).toUpperCase()===key.toUpperCase());
+      if(!master)issues.push({status:"Data Issue",issueType:"CCL_MASTER_MAPPING_MISSING",productId:"CASHLOAN",recordId:row.recordId,limitType:"CCL",key,object:d.nm_cus||"—",detail:"Cash Loan CCL reference does not resolve to CCL master.",amount:Number(d.total_bade)||0});
+      const entity=String(meta.reportingEntity||"BMRI").toUpperCase();
+      if(master&&!cclEntityScopeByCode[entity])issues.push({status:"Data Issue",issueType:"CCL_ENTITY_SCOPE_MISSING",productId:"CASHLOAN",recordId:row.recordId,limitType:"CCL",key,object:d.nm_cus||"—",detail:"Cash Loan CCL source entity is not registered in CCL Entity Scope: "+entity,amount:0});
+    }
+  });
+  (productDatabase["NON CASH LOAN"]||[]).forEach(row=>{
+    const d=row.data||{}, meta=row.meta||{};
+    const swift=String(d["Swift Code"]||"").trim(), isCcl=Boolean(meta.cclLimitType)||Boolean((limasDemoData.CCL||[]).some(m=>String(m.key).toUpperCase()===swift.toUpperCase()));
+    if(isCcl){
+      const key=String(meta.cclCounterpartyId||swift).trim();
+      const master=(limasDemoData.CCL||[]).find(m=>String(m.key).toUpperCase()===key.toUpperCase());
+      if(!master)issues.push({status:"Data Issue",issueType:"CCL_MASTER_MAPPING_MISSING",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"CCL",key,object:d.CUSTNM||"—",detail:"NCL CCL reference does not resolve to CCL master.",amount:Number(d.EQVIDR)||0});
+      const entity=String(meta.reportingEntity||"BMRI").toUpperCase();
+      if(master&&!cclEntityScopeByCode[entity])issues.push({status:"Data Issue",issueType:"CCL_ENTITY_SCOPE_MISSING",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"CCL",key,object:d.CUSTNM||"—",detail:"NCL CCL source entity is not registered in CCL Entity Scope: "+entity,amount:0});
+    }
+  });
+  (productDatabase["CREDIT LINE"]||[]).forEach(row=>{
+    const d=row.data||{}, meta=row.meta||{}, swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim();
+    const isCcl=Boolean(meta.cclLimitType)||Boolean((limasDemoData.CCL||[]).some(m=>String(m.key).toUpperCase()===swift.toUpperCase()));
+    if(isCcl){
+      const master=(limasDemoData.CCL||[]).find(m=>String(m.key).toUpperCase()===swift.toUpperCase());
+      const entity=String(meta.reportingEntity||"BMRI").toUpperCase();
+      if(master&&!cclEntityScopeByCode[entity])issues.push({status:"Data Issue",issueType:"CCL_ENTITY_SCOPE_MISSING",productId:"CREDIT LINE",recordId:row.recordId,limitType:"CCL",key:swift,object:d.Nama||"—",detail:"Credit Line CCL source entity is not registered in CCL Entity Scope: "+entity,amount:0});
+    }
+  });
+  (productDatabase.CASHLOAN||[]).forEach(row=>{
+    const cif=String(row.data?.no_cus||"").trim();
+    if((limasDemoData.MLK||[]).some(m=>String(m.key)===cif)){
+      const entity=String(row.meta?.reportingEntity||"BMRI").toUpperCase();
+      if(!mlkEntityEligible(entity))issues.push({status:"Data Issue",issueType:"MLK_ENTITY_SCOPE_MISSING",productId:"CASHLOAN",recordId:row.recordId,limitType:"MLK",key:cif,object:row.data?.nm_cus||"—",detail:"Cash Loan MLK source entity is not in confirmed MLK scope: "+entity,amount:Number(row.data?.total_bade)||0});
+    }
+  });
+  (productDatabase["NON CASH LOAN"]||[]).forEach(row=>{
+    const cif=String(row.data?.CUSTID||"").trim();
+    if((limasDemoData.MLK||[]).some(m=>String(m.key)===cif)){
+      const entity=String(row.meta?.reportingEntity||"BMRI").toUpperCase();
+      if(!mlkEntityEligible(entity))issues.push({status:"Data Issue",issueType:"MLK_ENTITY_SCOPE_MISSING",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"MLK",key:cif,object:row.data?.CUSTNM||"—",detail:"NCL MLK source entity is not in confirmed MLK scope: "+entity,amount:Number(row.data?.EQVIDR)||0});
+    }
+  });
+
   // Numeric integrity controls: arithmetic consistency is a Data Issue; limit breaches remain monitoring outcomes.
   (productDatabase["NON CASH LOAN"]||[]).forEach(row=>{
     const d=row.data||{}, amount=Number(d.AMOUNT)||0, balance=Number(d.BALANCE)||0, fx=Number(d.EXCHANGERT)||0, eq=Number(d.EQVIDR)||0;
