@@ -3064,13 +3064,18 @@ function buildProductIntegrationMappings(){
         lineageToken(x.recordId)===targetToken
       ).reduce((s,x)=>(s+(Number(x.data?.EQVIDR)||0))/1000000,0);
       const treasuryUtil=Number(String(d["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+      const sourceCreditLineTotal=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const derivedCreditLineTotal=clUpstream+nclUpstream+treasuryUtil;
+      // CCL consumes the Credit Line layer as its utilization source of truth.
+      // The independent lineage audit below verifies that Credit Line Total is
+      // consistent with FI Cash Loan + FI NCL + Treasury, so monitoring does not
+      // silently become zero when a source-lineage key is unavailable.
       addIntegrationMapping("CREDIT LINE",r,{
-        limitType:"CCL",key:swift,amount:derivedCreditLineTotal,label:"Credit Line",
-        sourceField:"Swift Code Vlookup",sourceValue:swift,
-        mappingRule:"FI CL -> Bank Loan + FI NCL -> Commercial Line + Treasury -> Credit Line -> CCL",
+        limitType:"CCL",key:swift,amount:sourceCreditLineTotal,label:"Credit Line",
+        sourceField:"Credit Line Total Utilisasi",sourceValue:sourceCreditLineTotal,
+        mappingRule:"Credit Line Total Utilisasi -> CCL; lineage validated independently",
         entity,cclLimitType:limitType,
-        cclLineage:{bankLoan:clUpstream,commercialLine:nclUpstream,treasuryLine:treasuryUtil,creditLineTotal:derivedCreditLineTotal}
+        cclLineage:{bankLoan:clUpstream,commercialLine:nclUpstream,treasuryLine:treasuryUtil,creditLineTotal:sourceCreditLineTotal,derivedCreditLineTotal}
       });
     }
     const mlkKey=swift.match(/^TL-(.+)$/i)?.[1]||"";
