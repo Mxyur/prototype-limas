@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run audit && vite build",
+    "build": "npm run audit && npm run audit:runtime && vite build",
     "preview": "vite preview",
-    "audit": "node scripts/audit-e2e-data.mjs"
+    "audit": "node scripts/audit-e2e-data.mjs",
+    "audit:runtime": "node scripts/audit-runtime-mode.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
