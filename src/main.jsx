@@ -2714,6 +2714,50 @@ function reconciliationIssues(){
       }
     }
   }));
+  // Numeric integrity controls: arithmetic consistency is a Data Issue; limit breaches remain monitoring outcomes.
+  (productDatabase["NON CASH LOAN"]||[]).forEach(row=>{
+    const d=row.data||{}, amount=Number(d.AMOUNT)||0, balance=Number(d.BALANCE)||0, fx=Number(d.EXCHANGERT)||0, eq=Number(d.EQVIDR)||0;
+    if(amount>0&&fx>0&&eq>0&&Math.abs(amount*fx-eq)>1){
+      issues.push({status:"Data Issue",issueType:"NCL_FX_RECONCILIATION",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"Country",key:d["Country Code"]||"—",object:d.CUSTNM||"—",detail:"AMOUNT × EXCHANGERT tidak sama dengan EQVIDR.",amount:Math.abs(amount*fx-eq)});
+    }
+    if(balance<0||amount<0||eq<0){
+      issues.push({status:"Data Issue",issueType:"NCL_NEGATIVE_BALANCE",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"Country",key:d["Country Code"]||"—",object:d.CUSTNM||"—",detail:"NCL amount/balance/EQVIDR tidak boleh negatif.",amount:0});
+    }
+  });
+
+  (productDatabase["CREDIT LINE"]||[]).forEach(row=>{
+    const d=row.data||{}, n=v=>Number(String(v??"").replace(/,/g,""))||0;
+    const commDn=n(d["Comm DN"]),commLn=n(d["Comm LN"]),commTotal=n(d["Comm Line Total"]),commDnU=n(d["Comm DN Utilisasi"]),commLnU=n(d["Comm LN Utilisasi"]),commU=n(d["Comm Line Total Utilisasi"]);
+    const treDn=n(d["Treasury DN"]),treLn=n(d["Treasury LN"]),treTotal=n(d["Treasury Line Total"]),treDnU=n(d["Treasury DN Utilisasi"]),treLnU=n(d["Treasury LN Utilisasi"]),treU=n(d["Treasury Line Total Utilisasi"]);
+    const total=n(d["Credit Line Total"]),totalU=n(d["Credit Line Total Utilisasi"]);
+    const eps=.01;
+    const bad=Math.abs(commDn+commLn-commTotal)>eps||Math.abs(commDnU+commLnU-commU)>eps||commDnU-commDn>eps||commLnU-commLn>eps||Math.abs(treDn+treLn-treTotal)>eps||Math.abs(treDnU+treLnU-treU)>eps||treDnU-treDn>eps||treLnU-treLn>eps||Math.abs(commTotal+treTotal-total)>eps||Math.abs(commU+treU-totalU)>eps||totalU-total>eps;
+    if(bad)issues.push({status:"Data Issue",issueType:"CREDIT_LINE_COMPONENT_RECONCILIATION",productId:"CREDIT LINE",recordId:row.recordId,limitType:"CCL",key:d["Swift Code Vlookup"]||d["Swift Code"]||"—",object:d.Nama||"—",detail:"Commercial/Treasury component limit-utilization dan total Credit Line tidak reconcile.",amount:0});
+  });
+
+  (productDatabase.NOSTRO||[]).forEach(row=>{
+    const d=row.data||{}, bal=Number(d.Balance)||0, fx=Number(d["FX Rate to IDR"])||0, idr=Number(d["Balance IDR"])||0;
+    if(bal>0&&fx>0&&Math.abs(bal*fx-idr)>1){
+      issues.push({status:"Data Issue",issueType:"NOSTRO_FX_RECONCILIATION",productId:"NOSTRO",recordId:row.recordId,limitType:"Country",key:d["Bank Country"]||"—",object:d["Bank Name"]||"—",detail:"Balance × FX Rate to IDR tidak sama dengan Balance IDR.",amount:Math.abs(bal*fx-idr)});
+    }
+  });
+
+  (limasDemoData.Country||[]).forEach(row=>{
+    const p=row.productAllocations||{};
+    const productAllocated=Object.values(p).reduce((s,x)=>s+(Number(x?.total)||0),0);
+    const dist=Number(row.capacityDistribution?.domesticLimit||0)+Number(row.capacityDistribution?.overseasLimit||0);
+    if(Math.abs(productAllocated-Number(row.capacityLimit||0))>.01||Math.abs(dist-Number(row.capacityLimit||0))>.01){
+      issues.push({status:"Data Issue",issueType:"COUNTRY_MASTER_ALLOCATION_RECONCILIATION",productId:"MASTER",recordId:"MASTER-"+row.key,limitType:"Country",key:row.key,object:row.name||row.key,detail:"Product allocation atau Domestic/Overseas distribution tidak sama dengan Country Capacity Limit.",amount:Math.abs(productAllocated-Number(row.capacityLimit||0))});
+    }
+  });
+
+  (limasDemoData.CIL||[]).forEach(row=>{
+    const eil=Object.values(row.eils||{}).reduce((s,v)=>s+(Number(v)||0),0), cil=Number(row.cil)||0;
+    if(Math.abs(eil-cil)>.01){
+      issues.push({status:"Data Issue",issueType:"CIL_EIL_RECONCILIATION",productId:"Nominal Pertanggungan",recordId:"MASTER-"+row.key,limitType:"CIL",key:row.key,object:row.name||row.key,detail:"Total EIL entitas tidak sama dengan CIL master.",amount:Math.abs(eil-cil)});
+    }
+  });
+
   return issues;
 }
 const EXCEPTION_ACTION_STORE_KEY="limas_exception_actions_v1";
