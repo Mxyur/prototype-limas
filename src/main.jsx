@@ -4381,12 +4381,12 @@ function cclCreditLineLineageAuditRows(){
     const cl=(productDatabase.CASHLOAN||[]).filter(x=>
       String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-      lineageToken(x.recordId)===targetToken
+      String(x.meta?.cclCounterpartyId||"").trim().toUpperCase()===swift.toUpperCase()
     ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
     const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
       String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-      lineageToken(x.recordId)===targetToken
+      String(x.meta?.cclCounterpartyId||"").trim().toUpperCase()===swift.toUpperCase()
     ).reduce((s,x)=>s+(Number(x.data?.EQVIDR)||0)/1000000,0);
     const treasury=(Number(d["Treasury DN Utilisasi"]||0)||0)+(Number(d["Treasury LN Utilisasi"]||0)||0);
     const commercial=Number(d["Comm Line Total Utilisasi"]||0)||0;
