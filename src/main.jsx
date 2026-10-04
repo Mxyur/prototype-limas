@@ -640,7 +640,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['contract','≡','Scope & Data Contract'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===6&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>{currentLimasUser()}</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS • {roleLabel()}</div></div></div></div>}
 function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user);return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><button className="btn primary" onClick={()=>{setLimasSession(role,user);go();}}>Masuk ke LIMAS</button><div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -3915,43 +3915,6 @@ function AccessControl({nav}){
   </div></Layout>;
 }
 
-const DATA_CONTRACTS=[
-  {domain:"Country",source:"COUNTRY_MONITORING + product source feeds",key:"Country Code / product country field",native:"Mixed by product",canonical:"Rp Juta",master:"Country.capacityLimit + productAllocations",mapping:"Country code + booking office type",aggregation:"CL + NCL + Credit Line + Bonds + Nostro",utilization:"Total canonical exposure / Country capacity",status:"Normal / Warning / Breach / Data Issue",scope:"Country universe; Domestic/Overseas allocation"},
-  {domain:"CCL",source:"CCL master + Core Banking product feeds",key:"SWIFT Code",native:"Master: Rp Miliar; product: Rp Juta",canonical:"Rp Juta",master:"CCL + contractual limit",mapping:"SWIFT / Vlookup",aggregation:"CL + NCL + Credit Line",utilization:"Exposure / CCL",status:"Includes contractual-limit check",scope:"Direct counterparty bank exposure"},
-  {domain:"MLK",source:"MLK master + LIMAST product feeds",key:"CIF",native:"Rp Juta / NCL source Rp",canonical:"Rp Juta",master:"Master Limit",mapping:"CIF",aggregation:"CL + NCL + Treasury Line",utilization:"Exposure / Master Limit",status:"Component and master breach",scope:"Debtor-level wholesale limit"},
-  {domain:"CIL",source:"CIL master + Nominal Pertanggungan",key:"Insurance Company ID",native:"Rp Juta",canonical:"Rp Juta",master:"CIL / CIT / EIL",mapping:"Insurance key + Entity",aggregation:"Nominal Pertanggungan per entity",utilization:"Exposure / EIL and CIL",status:"EIL + CIL monitoring",scope:"Insurance capacity / guarantee"},
-  {domain:"LPG",source:"DWH Cash Loan + NCL",key:"Ecosystem LPG + Segmen LPG + Region",native:"CL: Rp Juta; NCL IDR: Rp",canonical:"Rp Juta",master:"Bankwide + regional/scope LPG limit",mapping:"Explicit LPG attributes on debtor source",aggregation:"CL + NCL after canonical normalization",utilization:"Scope exposure / scope master limit",status:"Normal / Warning / Breach / Data Issue",scope:"LPG portfolio; Bankwide and configured regions"}
-];
-const CREDIT_LINE_CONTRACT=[
-  ["Commercial DN / Comm DN","Commercial Line component","Source-native component exposure"],
-  ["Commercial LN / Comm LN","Commercial Line component","Source-native component exposure"],
-  ["Comm Line Total","Commercial Line subtotal","Comm DN + Comm LN"],
-  ["Treasury DN","Treasury Line component","Source-native component exposure"],
-  ["Treasury LN","Treasury Line component","Source-native component exposure"],
-  ["Treasury Line Total","Treasury Line subtotal","Treasury DN + Treasury LN"],
-  ["Credit Line Total","Overall Credit Line facility","Comm Line Total + Treasury Line Total"]
-];
-function DataContract({nav}){
-  return <Layout screen="contract" onNav={nav}>
-    <Header title="Scope & Data Contract" subtitle="Kontrak data end-to-end untuk menjelaskan source, master, normalisasi, mapping, utilization dan monitoring."/>
-    <div className="page">
-      <section className="card"><div className="head"><div><h2>Canonical Data Contract</h2><p>Setiap domain menggunakan canonical unit sebelum exposure dibandingkan dengan master limit.</p></div></div>
-        <div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Domain</th><th>Source</th><th>Key</th><th>Native Unit</th><th>Canonical</th><th>Master</th><th>Mapping</th><th>Aggregation</th><th>Utilization</th><th>Monitoring</th><th>Scope</th></tr></thead><tbody>{DATA_CONTRACTS.map(r=><tr key={r.domain}>{Object.values(r).map((v,i)=><td key={i}>{v}</td>)}</tr>)}</tbody></table></div></div>
-      </section>
-      <section className="card"><div className="head"><div><h2>Credit Line Terminology Contract</h2><p>DN/LN adalah component, bukan universe produk yang berdiri sendiri.</p></div></div>
-        <div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Field / Alias</th><th>Canonical Meaning</th><th>Calculation / Role</th></tr></thead><tbody>{CREDIT_LINE_CONTRACT.map(r=><tr key={r[0]}><td><span className="key">{r[0]}</span></td><td>{r[1]}</td><td>{r[2]}</td></tr>)}</tbody></table></div></div>
-      </section>
-      <section className="card"><div className="head"><div><h2>Contoh LPG: Mengapa tidak boleh 2.000.000%</h2><p>Source NCL DWH menggunakan Rupiah penuh, sedangkan master LPG menggunakan Rp Juta.</p></div></div>
-        <div className="body"><div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12}}>
-          <div className="mini"><b>Source</b><span>Rp 1.200.000.000</span></div>
-          <div className="mini"><b>Normalize</b><span>÷ 1.000.000 = Rp 1.200 Juta</span></div>
-          <div className="mini"><b>Compare</b><span>terhadap master dalam Rp Juta</span></div>
-        </div><p style={{marginTop:16}}>Dengan kontrak ini, seluruh angka LPG dihitung pada unit yang sama sebelum utilization. Jadi angka ekstrem hanya boleh muncul jika exposure bisnis memang benar-benar melebihi limit, bukan karena perbedaan satuan.</p></div>
-      </section>
-    </div>
-  </Layout>;
-}
-
 class AppErrorBoundary extends React.Component{
   constructor(props){super(props);this.state={error:null}}
   static getDerivedStateFromError(error){return {error}}
@@ -3978,7 +3941,6 @@ function App(){
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;
   if(screen==="detail") return <Detail nav={nav} type={sel} recordKey={selKey} key={sel+":"+selKey} />;
   if(screen==="products") return <Products nav={nav}/>;
-  if(screen==="contract") return <DataContract nav={nav}/>;
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
   if(screen==="quality") return <DataQuality nav={nav}/>;
