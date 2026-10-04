@@ -2611,6 +2611,36 @@ function integrationDomainAllowed(row,domain){
   return !Array.isArray(scopes)||scopes.length===0||scopes.includes(domain);
 }
 
+function isExplicitCclSource(row){
+  const d=row?.data||{},meta=row?.meta||{};
+  return Boolean(meta.cclLimitType)
+    || /^CCL-/i.test(String(d.no_cus||""))
+    || /^CCL-/i.test(String(meta.recordId||""));
+}
+
+function resolveCclMaster(productId,row){
+  const d=row?.data||{},meta=row?.meta||{};
+  const candidates=[];
+  if(meta.cclCounterpartyId)candidates.push(String(meta.cclCounterpartyId).trim());
+  if(productId==="CASHLOAN"){
+    const noCus=String(d.no_cus||"").trim();
+    if(noCus)candidates.push(noCus.replace(/^CCL-/i,""),noCus);
+  }
+  if(productId==="NON CASH LOAN"){
+    if(d["Swift Code"])candidates.push(String(d["Swift Code"]).trim());
+    if(d.CPNM)candidates.push(String(d.CPNM).trim());
+    if(d.CUSTNM)candidates.push(String(d.CUSTNM).trim());
+  }
+  if(productId==="CREDIT LINE"){
+    if(d["Swift Code Vlookup"])candidates.push(String(d["Swift Code Vlookup"]).trim());
+    if(d["Swift Code"])candidates.push(String(d["Swift Code"]).trim());
+  }
+  const masters=limasDemoData.CCL||[];
+  const byKey=masters.find(m=>candidates.some(v=>v&&String(m.key).trim().toUpperCase()===v.toUpperCase()));
+  if(byKey)return byKey;
+  return masters.find(m=>candidates.some(v=>v&&String(m.name||"").trim().toLowerCase()===v.toLowerCase()))||null;
+}
+
 const productIntegrationMappings={};
 const productDatabase={};
 
@@ -2802,12 +2832,16 @@ function buildProductIntegrationMappings(){
       });
     }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null});
-    if(swift){
-      addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
-    }else{
-      const names=[d.CUSTNM,d.CPNM].map(v=>String(v||"").trim().toLowerCase()).filter(Boolean);
-      const cclRef=(limasDemoData.CCL||[]).find(m=>names.includes(String(m.name||"").trim().toLowerCase()));
-      if(cclRef)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTNM / CPNM",sourceValue:d.CUSTNM||d.CPNM,mappingRule:"NCL Counterparty Reference -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
+    const cclRef=resolveCclMaster("NON CASH LOAN",r);
+    if(cclRef){
+      const sourceField=swift?"Swift Code":"CPNM";
+      const sourceValue=swift?swift:(String(d.CPNM||d.CUSTNM||"").trim());
+      addIntegrationMapping("NON CASH LOAN",r,{
+        limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",
+        sourceField,sourceValue,
+        mappingRule:swift?"NCL Swift Code enrichment -> CCL Swift":"NCL CPNM/Counterparty Reference -> CCL Swift",
+        entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"
+      });
     }
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
@@ -2989,6 +3023,9 @@ function reconciliationIssues(){
         const field=productSourceField(productId,"Country");
         const key=String(d[field]??"").trim();
         const mappings=(productIntegrationMappings[productId]||[]).filter(a=>a.limitType==="Country"&&String(a.recordId)===String(row.recordId));
+        // CCL-specific allocation rows may legitimately carry no Country key because their
+        // monitoring universe is counterparty/entity-scoped, not Country-scoped.
+        if(!key&&isExplicitCclSource(row))return;
         if(!key){
           issues.push({status:"Data Issue",issueType:"MISSING_COUNTRY_KEY",productId,recordId:row.recordId,limitType:"Country",key:"—",object:"—",detail:productId+" does not have source Country Exposure in field "+field,amount:0});
         }else{
@@ -3040,10 +3077,10 @@ function reconciliationIssues(){
   });
   (productDatabase["NON CASH LOAN"]||[]).forEach(row=>{
     const d=row.data||{}, meta=row.meta||{};
-    const swift=String(d["Swift Code"]||"").trim(), isCcl=Boolean(meta.cclLimitType)||Boolean((limasDemoData.CCL||[]).some(m=>String(m.key).toUpperCase()===swift.toUpperCase()));
+    const swift=String(d["Swift Code"]||"").trim(), master=resolveCclMaster("NON CASH LOAN",row);
+    const isCcl=Boolean(meta.cclLimitType)||Boolean(master);
     if(isCcl){
-      const key=String(meta.cclCounterpartyId||swift).trim();
-      const master=(limasDemoData.CCL||[]).find(m=>String(m.key).toUpperCase()===key.toUpperCase());
+      const key=String(master?.key||meta.cclCounterpartyId||swift||d.CPNM||"").trim();
       if(!master)issues.push({status:"Data Issue",issueType:"CCL_MASTER_MAPPING_MISSING",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"CCL",key,object:d.CUSTNM||"—",detail:"NCL CCL reference does not resolve to CCL master.",amount:Number(d.EQVIDR)||0});
       const entity=String(meta.reportingEntity||"BMRI").toUpperCase();
       if(master&&!cclEntityScopeByCode[entity])issues.push({status:"Data Issue",issueType:"CCL_ENTITY_SCOPE_MISSING",productId:"NON CASH LOAN",recordId:row.recordId,limitType:"CCL",key,object:d.CUSTNM||"—",detail:"NCL CCL source entity is not registered in CCL Entity Scope: "+entity,amount:0});
