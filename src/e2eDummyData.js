@@ -181,6 +181,10 @@ const fillDemoProductData=()=>{
     d.TRXTYPE=d.TRXTYPE||tpl.trxType;
     d.CCY=d.CCY||"USD";
     if(i<3){
+      d["Swift Code"]="";
+      d.ecosystem_lpg="";
+      d.segmen_lpg="";
+      d.region_lpg="";
       d.NO=String(i+1);
       d.MODULE=tpl.module;
       d.REPORTTYPE=tpl.reportType;
@@ -221,9 +225,9 @@ const fillDemoProductData=()=>{
     d.BUCD=d.BUCD||"";
     d.SOF=d.SOF||tpl.sof;
     d.INTRT=d.INTRT||tpl.intrt;
-    d.ecosystem_lpg=d.ecosystem_lpg||"GENERAL";
-    d.segmen_lpg=d.segmen_lpg||"Corporate";
-    d.region_lpg=d.region_lpg||(country==="ID"?"KP + OVS":office[2]);
+    d.ecosystem_lpg=d.ecosystem_lpg||"";
+    d.segmen_lpg=d.segmen_lpg||"";
+    d.region_lpg=d.region_lpg||"";
 
     r.meta={
       ...r.meta,
@@ -322,100 +326,48 @@ const rebuildSourceOnlyProductData=()=>{
     "Nominal Pertanggungan":[]
   };
 
-  // Cash Loan source universe: retain actual debtor/facility records only.
-  // Country/CCL/LPG fixture rows are removed from Product Database.
-  const cashRows=p.CASHLOAN.filter(r=>/^CL-MLK-/.test(String(r.meta?.recordId||"")));
-  cashRows.forEach((r,i)=>{
-    const d={...(r.data||{})};
-    // Remove fixture-specific account naming from the source sample.
-    d.no_rek=String(d.no_rek||"").replace(/^MLK-CL-/,"ACC-");
-    const integration=E2E_MASTER_DATA.MLK.some(x=>String(x.key)===String(d.no_cus))
-      ?[{limitType:"MLK",key:String(d.no_cus),amount:Number(d.total_bade||0),label:"Cash Loan"}]
-      :[];
-    out.CASHLOAN.push(sourceSpec({...r,data:d},"CL-"+String(i+1).padStart(3,"0"),integration));
+  // Product Database is source-only: retain the raw product records.
+  // Mapping/application is rebuilt separately by buildProductIntegrationMappings().
+  // LPG is NOT a synthetic product; LPG-qualified debtor records remain in the
+  // Cash Loan/NCL source universe with explicit LPG attributes.
+
+  p.CASHLOAN.forEach((r,i)=>{
+    const meta={...(r.meta||{}),recordId:r.meta?.recordId||"CL-"+String(i+1).padStart(3,"0")};
+    if(meta.sourceSystem==="DWH"&&/^CL-LPG-/.test(String(meta.recordId))) meta.integrationDomains=["LPG"];
+    out.CASHLOAN.push(sourceSpec({...r,meta},meta.recordId));
   });
 
-  // LPG DWH source universe is a genuine product-source fixture and is explicitly
-  // scoped to the LPG monitoring domain. It must not be mistaken for Country/MLK data.
-  p.CASHLOAN.filter(r=>/^CL-LPG-/.test(String(r.meta?.recordId||""))).forEach(r=>{
-    const meta={...(r.meta||{}),integrationDomains:["LPG"]};
-    out.CASHLOAN.push(sourceSpec({...r,meta},String(meta.recordId)));
+  p["NON CASH LOAN"].forEach((r,i)=>{
+    const meta={...(r.meta||{}),recordId:r.meta?.recordId||"NCL-"+String(i+1).padStart(3,"0")};
+    if(meta.sourceSystem==="DWH"&&/^NCL-LPG-/.test(String(meta.recordId))) meta.integrationDomains=["LPG"];
+    out["NON CASH LOAN"].push(sourceSpec({...r,meta},meta.recordId));
   });
 
-  // NCL golden sample: keep exactly the source fields/values confirmed by the user.
-  // Blank source fields stay blank; no synthetic Swift/LPG/booking values are injected.
-  const nclGolden=[
-    {
-      NO:"1",MODULE:"EXCO",REPORTTYPE:"Export Collection Financing",TRXREF:"XC77126002607",RELREF:"",
-      CUSTID:"16000005630",CUSTNM:"PT. PABRIK KERTAS TJIWI KIMIA TBK",CPNM:"KENSINGTON INTERNATIONAL LIMITED",
-      CPCNTY:"",CPBK:"",BKCNTRY:"", "Country Code":"HK","Country Name":"Hong Kong","Type of Judgment":"CPNM",
-      TRXTYPE:"D/A",CCY:"USD",AMOUNT:"14978.87",BALANCE:"14978.87",EXCHANGERT:"17310",EQVIDR:"259284240",
-      FINTYPE:"DISCOUNT/REDISCOUNT",TRXDATE:"07/04/2026",DUEDATE:"02/10/2026",SERVCODE:"77106",
-      SERVNM:"Trade Operation Export",PCCD:"77106",PCNM:"Trade Operation Export",BUCD:"",SOF:"T",INTRT:"6.97",
-      "Swift Code":"",ecosystem_lpg:"",segmen_lpg:"",region_lpg:""
-    },
-    {
-      NO:"2",MODULE:"EXCO",REPORTTYPE:"Export Collection Financing",TRXREF:"XC77126002602",RELREF:"",
-      CUSTID:"16000005628",CUSTNM:"PT. PINDO DELI PULP AND PAPER MILLS",CPNM:"ROCKDALE CAPITAL PTE LTD",
-      CPCNTY:"",CPBK:"",BKCNTRY:"", "Country Code":"SG","Country Name":"Singapore","Type of Judgment":"CPNM",
-      TRXTYPE:"D/A",CCY:"USD",AMOUNT:"141162.38",BALANCE:"141162.38",EXCHANGERT:"17310",EQVIDR:"2443520798",
-      FINTYPE:"DISCOUNT/REDISCOUNT",TRXDATE:"07/04/2026",DUEDATE:"25/09/2026",SERVCODE:"77106",
-      SERVNM:"Trade Operation Export",PCCD:"77106",PCNM:"Trade Operation Export",BUCD:"",SOF:"T",INTRT:"6.97",
-      "Swift Code":"",ecosystem_lpg:"",segmen_lpg:"",region_lpg:""
-    },
-    {
-      NO:"3",MODULE:"EXCO",REPORTTYPE:"Export Collection Financing",TRXREF:"XC77126002609",RELREF:"",
-      CUSTID:"16000005628",CUSTNM:"PT. PINDO DELI PULP AND PAPER MILLS",CPNM:"PG PAPER COMPANY LIMITED",
-      CPCNTY:"",CPBK:"",BKCNTRY:"", "Country Code":"GB","Country Name":"United Kingdom","Type of Judgment":"CPNM",
-      TRXTYPE:"D/A",CCY:"EUR",AMOUNT:"30308.4",BALANCE:"30308.4",EXCHANGERT:"20218.08",EQVIDR:"612777656",
-      FINTYPE:"DISCOUNT/REDISCOUNT",TRXDATE:"07/04/2026",DUEDATE:"22/05/2026",SERVCODE:"77106",
-      SERVNM:"Trade Operation Export",PCCD:"77106",PCNM:"Trade Operation Export",BUCD:"",SOF:"T",INTRT:"7.67",
-      "Swift Code":"",ecosystem_lpg:"",segmen_lpg:"",region_lpg:""
-    }
-  ];
-  const nclMeta=p["NON CASH LOAN"].find(r=>String(r.meta?.recordId||"")==="NCL-COUNTRY-ID")?.meta||{};
-  nclGolden.forEach((data,i)=>{
-    const sourceMeta={...nclMeta,recordId:"NCL-EXCO-"+String(i+1).padStart(3,"0"),sourceSystem:nclMeta.sourceSystem||"NTF -> Provided by DWB",asOfDate:E2E_DUMMY_META.asOfDate};
-    const integration=[{limitType:"Country",key:data["Country Code"],amount:Number(data.EQVIDR||0),label:"Non Cash Loan"}];
-    out["NON CASH LOAN"].push(sourceSpec({data,meta:sourceMeta},sourceMeta.recordId,integration));
-  });
+  // Credit Line source universe: raw counterparty records only.
+  // Country aggregates and MLK Treasury exposure rows are integration/read-model
+  // constructs and therefore do not become duplicate Product Database records.
+  p["CREDIT LINE"]
+    .filter(r=>/^CRL-CCL-/.test(String(r.meta?.recordId||"")))
+    .forEach((r,i)=>{
+      const meta={...(r.meta||{}),recordId:"CLINE-"+String(i+1).padStart(3,"0")};
+      out["CREDIT LINE"].push(sourceSpec({...r,meta},meta.recordId));
+    });
 
-  // LPG DWH NCL rows are source-only rows for LPG aggregation.
-  // Their source semantics are preserved; integration domain is explicit in metadata.
-  p["NON CASH LOAN"].filter(r=>/^NCL-LPG-/.test(String(r.meta?.recordId||""))).forEach(r=>{
-    const meta={...(r.meta||{}),integrationDomains:["LPG"]};
-    out["NON CASH LOAN"].push(sourceSpec({...r,meta},String(meta.recordId)));
-  });
+  p["Investment Line"].forEach((r,i)=>
+    out["Investment Line"].push(sourceSpec(r,r.meta?.recordId||"INV-"+String(i+1).padStart(3,"0")))
+  );
 
-  // Credit Line source universe: keep actual Commercial/Treasury counterparties only.
-  // Country-created and MLK integration-only rows are not Product Database records.
-  p["CREDIT LINE"].filter(r=>/^CRL-CCL-/.test(String(r.meta?.recordId||""))).forEach((r,i)=>{
-    const d=r.data||{};
-    const swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim();
-    const total=Number(d["Credit Line Total Utilisasi"]||0);
-    const integration=swift&&total? [{limitType:"CCL",key:swift,amount:total,label:"Credit Line"}]:[];
-    out["CREDIT LINE"].push(sourceSpec(r,"CLINE-"+String(i+1).padStart(3,"0"),integration));
-  });
+  p.BONDS.forEach((r,i)=>
+    out.BONDS.push(sourceSpec(r,r.meta?.recordId||"BOND-"+String(i+1).padStart(3,"0")))
+  );
 
-  p["Investment Line"].forEach((r,i)=>out["Investment Line"].push(sourceSpec(r,"INV-"+String(i+1).padStart(3,"0"),[])));
+  p.NOSTRO.forEach((r,i)=>
+    out.NOSTRO.push(sourceSpec(r,r.meta?.recordId||"NOSTRO-"+String(i+1).padStart(3,"0")))
+  );
 
-  p.BONDS.forEach((r,i)=>{
-    const d={...(r.data||{})};
-    // Keep the security/issuer source fields, but remove the old Country-fixture identity.
-    const integration=d["Issuer Country"]?[{limitType:"Country",key:String(d["Issuer Country"]),amount:Number(d["Amount Eq. IDR Juta"]||0),label:"Bonds"}]:[];
-    out.BONDS.push(sourceSpec({...r,data:d},"BOND-"+String(i+1).padStart(3,"0"),integration));
-  });
-
-  p.NOSTRO.forEach((r,i)=>{
-    const d={...(r.data||{})};
-    const integration=d["Bank Country"]?[{limitType:"Country",key:String(d["Bank Country"]),amount:Number(d.Balance||0),label:"Nostro"}]:[];
-    out.NOSTRO.push(sourceSpec({...r,data:d},"NOSTRO-"+String(i+1).padStart(3,"0"),integration));
-  });
-
-  p["Nominal Pertanggungan"].forEach((r,i)=>{
-    const integration=(r.integration||r.applied||[]).map(a=>({...a}));
-    out["Nominal Pertanggungan"].push(sourceSpec(r,r.meta?.recordId||"CIL-"+String(i+1).padStart(3,"0"),integration));
-  });
+  p["Nominal Pertanggungan"].forEach((r,i)=>
+    out["Nominal Pertanggungan"].push(sourceSpec(r,r.meta?.recordId||"CIL-"+String(i+1).padStart(3,"0")))
+  );
 
   return out;
 };
