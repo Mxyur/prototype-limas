@@ -1527,15 +1527,16 @@ function CCLMonitor({nav}){
         treasuryLine:vals.reduce((s,x)=>s+x.treasuryLine*1000,0)
       };
     }
-    const x=cclEntityFacility(r.key,entityScope,limitType);
+    const x=cclEntityFacility(r.key,entityScope,limitType),orphanExposure=cclEntityExposure(r.key,entityScope,limitType);
     return x
-      ?{limit:x.ccl*1000,contractual:x.contractual*1000,os:cclEntityExposure(r.key,entityScope,limitType),facility:x.facility*1000,bankLoan:x.bankLoan*1000,commercialLine:x.commercialLine*1000,treasuryLine:x.treasuryLine*1000}
-      :{limit:null,contractual:null,os:0,facility:0,bankLoan:0,commercialLine:0,treasuryLine:0};
+      ?{limit:x.ccl*1000,contractual:x.contractual*1000,os:orphanExposure,facility:x.facility*1000,bankLoan:x.bankLoan*1000,commercialLine:x.commercialLine*1000,treasuryLine:x.treasuryLine*1000}
+      :{limit:null,contractual:null,os:orphanExposure,facility:null,bankLoan:null,commercialLine:null,treasuryLine:null};
   };
   const visible=rows.map(r=>{
-    const metric=metricFor(r),util=metric.contractual?metric.os/metric.contractual:0;
-    return {...r,...metric,util,status:util>=1?"Breach":util>=.8?"Warning":"Normal"};
-  }).filter(r=>r.limit!==null&&r.limit!==undefined);
+    const metric=metricFor(r),util=metric.contractual?metric.os/metric.contractual:(metric.os>0&&metric.contractual===0?Infinity:0);
+    const scopeIssue=monitoringScopeIntegrityIssues().some(x=>x.domain==="CCL"&&String(x.key)===String(r.key));
+    return {...r,...metric,util,status:scopeIssue?"Data Issue":util>=1?"Breach":util>=.8?"Warning":"Normal"};
+  }).filter(r=>r.limit!==null&&r.limit!==undefined||r.os>0);
   const total=visible.reduce((a,r)=>a+r.limit,0),os=visible.reduce((a,r)=>a+r.os,0),contractual=visible.reduce((a,r)=>a+(r.contractual||0),0),util=contractual?os/contractual:0;
   return <Layout screen="CCL" onNav={nav}>
     <Header title="Counterparty / CCL Monitoring" subtitle="Direct / Indirect • BMRI & Perusahaan Anak • Counterparty • Commercial / Treasury"/>
@@ -3612,6 +3613,11 @@ function canonicalExceptions(){
   const existingExceptionKeys=new Set(rows.map(x=>[x.domain,x.key,x.detail].join("|")));
   canonicalProductQualityIssues().forEach(x=>{
     const item={status:"Data Issue",domain:x.limitType||"Product Database",key:x.key||x.recordId,object:x.productId,limit:"—",exposure:0,util:0,threshold:"—",detail:x.type+" • "+x.detail+" • "+x.recordId};
+    const k=[item.domain,item.key,item.detail].join("|");
+    if(!existingExceptionKeys.has(k)){rows.push(item);existingExceptionKeys.add(k);}
+  });
+  monitoringScopeIntegrityIssues().forEach(x=>{
+    const item={status:"Data Issue",domain:x.domain,key:x.key||x.recordId,object:x.object||x.productId||"—",limit:"—",exposure:Number(x.amount)||0,util:0,threshold:"—",detail:x.issueType+" • "+x.detail+" • "+(x.recordId||"")};
     const k=[item.domain,item.key,item.detail].join("|");
     if(!existingExceptionKeys.has(k)){rows.push(item);existingExceptionKeys.add(k);}
   });
