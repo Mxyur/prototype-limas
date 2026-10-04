@@ -18,7 +18,7 @@ for(const token of required){
 const forbiddenProductionCall=/installE2EDummyDataset\s*\(/;
 if(forbiddenProductionCall.test(source))throw new Error("Legacy unconditional installE2EDummyDataset() still exists.");
 
-const fixtureImportMatch=source.match(/import\\s*\\{([^}]+)\\}\\s*from\\s*["']\\.\\/e2eDummyData["']/);
+const fixtureImportMatch=source.match(/import\s*\{([^}]+)\}\s*from\s*["']\.\/e2eDummyData["']/);
 if(!fixtureImportMatch)throw new Error("E2E fixture import block not found.");
 
 const fixtureAliases=[
