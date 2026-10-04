@@ -566,7 +566,7 @@ function buildCCLDirectReportRows(){
     subsidiaries.counterpartyCount=subsidiaryCounterparties.size;
     subsidiaries.util=subsidiaries.contractual?subsidiaries.os/subsidiaries.contractual:0;
     return {
-      no:i+1,category,counterpartyCount:cons.counterpartyCount,
+      no:i+1,category:category==="Asing"?"Bank Asing":category,counterpartyCount:cons.counterpartyCount,
       consolidatedCcl:cons.ccl,consolidatedContractual:cons.contractual,consolidatedOs:cons.os,consolidatedOsMax:cons.osMax,consolidatedUtil:cons.util,
       bmriCcl:bmri.ccl,bmriContractual:bmri.contractual,bmriOs:bmri.os,bmriOsMax:bmri.osMax,bmriUtil:bmri.util,
       subsidiaryCcl:subsidiaries.ccl,subsidiaryContractual:subsidiaries.contractual,subsidiaryOs:subsidiaries.os,subsidiaryOsMax:subsidiaries.osMax,subsidiaryUtil:subsidiaries.util,
@@ -582,7 +582,7 @@ function buildCCLIndirectReportRows(){
     const cons={counterpartyCount:indirectCounterparties.size,ccl:mmi.ccl+amfs.ccl,contractual:mmi.contractual+amfs.contractual,os:mmi.os+amfs.os,osMax:mmi.osMax+amfs.osMax};
     cons.util=cons.contractual?cons.os/cons.contractual:0;
     return {
-      no:i+1,category,counterpartyCount:cons.counterpartyCount,
+      no:i+1,category:category==="Asing"?"Bank Asing":category,counterpartyCount:cons.counterpartyCount,
       consolidatedCcl:cons.ccl,consolidatedContractual:cons.contractual,consolidatedOs:cons.os,consolidatedOsMax:cons.osMax,consolidatedUtil:cons.util,
       mmiCcl:mmi.ccl,mmiContractual:mmi.contractual,mmiOs:mmi.os,mmiOsMax:mmi.osMax,mmiUtil:mmi.util,
       amfsCcl:amfs.ccl,amfsContractual:amfs.contractual,amfsOs:amfs.os,amfsOsMax:amfs.osMax,amfsUtil:amfs.util,
@@ -1429,7 +1429,7 @@ function CCLMonitor({nav}){
         <DomainKpi label="Counterparties" value={visible.length} sub="Current scope"/>
       </div>
       <section className="card"><div className="head"><div><h2>CCL Entity Scope</h2><p>Entity dan Direct/Indirect dipisahkan dari counterparty identity.</p></div></div><div className="body"><div className="integration-chip-grid">{E2E_CCL_ENTITY_SCOPE.map(x=><div className="mini integration-chip" key={x.entityCode}><b>{x.entityCode}</b><div className="muted-small">{entityMasterByCode[x.entityCode]?.entityName||"—"} • Direct: {x.direct?"Yes":"No"} • Indirect: {x.indirect?"Yes":"No"}</div></div>)}</div></div></section>
-      <section className="card"><div className="head"><div><h2>Monitoring Detail</h2><p>Commercial/Treasury hierarchy berasal dari Master; utilization berasal dari Product Database melalui entity + Direct/Indirect mapping.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Swift</th><th>Bank</th><th>Entity Scope</th><th>Type</th><th>CCL</th><th>Contractual</th><th>OS</th><th>Utilisasi</th><th>Facility</th><th>Bank Loan</th><th>Commercial</th><th>Treasury</th><th>Status</th></tr></thead><tbody>{visible.map((r,i)=><tr key={r.key+"-"+i}><td className="key">{r.key}</td><td>{r.name}</td><td>{entityScope}</td><td>{limitType}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.contractual)}</td><td>{fmtReport(r.os)}</td><td>{(r.util*100).toFixed(2)}%</td><td>{fmtReport(r.facility)}</td><td>{fmtReport(r.bankLoan)}</td><td>{fmtReport(r.commercialLine)}</td><td>{fmtReport(r.treasuryLine)}</td><td><Status v={r.status}/></td></tr>)}</tbody></table></div></div></section>
+      <section className="card"><div className="head"><div><h2>Monitoring Detail</h2><p>Commercial/Treasury hierarchy berasal dari Master; utilization berasal dari Product Database melalui entity + Direct/Indirect mapping.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Swift</th><th>Bank</th><th>Entity Scope</th><th>Type</th><th>CCL</th><th>Contractual</th><th>OS</th><th>Utilisasi</th><th>Bank Loan</th><th>Commercial</th><th>Treasury</th><th>Status</th></tr></thead><tbody>{visible.map((r,i)=><tr key={r.key+"-"+i}><td className="key">{r.key}</td><td>{r.name}</td><td>{entityScope}</td><td>{limitType}</td><td>{fmtReport(r.limit)}</td><td>{fmtReport(r.contractual)}</td><td>{fmtReport(r.os)}</td><td>{(r.util*100).toFixed(2)}%</td><td>{fmtReport(r.bankLoan)}</td><td>{fmtReport(r.commercialLine)}</td><td>{fmtReport(r.treasuryLine)}</td><td><Status v={r.status}/></td></tr>)}</tbody></table></div></div></section>
     </div>
   </Layout>;
 }
@@ -3433,9 +3433,11 @@ function entityScopeDataQualityIssues(){
       const cclType=String(r.meta?.cclLimitType||"").toUpperCase();
       if(cclType&&r.productId!=="CASHLOAN"&&["DIRECT","INDIRECT"].indexOf(cclType)<0)
         issues.push({layer:"Product Database",limitType:"CCL",key:r.recordId,type:"CCL_LIMIT_TYPE_INVALID",detail:"Product CCL limit type enrichment is invalid.",productId:r.productId,recordId:r.recordId});
-      if(String(r.meta?.integrationDomains||"").includes("MLK")&&!mlkEntityEligible(entity))
+      const isMlkRecord=(r.productId==="CASHLOAN"||r.productId==="NON CASH LOAN")&&((limasDemoData.MLK||[]).some(m=>String(m.key)===String(r.data?.no_cus||r.data?.CUSTID||""))||String(r.meta?.integrationDomains||"").includes("MLK"));
+      if(isMlkRecord&&!mlkEntityEligible(entity))
         issues.push({layer:"Product Database",limitType:"MLK",key:r.recordId,type:"MLK_ENTITY_NOT_ELIGIBLE",detail:"Product record is enriched with an entity outside MLK scope.",productId:r.productId,recordId:r.recordId});
-      if(String(r.meta?.integrationDomains||"").includes("CCL")&&!cclEntityScopeByCode[entity])
+      const isCclRecord=Boolean(r.meta?.cclLimitType)||((r.productId==="CREDIT LINE"||r.productId==="NON CASH LOAN")&&((r.data?.["Swift Code Vlookup"]||r.data?.["Swift Code"])&&((limasDemoData.CCL||[]).some(m=>String(m.key).toUpperCase()===String(r.data?.["Swift Code Vlookup"]||r.data?.["Swift Code"]).toUpperCase()))));
+      if(isCclRecord&&!cclEntityScopeByCode[entity])
         issues.push({layer:"Product Database",limitType:"CCL",key:r.recordId,type:"CCL_ENTITY_NOT_ELIGIBLE",detail:"Product record is enriched with an entity outside CCL scope.",productId:r.productId,recordId:r.recordId});
     }
   });
