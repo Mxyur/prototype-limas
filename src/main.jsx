@@ -3,6 +3,20 @@ import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
 import {E2E_DUMMY_META,E2E_MASTER_DATA,E2E_DUMMY_PRODUCT_DATA,E2E_COUNTRY_MONITORING_POLICY,E2E_ENTITY_MASTER,E2E_MLK_ENTITY_SCOPE,E2E_CCL_ENTITY_SCOPE,E2E_CCL_LIMIT_SCOPE} from './e2eDummyData';
+// Runtime data mode:
+// - Local development defaults to E2E so the prototype remains fully reproducible.
+// - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
+// - VITE_LIMAS_RUNTIME_MODE may explicitly select E2E or PRODUCTION.
+const LIMAS_RUNTIME_MODE=String(
+  import.meta.env?.VITE_LIMAS_RUNTIME_MODE ||
+  (import.meta.env?.DEV ? "E2E" : "PRODUCTION")
+).trim().toUpperCase();
+const IS_E2E_RUNTIME=LIMAS_RUNTIME_MODE==="E2E";
+const IS_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION";
+if(!IS_E2E_RUNTIME&&!IS_PRODUCTION_RUNTIME){
+  throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E or PRODUCTION.");
+}
+
 const LPG_BANK_SCOPE="Bankwide";
 const LPG_REGIONAL_SCOPES=["Region I","Region II","Region III","Region IV","Region V","Region VI","Region VII","Region VIII","Region IX","Region X","Region XI","Region XII","KP + OVS"];
 const LPG_SCOPES=[LPG_BANK_SCOPE,...LPG_REGIONAL_SCOPES];
@@ -2736,7 +2750,7 @@ function makeProductRecord(productId,overrides={},applied=[],meta={}){
     data:base,
     applied,
     sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',
-    asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",
+    asOfDate:meta.asOfDate||(IS_E2E_RUNTIME?E2E_DUMMY_META.asOfDate:""),
     status:meta.status||'Normal',
     integrationDomains:Array.isArray(meta.integrationDomains)?[...meta.integrationDomains]:null,
     meta:{...meta}
@@ -2791,7 +2805,34 @@ function resolveCclMaster(productId,row){
 const productIntegrationMappings={};
 const productDatabase={};
 
-function installE2EDummyDataset(){
+function initializeRuntimeDataset(){
+  // Production must never hydrate runtime state from E2E_DUMMY_PRODUCT_DATA.
+  // Production starts from persisted/ingested source data only.
+  Object.keys(limasDemoData).forEach(k=>delete limasDemoData[k]);
+  Object.keys(productDatabase).forEach(k=>delete productDatabase[k]);
+  Object.keys(productIntegrationMappings).forEach(k=>delete productIntegrationMappings[k]);
+
+  if(IS_E2E_RUNTIME){
+    Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{
+      limasDemoData[type]=JSON.parse(JSON.stringify(rows));
+    });
+    Object.entries(E2E_DUMMY_PRODUCT_DATA).forEach(([productId,specs])=>{
+      productDatabase[productId]=specs.map(spec=>{
+        const record=makeProductRecord(productId,spec.data||{},[],spec.meta||{});
+        const fields=productSchemaFields[productId]||[];
+        record.data=Object.fromEntries(fields.map(f=>{
+          const canonical=productId==="CREDIT LINE"?creditLineCanonicalFields.find(x=>x.key===f):null;
+          const sourceKey=canonical?.source||f;
+          return [f,spec.data?.[f]??spec.data?.[sourceKey]??''];
+        }));
+        return record;
+      });
+      if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
+    });
+  }
+
+  applyPersistedSourceRemediations();
+}
   Object.keys(limasDemoData).forEach(k=>delete limasDemoData[k]);
   Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{
     limasDemoData[type]=JSON.parse(JSON.stringify(rows));
@@ -2815,6 +2856,9 @@ function installE2EDummyDataset(){
   applyPersistedSourceRemediations();
 }
 
+
+// Production invariant: E2E fixtures are compile-time available for local reproducibility,
+// but are never installed into runtime state unless LIMAS_RUNTIME_MODE === "E2E".
 const DOMAIN_CANONICAL_UNITS={
   Country:"Rp Juta",
   CCL:"Rp Juta",
@@ -3852,7 +3896,7 @@ function releaseGate(){
     numericFailures:numeric,
     activeDq,
     detail:status==="READY"
-      ?"Master, Product Dictionary, Product Database, Integration, Report/Monitoring dan Numeric Reconciliation pass."
+      ?((IS_PRODUCTION_RUNTIME?"[PRODUCTION] ":"[E2E] ")+"Master, Product Dictionary, Product Database, Integration, Report/Monitoring dan Numeric Reconciliation pass.")
       :"Release ditahan sampai seluruh blocking Data Quality / reconciliation issue cleared."
   };
 }
@@ -3886,11 +3930,27 @@ function canonicalPipelineControls(){
 
 
 // Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
-installE2EDummyDataset();
+initializeRuntimeDataset();
 applyPersistedMasterValues();
 applyPersistedIngestionBatches();
 cleanseMasterData();
 buildProductIntegrationMappings();
+
+function runtimeFixtureLeakAudit(){
+  if(!IS_PRODUCTION_RUNTIME)return [];
+  const leaked=[];
+  const allRows=Object.values(productDatabase).flat();
+  const forbiddenPatterns=[/^CL-CCL-/i,/^NCL-CCL-/i,/^CRL-CCL-/i,/^CL-LPG-/i,/^NCL-LPG-/i,/^CL-MLK-/i,/^NCL-MLK-/i,/^NCL-COUNTRY-/i,/^NCL-EXCO-/i,/^BOND-COUNTRY-/i,/^NOSTRO-COUNTRY-/i,/^CIL-/i,/^INV-/i];
+  allRows.forEach(row=>{
+    const rid=String(row?.recordId||"");
+    if(forbiddenPatterns.some(re=>re.test(rid)))leaked.push(rid);
+  });
+  return leaked;
+}
+const RUNTIME_FIXTURE_LEAKS=runtimeFixtureLeakAudit();
+if(IS_PRODUCTION_RUNTIME&&RUNTIME_FIXTURE_LEAKS.length){
+  throw new Error("Production runtime detected E2E fixture records: "+RUNTIME_FIXTURE_LEAKS.slice(0,10).join(", "));
+}
 
 const CANONICAL_BUSINESS_LABELS={
   countryExposure:"Country Exposure",
