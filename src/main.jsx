@@ -2081,7 +2081,7 @@ function Setup({nav,setSel}){
             <span className="muted-small">{filtered.length+" / "+rows.length+" records"}</span>
           </div>
         </div>
-      </section>
+      </section>}
 
       {creating&&<MasterCreateForm type={type} onCancel={()=>setCreating(false)} onCreated={()=>{setCreating(false);forceRefresh(x=>x+1);}}/>}
 
