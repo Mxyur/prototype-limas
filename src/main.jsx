@@ -3053,6 +3053,10 @@ function canonicalProductQualityIssues(){
       seenRecordIds.add(String(r.recordId));
       if(productId==="CASHLOAN"&&(!d.no_cus||!d.no_rek))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_IDENTIFIER",detail:"Cash Loan requires customer/account identifier."});
       if(productId==="NON CASH LOAN"&&(!d.CUSTID||!d.TRXREF))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_IDENTIFIER",detail:"NCL requires CUSTID and TRXREF."});
+      if(productId==="NON CASH LOAN"){
+        const amount=Number(d.AMOUNT),fx=Number(d.EXCHANGERT),eq=Number(d.EQVIDR);
+        if(Number.isFinite(amount)&&Number.isFinite(fx)&&Number.isFinite(eq)&&amount!==0&&fx!==0&&Math.abs(eq-amount*fx)>1)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NCL_FX_RECONCILIATION",detail:"AMOUNT × EXCHANGERT does not reconcile to EQVIDR within Rp 1 tolerance."});
+      }
       if(productId==="CREDIT LINE"){
         const audit=creditLineAuditRows([r])[0];
         if(audit.status==="Data Issue")issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"CREDIT_LINE_RECONCILIATION",detail:audit.issues.join(" • ")});
@@ -3064,6 +3068,10 @@ function canonicalProductQualityIssues(){
       }
       if(productId==="NOSTRO"&&(!d.SwfitCode||!d["Bank Country"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"Nostro requires Swift identifier and Bank Country."});
       if(productId==="NOSTRO"&&(!d.CCY||!(Number(d["FX Rate to IDR"])>0)||!d["FX Rate Date"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_FX_METADATA",detail:"Nostro canonical IDR utilization requires CCY, positive FX Rate to IDR, and FX Rate Date."});
+      if(productId==="NOSTRO"){
+        const balance=Number(d.Balance),fx=Number(d["FX Rate to IDR"]),idr=Number(d["Balance IDR"]);
+        if(balance&&fx&&idr&&Math.abs(idr-(balance*fx/1000000))>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NOSTRO_FX_RECONCILIATION",detail:"Balance × FX Rate to IDR does not reconcile to Balance IDR."});
+      }
       if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
     });
   });
@@ -3483,6 +3491,77 @@ function creditLineAuditRows(rows){
   });
 }
 
+function numericReconciliationAudit(){
+  const checks=[];
+  const check=(layer,domain,rule,actual,expected,tolerance=.01,unit="Rp Juta")=>{
+    const a=Number(actual),e=Number(expected);
+    if(!Number.isFinite(a)||!Number.isFinite(e))return;
+    const diff=a-e;
+    checks.push({layer,domain,rule,actual:a,expected:e,diff,unit,status:Math.abs(diff)<=tolerance?"PASS":"FAIL"});
+  };
+
+  // Master numeric controls.
+  (limasDemoData.Country||[]).forEach(r=>{
+    const a=countryAllocationMetrics(r);
+    if(a.domesticCapacity!==null&&a.overseasCapacity!==null)check("Master","Country","Capacity = Domestic + Overseas",r.capacityLimit,a.domesticCapacity+a.overseasCapacity);
+    if(a.allocated!==null)check("Master","Country","Capacity = Product Allocation Total",r.capacityLimit,a.allocated);
+    a.items.forEach(item=>{
+      if(item.domestic!==null&&item.overseas!==null)check("Master","Country",item.product+" Total = Domestic + Overseas",item.total,item.domestic+item.overseas);
+    });
+  });
+  (limasDemoData.MLK||[]).forEach(r=>{
+    const cl=mlkNum(r.clLimit),ncl=mlkNum(r.nclLimit),tr=mlkNum(r.treasuryLine)??0;
+    if(cl!==null&&ncl!==null)check("Master","MLK","Total Limit Existing = CL + NCL + Treasury",r.totalLimitExisting,cl+ncl+tr);
+  });
+  (limasDemoData.CIL||[]).forEach(r=>{
+    const sumEil=Object.values(r.eils||{}).reduce((s,v)=>s+(Number(v)||0),0);
+    check("Master","CIL","CIL = Sum EIL",r.cil,sumEil);
+    check("Master","CIL","CIT = IC × Multiplier",r.cit,Number(r.ic||0)*Number(r.multiplier||0));
+  });
+  (limasDemoData.LPG||[]).forEach(r=>{
+    const lim=r.limits||{};
+    const regional=LPG_REGIONAL_SCOPES.reduce((s,scope)=>s+(Number(lim[scope])||0),0);
+    check("Master","LPG","Bankwide Limit = Regional Limits + KP + OVS",lim.Bankwide,regional+(Number(lim["KP + OVS"])||0));
+  });
+
+  // Product source numeric controls.
+  (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
+    const d=r.data||{},amount=Number(d.AMOUNT),fx=Number(d.EXCHANGERT),eq=Number(d.EQVIDR);
+    if(Number.isFinite(amount)&&Number.isFinite(fx)&&Number.isFinite(eq)&&amount!==0&&fx!==0)check("Product Database","NON CASH LOAN","AMOUNT × EXCHANGERT = EQVIDR",eq,amount*fx,1,"Rp");
+  });
+  (productDatabase.BONDS||[]).forEach(r=>{
+    const d=r.data||{},amount=Number(d.Amount),eq=Number(d["Amount Eq. IDR Juta"]);
+    if(amount&&eq)check("Product Database","BONDS","Amount / 1,000,000 = Amount Eq. IDR Juta",eq,amount/1000000,.01);
+  });
+  (productDatabase.NOSTRO||[]).forEach(r=>{
+    const d=r.data||{},balance=Number(d.Balance),fx=Number(d["FX Rate to IDR"]),idr=Number(d["Balance IDR"]);
+    if(balance&&fx&&idr)check("Product Database","NOSTRO","Balance × FX / 1,000,000 = Balance IDR (Rp Juta)",idr,balance*fx/1000000,.01);
+  });
+  (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
+    const audit=creditLineAuditRows([r])[0];
+    checks.push({layer:"Product Database",domain:"CREDIT LINE",rule:"Commercial/Treasury/Credit Line hierarchy",actual:audit.status,expected:"Normal",diff:null,unit:"—",status:audit.status==="Normal"||audit.status==="Not Applicable"?"PASS":"FAIL"});
+  });
+  (productDatabase["Nominal Pertanggungan"]||[]).forEach(r=>{
+    const d=r.data||{},amount=Number(d["Nominal Pertanggungan 2025 (Rp Juta)"]),eil=Number(d["EIL Entitas (Rp Juta)"]),cil=Number(d["CIL (Rp Juta)"]);
+    if(Number.isFinite(amount)&&eil)check("Product Database","CIL","Utilisasi EIL formula",Number(String(d["Utilisasi EIL (%)"]||"").replace("%","")),amount/eil*100,.01,"%");
+    if(Number.isFinite(amount)&&cil)check("Product Database","CIL","Utilisasi CIL formula",Number(String(d["Utilisasi CIL (%)"]||"").replace("%","")),amount/cil*100,.01,"%");
+    const factor=String(d.Entitas||"").toUpperCase()==="BMRI"?1.10:1.075;
+    check("Product Database","CIL","Projection 2026 formula",Number(d["Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)"]),amount*factor,.02);
+  });
+
+  // Mapping / monitoring numeric lineage controls.
+  ["Country","CCL","MLK","CIL","LPG"].forEach(domain=>{
+    const rows=domain==="LPG"?lpgLeafRows():(limasDemoData[domain]||[]);
+    rows.forEach(r=>{
+      if(domain==="LPG"&&lpgScopeExposure(r,LPG_BANK_SCOPE)===null)return;
+      const contribution=productApplicationsFor(domain,r.key).reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
+      const exposure=recordExposure(domain,r);
+      check("Monitoring",domain,"Monitoring Exposure = normalized mapped product contribution",exposure,contribution,.01);
+    });
+  });
+
+  return checks;
+}
 function productExposureAmount(productId,r){
   const n=(v)=>Number(String(v??"").replace(/,/g,""))||0;
   if(productId==="CASHLOAN") return n(r.data?.total_bade);
