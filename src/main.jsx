@@ -2576,7 +2576,8 @@ function makeProductRecord(productId,overrides={},applied=[],meta={}){
     sourceSystem:meta.sourceSystem||'Source system / feed belum ditetapkan',
     asOfDate:meta.asOfDate||E2E_DUMMY_META.asOfDate||"2026-09-30",
     status:meta.status||'Normal',
-    integrationDomains:Array.isArray(meta.integrationDomains)?[...meta.integrationDomains]:null
+    integrationDomains:Array.isArray(meta.integrationDomains)?[...meta.integrationDomains]:null,
+    meta:{...meta}
   };
 }
 
