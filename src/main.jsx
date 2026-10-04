@@ -521,7 +521,7 @@ function cilProjection(key){
   return productApplicationsFor("CIL",key).reduce((a,x)=>{
     const entity=x.entity||"";
     const factor=entity==="BMRI"?1.10:1.075;
-    return a+(Number(x.amount)||0)*factor;
+    return a+(Number(x.normalizedAmount??x.amount)||0)*factor;
   },0);
 }
 function mlkNum(v){return v===null||v===undefined||v===""?null:Number(v);}
@@ -557,7 +557,7 @@ function buildReportDummy(data){
     Country:data.Country.map((r,i)=>{const p=productContributionMap("Country",r.key),exp=recordExposure("Country",r),totalLimits=limasDemoData.Country.reduce((a,x)=>a+(Number(x.capacityLimit??x.masterLimit)||0),0),share=totalLimits?(Number(r.capacityLimit??r.masterLimit)||0)/totalLimits:0,a=countryAllocationMetrics(r);return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,domestic:countryBookingExposure(r,"Domestic"),overseas:countryBookingExposure(r,"Overseas"),unmapped:countryBookingExposure(r,"Needs Mapping"),capacity:r.capacityLimit,capacityDomestic:a.domesticCapacity,capacityOverseas:a.overseasCapacity,allocatedCapacity:a.allocated,unallocatedCapacity:a.unallocated,clDomesticLimit:a.items.find(x=>x.product==="CASHLOAN")?.domestic,clOverseasLimit:a.items.find(x=>x.product==="CASHLOAN")?.overseas,clTotalLimit:a.items.find(x=>x.product==="CASHLOAN")?.total,nclDomesticLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.domestic,nclOverseasLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.overseas,nclTotalLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.total,comDomesticLimit:a.items.find(x=>x.product==="CREDIT LINE")?.domestic,comOverseasLimit:a.items.find(x=>x.product==="CREDIT LINE")?.overseas,comTotalLimit:a.items.find(x=>x.product==="CREDIT LINE")?.total,bondDomesticLimit:a.items.find(x=>x.product==="BONDS")?.domestic,bondOverseasLimit:a.items.find(x=>x.product==="BONDS")?.overseas,bondTotalLimit:a.items.find(x=>x.product==="BONDS")?.total,nosDomesticLimit:a.items.find(x=>x.product==="NOSTRO")?.domestic,nosOverseasLimit:a.items.find(x=>x.product==="NOSTRO")?.overseas,nosTotalLimit:a.items.find(x=>x.product==="NOSTRO")?.total,formulasi:r.formulasi,diputus:r.diputus,limit:r.capacityLimit,pct:share,status:recordStatus("Country",r)}}),
     CCL:data.CCL.map((r,i)=>{const p=productContributionMap("CCL",r.key),exp=recordExposure("CCL",r);return {no:i+1,bank:r.name,category:r.category,country:r.country,countryRating:r.countryRating,bobot:r.bobot,rating:r.rating,position:r.position,ratingIndex:r.ratingIndex,inhouse:r.inhouse,tier1:r.tier1,capacity:r.capacity,adjusted:r.adjusted,globalParent:r.globalParent,top200:r.top200,ccl:r.ccl,cclCapacity:r.capacity? r.ccl/r.capacity:0,limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:exp,bmriLoan:p.CASHLOAN||0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:r.ccl?exp/(r.ccl*1000):0,contractualUtil:r.contractual?exp/(r.contractual*1000):0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
     MLK:mlkMonitoringRows(data.MLK),
-    CIL:data.CIL.map((r,i)=>{const rows=productApplicationsFor("CIL",r.key),p=productContributionMap("CIL",r.key),total=recordExposure("CIL",r);const byEntity={};rows.forEach(a=>{byEntity[a.entity||"Entity"]=(byEntity[a.entity||"Entity"]||0)+(Number(a.amount)||0)});return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:byEntity.BMRI||0,bmriEil:r.eils?.BMRI||0,mtNominal:byEntity["Mandiri Taspen"]||0,mtEil:r.eils?.["Mandiri Taspen"]||0,mtfNominal:byEntity.MTF||0,mtfEil:r.eils?.MTF||0,mufNominal:byEntity.MUF||0,mufEil:r.eils?.MUF||0,cil:r.cil,totalNominal:total,projection:cilProjection(r.key),utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?cilProjection(r.key)/r.cit:0,cilUtil:r.cil?total/r.cil:0,eilUtil:Math.max(...Object.entries(byEntity).map(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil?amount/eil:0}),0),eilBreaches:Object.entries(byEntity).filter(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil>0&&amount/eil>=1}).map(([entity])=>entity).join(", "),status:recordStatus("CIL",r),score:r.score,action:r.action}}),
+    CIL:data.CIL.map((r,i)=>{const rows=productApplicationsFor("CIL",r.key),p=productContributionMap("CIL",r.key),total=recordExposure("CIL",r);const byEntity={};rows.forEach(a=>{byEntity[a.entity||"Entity"]=(byEntity[a.entity||"Entity"]||0)+(Number(a.normalizedAmount??a.amount)||0)});return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:byEntity.BMRI||0,bmriEil:r.eils?.BMRI||0,mtNominal:byEntity["Mandiri Taspen"]||0,mtEil:r.eils?.["Mandiri Taspen"]||0,mtfNominal:byEntity.MTF||0,mtfEil:r.eils?.MTF||0,mufNominal:byEntity.MUF||0,mufEil:r.eils?.MUF||0,cil:r.cil,totalNominal:total,projection:cilProjection(r.key),utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?cilProjection(r.key)/r.cit:0,cilUtil:r.cil?total/r.cil:0,eilUtil:Math.max(...Object.entries(byEntity).map(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil?amount/eil:0}),0),eilBreaches:Object.entries(byEntity).filter(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil>0&&amount/eil>=1}).map(([entity])=>entity).join(", "),status:recordStatus("CIL",r),score:r.score,action:r.action}}),
     LPG:lpgDisplayRows().map((r,i)=>{
       const p=productContributionMap("LPG",r.key),out={no:i+1,sector:r.sector,segment:r.segment,dataQuality:r.dataQuality,status:recordStatus("LPG",r)};
       LPG_SCOPES.forEach(scope=>{const k=lpgScopeKey(scope),lim=lpgScopeLimit(r,scope),exp=lpgScopeExposure(r,scope),u=lim&&exp!==null?exp/lim:null;out["limit_"+k]=lim;out["outstanding_"+k]=exp;out["util_"+k]=u;out["source_"+k]=lpgScopeSource(r,scope);});
@@ -2389,6 +2389,7 @@ const MASTER_CANONICAL_TRANSFORMS={
   CIL:{sourceUnit:"Rp Juta",factor:1},
   LPG:{sourceUnit:"Rp Juta",factor:1}
 };
+const masterCanonicalUnit=(domain)=>DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta";
 function normalizeMasterLimit(domain,raw){
   const value=Number(raw)||0;
   const t=MASTER_CANONICAL_TRANSFORMS[domain]||{sourceUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1};
@@ -2783,6 +2784,21 @@ function reconciliationIssues(){
     const eil=Object.values(row.eils||{}).reduce((s,v)=>s+(Number(v)||0),0), cil=Number(row.cil)||0;
     if(Math.abs(eil-cil)>.01){
       issues.push({status:"Data Issue",issueType:"CIL_EIL_RECONCILIATION",productId:"Nominal Pertanggungan",recordId:"MASTER-"+row.key,limitType:"CIL",key:row.key,object:row.name||row.key,detail:"Total EIL entitas tidak sama dengan CIL master.",amount:Math.abs(eil-cil)});
+    }
+  });
+
+  // Canonical-unit controls: every master domain must expose a declared monitoring unit.
+  Object.keys(DOMAIN_CANONICAL_UNITS).forEach(domain=>{
+    if(!MASTER_CANONICAL_TRANSFORMS[domain]||masterCanonicalUnit(domain)!=="Rp Juta"){
+      issues.push({status:"Data Issue",issueType:"MASTER_CANONICAL_UNIT_MISSING",productId:"MASTER",recordId:"MASTER-UNIT-"+domain,limitType:domain,key:"—",object:"Master Unit Configuration",detail:"Domain master tidak memiliki transform ke canonical unit Rp Juta.",amount:0});
+    }
+  });
+
+  // LPG bankwide must reconcile to the sum of populated regional/scope product feeds.
+  (limasDemoData.LPG||[]).forEach(row=>{
+    const cross=lpgCrosscheck(row);
+    if(cross.status==="Selisih"){
+      issues.push({status:"Data Issue",issueType:"LPG_SCOPE_RECONCILIATION",productId:"MASTER",recordId:"MASTER-"+row.key,limitType:"LPG",key:row.key,object:row.sector+" / "+row.segment,detail:"Bankwide exposure tidak reconcile dengan scope product feed.",amount:Math.abs(Number(cross.variance)||0)});
     }
   });
 
