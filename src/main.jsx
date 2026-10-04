@@ -1308,7 +1308,14 @@ function DataIngestion({nav}){
   const template=()=>{
     const fields=productSchemaFields[productId]||[];
     const sample=productDatabase[productId]?.[0]?.data||productSample[productId]||{};
-    downloadCsv("LIMAS_"+productId.replaceAll(" ","_")+"_Source_Template.csv",fields,[Object.fromEntries(fields.map(f=>[f,sample[f]??""]))]);
+    const sampleValue=(field)=>{
+      if(productId==="CREDIT LINE"){
+        const source=creditLineCanonicalFields.find(x=>x.key===field);
+        return source ? (sample[source.source]??"") : (sample[field]??"");
+      }
+      return sample[field]??"";
+    };
+    downloadCsv("LIMAS_"+productId.replaceAll(" ","_")+"_Source_Template.csv",fields,[Object.fromEntries(fields.map(f=>[f,sampleValue(f)]))]);
   };
   const upload=e=>{
     const file=e.target.files?.[0];if(!file)return;
@@ -2857,12 +2864,10 @@ function initializeRuntimeDataset(){
     Object.entries(E2E_DUMMY_PRODUCT_DATA).forEach(([productId,specs])=>{
       productDatabase[productId]=specs.map(spec=>{
         const record=makeProductRecord(productId,spec.data||{},[],spec.meta||{});
-        const fields=productSchemaFields[productId]||[];
-        record.data=Object.fromEntries(fields.map(f=>{
-          const canonical=productId==="CREDIT LINE"?creditLineCanonicalFields.find(x=>x.key===f):null;
-          const sourceKey=canonical?.source||f;
-          return [f,spec.data?.[f]??spec.data?.[sourceKey]??''];
-        }));
+        // Product Database is source-only: preserve the exact source field names.
+        // Credit Line has a canonical display crosswalk, but its raw source fields
+        // (e.g. "Credit Line Total Utilisasi") must remain intact for integration.
+        record.data=JSON.parse(JSON.stringify(spec.data||{}));
         return record;
       });
       if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
@@ -3062,11 +3067,13 @@ function buildProductIntegrationMappings(){
       const treasuryUtil=Number(String(d["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const sourceCreditLineTotal=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const derivedCreditLineTotal=clUpstream+nclUpstream+treasuryUtil;
-      // CCL consumes the canonical Credit Line amount built from FI Cash Loan,
-      // FI NCL and Treasury. Upstream matching is keyed by stable
-      // cclCounterpartyId metadata, never by generated record IDs.
+      // CCL consumes the source Credit Line Total Utilisasi as the canonical
+      // Credit Line exposure. FI CL/NCL are lineage inputs for reconciliation;
+      // they are not added a second time at the CCL layer.
+      // Upstream matching is keyed by stable cclCounterpartyId metadata,
+      // never by generated record IDs.
       addIntegrationMapping("CREDIT LINE",r,{
-        limitType:"CCL",key:swift,amount:derivedCreditLineTotal,label:"Credit Line",
+        limitType:"CCL",key:swift,amount:sourceCreditLineTotal,label:"Credit Line",
         sourceField:"Credit Line Total Utilisasi",sourceValue:sourceCreditLineTotal,
         mappingRule:"FI CL + FI NCL + Treasury -> Credit Line -> CCL",
         entity,cclLimitType:limitType,
@@ -3584,8 +3591,11 @@ function saveProductSourceCorrection(productId,recordId,changes,reason){
   const sanitized=Object.fromEntries(Object.entries(changes||{}).filter(([field,value])=>fields.includes(field)&&String(value??"").trim()!==""));
   if(!Object.keys(sanitized).length)throw new Error("Tidak ada field source yang dikoreksi.");
   const store=loadSourceRemediations(),key=remediationKey(productId,recordId),current=store[key]||{history:[]};
-  const previous=Object.fromEntries(Object.keys(sanitized).map(field=>[field,row.data?.[field]??""]));
-  Object.entries(sanitized).forEach(([field,value])=>{row.data[field]=String(value).trim();});
+  const sourceFieldFor=(field)=>productId==="CREDIT LINE"
+    ?(creditLineCanonicalFields.find(x=>x.key===field)?.source||field)
+    :field;
+  const previous=Object.fromEntries(Object.keys(sanitized).map(field=>[field,row.data?.[sourceFieldFor(field)]??""]));
+  Object.entries(sanitized).forEach(([field,value])=>{row.data[sourceFieldFor(field)]=String(value).trim();});
   canonicalizeProductBusinessValues(row);
   const stamp=nowLabel();
   store[key]={
@@ -3982,6 +3992,14 @@ function runtimeSampleInvariantAudit(){
     const scope=cclScopeRecords(key,limitType,entity)[0];
     if(exposure>0&&!scope)push("CCL_APPLICABLE_LIMIT_MISSING",row.recordId,"Positive Credit Line exposure has no CCL entity/type limit.",0,"configured");
     if(exposure>0&&scope&&Number(scope.ccl)<=0)push("CCL_APPLICABLE_LIMIT_ZERO",row.recordId,"Positive Credit Line exposure resolves to zero CCL applicable limit.",scope.ccl,"> 0");
+  });
+
+  (productDatabase["CREDIT LINE"]||[]).forEach(row=>{
+    const meta=row.meta||{},d=row.data||{};
+    if(!meta.cclLimitType)return;
+    const required=["Swift Code Vlookup","Credit Line Total Utilisasi","Comm Line Total Utilisasi","Treasury Line Total Utilisasi"];
+    const missing=required.filter(field=>!Object.prototype.hasOwnProperty.call(d,field));
+    if(missing.length)push("CCL_SOURCE_FIELD_MISSING",row.recordId,"Credit Line Product Database row lost required source fields.",missing.join(", "),required.join(", "));
   });
 
   cclCreditLineLineageAuditRows().forEach(row=>{
@@ -4569,7 +4587,10 @@ function ProductBookingClassification({view,rows}){
 }
 
 function productDatabaseDisplayValue(view,r,f){
-  return r.data[f]===0?0:(r.data[f]||"—");
+  const sourceField=view==="CREDIT LINE"
+    ?(creditLineCanonicalFields.find(x=>x.key===f)?.source||f)
+    :f;
+  return r.data[sourceField]===0?0:(r.data[sourceField]||"—");
 }
 function ProductDatabaseTable({view}){
   const rows=productDatabase[view]||[];
