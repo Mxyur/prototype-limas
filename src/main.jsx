@@ -3049,31 +3049,26 @@ function buildProductIntegrationMappings(){
     if(swift){
       const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
       const limitType=r.meta?.cclLimitType||"DIRECT";
-      const lineageToken=(recordId)=>String(recordId||"").toUpperCase()
-        .replace(/^PRD-(CL|NCL|CRL)-/,"")
-        .replace(/^(CL|NCL|CRL)-/,"");
-      const targetToken=lineageToken(r.recordId);
       const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>
         String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-        lineageToken(x.recordId)===targetToken
+        String(x.meta?.cclCounterpartyId||"").trim().toUpperCase()===swift.toUpperCase()
       ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
       const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
         String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-        lineageToken(x.recordId)===targetToken
+        String(x.meta?.cclCounterpartyId||"").trim().toUpperCase()===swift.toUpperCase()
       ).reduce((s,x)=>(s+(Number(x.data?.EQVIDR)||0))/1000000,0);
       const treasuryUtil=Number(String(d["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const sourceCreditLineTotal=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const derivedCreditLineTotal=clUpstream+nclUpstream+treasuryUtil;
-      // CCL consumes the Credit Line layer as its utilization source of truth.
-      // The independent lineage audit below verifies that Credit Line Total is
-      // consistent with FI Cash Loan + FI NCL + Treasury, so monitoring does not
-      // silently become zero when a source-lineage key is unavailable.
+      // CCL consumes the canonical Credit Line amount built from FI Cash Loan,
+      // FI NCL and Treasury. Upstream matching is keyed by stable
+      // cclCounterpartyId metadata, never by generated record IDs.
       addIntegrationMapping("CREDIT LINE",r,{
-        limitType:"CCL",key:swift,amount:sourceCreditLineTotal,label:"Credit Line",
+        limitType:"CCL",key:swift,amount:derivedCreditLineTotal,label:"Credit Line",
         sourceField:"Credit Line Total Utilisasi",sourceValue:sourceCreditLineTotal,
-        mappingRule:"Credit Line Total Utilisasi -> CCL; lineage validated independently",
+        mappingRule:"FI CL + FI NCL + Treasury -> Credit Line -> CCL",
         entity,cclLimitType:limitType,
         cclLineage:{bankLoan:clUpstream,commercialLine:nclUpstream,treasuryLine:treasuryUtil,creditLineTotal:sourceCreditLineTotal,derivedCreditLineTotal}
       });
@@ -4383,10 +4378,6 @@ function cclCreditLineLineageAuditRows(){
     if(!swift)return;
     const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
     const limitType=r.meta?.cclLimitType||"DIRECT";
-    const lineageToken=(recordId)=>String(recordId||"").toUpperCase()
-      .replace(/^PRD-(CL|NCL|CRL)-/,"")
-      .replace(/^(CL|NCL|CRL)-/,"");
-    const targetToken=lineageToken(r.recordId);
     const cl=(productDatabase.CASHLOAN||[]).filter(x=>
       String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
