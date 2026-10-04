@@ -15,6 +15,8 @@ const required=[
   'function effectiveCclMasterLimit(row)',
   'sourceCreditLineTotal=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0',
   'CCL_OS_ZERO_AFTER_MAPPING',
+  'cclCounterpartyId',
+  'FI CL + FI NCL + Treasury -> Credit Line -> CCL',
   'runtimeSampleInvariantAudit()',
   'if(IS_PRODUCTION_RUNTIME&&RUNTIME_FIXTURE_LEAKS.length)'
 ];
