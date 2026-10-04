@@ -9,6 +9,11 @@ const required=[
   'Object.entries(E2E_MASTER_DATA).forEach',
   'Object.entries(E2E_DUMMY_PRODUCT_DATA).forEach',
   'initializeRuntimeDataset();',
+  'RUNTIME_STORAGE_NAMESPACE',
+  'MASTER_VALUE_STORE_KEY="limas_master_values_v6_"+RUNTIME_STORAGE_NAMESPACE',
+  'SOURCE_INGESTION_STORE_KEY="limas_source_ingestion_batches_v1_"+RUNTIME_STORAGE_NAMESPACE',
+  'function effectiveCclMasterLimit(row)',
+  'runtimeSampleInvariantAudit()',
   'if(IS_PRODUCTION_RUNTIME&&RUNTIME_FIXTURE_LEAKS.length)'
 ];
 for(const token of required){
@@ -35,3 +40,7 @@ for(const token of fixtureAliases){
 
 if(!source.includes('PRODUCTION_SAMPLE'))throw new Error("Production sample runtime mode is missing.");
 console.log("PASS: production runtime fixture isolation + sample guards are present.");
+
+const cclMasterLimit=/function effectiveCclMasterLimit\(row\)[\s\S]*?directScopeLimit[\s\S]*?return directScopeLimit>0\?directScopeLimit:Number\(row\?\.ccl\)\|\|0;/.test(source);
+if(!cclMasterLimit)throw new Error("CCL effective applicable-limit fallback is missing.");
+if(!source.includes('Production sample invariant audit failed:'))throw new Error("Production sample must fail fast on CCL invariant errors.");

@@ -17,6 +17,14 @@ const IS_PRODUCTION_SAMPLE_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION_SAMPLE";
 const IS_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION"||IS_PRODUCTION_SAMPLE_RUNTIME;
 const IS_LIVE_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION";
 const ACTIVE_SAMPLE_RUNTIME=IS_E2E_RUNTIME||IS_PRODUCTION_SAMPLE_RUNTIME;
+// Runtime modes must not share mutable browser persistence. Production Sample
+// must never inherit stale master values, promoted ingestion, source corrections,
+// mapping corrections, or exception actions from another runtime/version.
+const RUNTIME_STORAGE_NAMESPACE=IS_PRODUCTION_SAMPLE_RUNTIME
+  ?"production-sample"
+  :IS_E2E_RUNTIME
+    ?"e2e"
+    :"production";
 const E2E_DUMMY_META=IS_E2E_RUNTIME?E2E_DUMMY_META_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_META:{period:"",datasetId:"",asOfDate:""};
 const E2E_MASTER_DATA=IS_E2E_RUNTIME?E2E_MASTER_DATA_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_MASTER_DATA:{};
 const E2E_DUMMY_PRODUCT_DATA=IS_E2E_RUNTIME?E2E_DUMMY_PRODUCT_DATA_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_PRODUCT_DATA:{};
@@ -732,9 +740,15 @@ function recordExposure(type,row){
     .reduce((s,x)=>s+cclEntityExposure(row.key,x.entityCode,"DIRECT"),0);
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
 }
+function effectiveCclMasterLimit(row){
+  const directScopeLimit=(E2E_CCL_LIMIT_SCOPE||[])
+    .filter(x=>String(x.counterpartyId)===String(row?.key)&&x.limitType==="DIRECT")
+    .reduce((s,x)=>s+(Number(x.ccl)||0),0);
+  return directScopeLimit>0?directScopeLimit:Number(row?.ccl)||0;
+}
 function recordLimit(type,row){
   if(type==="Country")return normalizeMasterLimit("Country",row.capacityLimit).amount;
-  if(type==="CCL")return normalizeMasterLimit("CCL",row.ccl).amount;
+  if(type==="CCL")return normalizeMasterLimit("CCL",effectiveCclMasterLimit(row)).amount;
   if(type==="MLK")return normalizeMasterLimit("MLK",row.masterLimit).amount;
   if(type==="CIL")return normalizeMasterLimit("CIL",row.cil).amount;
   if(type==="LPG")return normalizeMasterLimit("LPG",lpgScopeLimit(row,LPG_BANK_SCOPE)).amount;
@@ -851,7 +865,7 @@ function buildReportDummy(data){
   const safeData=data||{};
   return {
     Country:(safeData.Country||[]).map((r,i)=>{const p=productContributionMap("Country",r.key),exp=recordExposure("Country",r),totalLimits=limasDemoData.Country.reduce((a,x)=>a+(Number(x.capacityLimit??x.masterLimit)||0),0),share=totalLimits?(Number(r.capacityLimit??r.masterLimit)||0)/totalLimits:0,a=countryAllocationMetrics(r);return {no:i+1,country:r.name,code:r.key,statusMaster:r.statusMaster,cl:p.CASHLOAN?"v":"-",ncl:p["NON CASH LOAN"]?"v":"-",com:p["CREDIT LINE|Commercial"]?"v":"-",trs:p["CREDIT LINE|Treasury"]?"v":"-",bond:p.BONDS?"v":"-",nos:p.NOSTRO?"v":"-",expCl:p.CASHLOAN||0,expNcl:p["NON CASH LOAN"]||0,expCom:p["CREDIT LINE|Commercial"]||0,expTrs:p["CREDIT LINE|Treasury"]||0,expBond:p.BONDS||0,expNos:p.NOSTRO||0,total:exp,domestic:countryBookingExposure(r,"Domestic"),overseas:countryBookingExposure(r,"Overseas"),unmapped:countryBookingExposure(r,"Needs Mapping"),capacity:r.capacityLimit,capacityDomestic:a.domesticCapacity,capacityOverseas:a.overseasCapacity,allocatedCapacity:a.allocated,unallocatedCapacity:a.unallocated,clDomesticLimit:a.items.find(x=>x.product==="CASHLOAN")?.domestic,clOverseasLimit:a.items.find(x=>x.product==="CASHLOAN")?.overseas,clTotalLimit:a.items.find(x=>x.product==="CASHLOAN")?.total,nclDomesticLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.domestic,nclOverseasLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.overseas,nclTotalLimit:a.items.find(x=>x.product==="NON CASH LOAN")?.total,comDomesticLimit:a.items.find(x=>x.product==="CREDIT LINE")?.domestic,comOverseasLimit:a.items.find(x=>x.product==="CREDIT LINE")?.overseas,comTotalLimit:a.items.find(x=>x.product==="CREDIT LINE")?.total,bondDomesticLimit:a.items.find(x=>x.product==="BONDS")?.domestic,bondOverseasLimit:a.items.find(x=>x.product==="BONDS")?.overseas,bondTotalLimit:a.items.find(x=>x.product==="BONDS")?.total,nosDomesticLimit:a.items.find(x=>x.product==="NOSTRO")?.domestic,nosOverseasLimit:a.items.find(x=>x.product==="NOSTRO")?.overseas,nosTotalLimit:a.items.find(x=>x.product==="NOSTRO")?.total,formulasi:r.formulasi,diputus:r.diputus,limit:r.capacityLimit,pct:share,status:recordStatus("Country",r)}}),
-    CCL:(safeData.CCL||[]).map((r,i)=>{const p=productContributionMap("CCL",r.key),exp=recordExposure("CCL",r);return {no:i+1,bank:r.name,category:r.category,country:r.country,countryRating:r.countryRating,bobot:r.bobot,rating:r.rating,position:r.position,ratingIndex:r.ratingIndex,inhouse:r.inhouse,tier1:r.tier1,capacity:r.capacity,adjusted:r.adjusted,globalParent:r.globalParent,top200:r.top200,ccl:r.ccl,cclCapacity:r.capacity? r.ccl/r.capacity:0,limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:exp,bmriLoan:p.CASHLOAN||0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:r.ccl?exp/(r.ccl*1000):0,contractualUtil:r.contractual?exp/(r.contractual*1000):0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
+    CCL:(safeData.CCL||[]).map((r,i)=>{const p=productContributionMap("CCL",r.key),exp=recordExposure("CCL",r);return {no:i+1,bank:r.name,category:r.category,country:r.country,countryRating:r.countryRating,bobot:r.bobot,rating:r.rating,position:r.position,ratingIndex:r.ratingIndex,inhouse:r.inhouse,tier1:r.tier1,capacity:r.capacity,adjusted:r.adjusted,globalParent:r.globalParent,top200:r.top200,ccl:effectiveCclMasterLimit(r),cclCapacity:r.capacity? effectiveCclMasterLimit(r)/r.capacity:0,limit:r.contractual,outstanding:exp,jenis:"Direct",bmriTotal:exp,bmriLoan:p.CASHLOAN||0,bmriCom:p["CREDIT LINE|Commercial"]||0,bmriTrs:p["CREDIT LINE|Treasury"]||0,bmriUtil:effectiveCclMasterLimit(r)?exp/(effectiveCclMasterLimit(r)*1000):0,contractualUtil:r.contractual?exp/(r.contractual*1000):0,maxOutstanding:exp,maxContractualUtil:r.contractual?exp/r.contractual:0,paTotal:0,paLoan:0,paCom:0,paTrs:0,paUtil:0,paContractualUtil:0,paMaxOutstanding:0,paMaxContractualUtil:0,status:recordStatus("CCL",r)}}),
     MLK:mlkMonitoringRows(safeData.MLK||[]),
     CIL:(safeData.CIL||[]).map((r,i)=>{const rows=productApplicationsFor("CIL",r.key),p=productContributionMap("CIL",r.key),total=recordExposure("CIL",r);const byEntity={};rows.forEach(a=>{byEntity[a.entity||"Entity"]=(byEntity[a.entity||"Entity"]||0)+(Number(a.normalizedAmount??a.amount)||0)});return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:byEntity.BMRI||0,bmriEil:r.eils?.BMRI||0,mtNominal:byEntity["Mandiri Taspen"]||0,mtEil:r.eils?.["Mandiri Taspen"]||0,mtfNominal:byEntity.MTF||0,mtfEil:r.eils?.MTF||0,mufNominal:byEntity.MUF||0,mufEil:r.eils?.MUF||0,cil:r.cil,totalNominal:total,projection:cilProjection(r.key),utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?cilProjection(r.key)/r.cit:0,cilUtil:r.cil?total/r.cil:0,eilUtil:Math.max(...Object.entries(byEntity).map(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil?amount/eil:0}),0),eilBreaches:Object.entries(byEntity).filter(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil>0&&amount/eil>=1}).map(([entity])=>entity).join(", "),status:recordStatus("CIL",r),score:r.score,action:r.action}}),
     LPG:lpgDisplayRows().map((r,i)=>{
@@ -1695,7 +1709,7 @@ function masterTemplate(type){
   };
   if(type==="CCL")return {
     headers:["key","name","category","country","ccl","contractual"],
-    rows:rows.map(r=>({key:r.key,name:r.name,category:r.category,country:r.country,ccl:r.ccl,contractual:r.contractual}))
+    rows:rows.map(r=>({key:r.key,name:r.name,category:r.category,country:r.country,ccl:effectiveCclMasterLimit(r),contractual:r.contractual}))
   };
   if(type==="MLK")return {
     headers:["key","name","group","entity","masterLimitSetting"],
@@ -2114,8 +2128,8 @@ function loadFieldMeta(type){
 }
 function saveFieldMeta(type,data){try{window.localStorage.setItem(`limas_field_meta_v5_${type}`,JSON.stringify(data));}catch(e){}}
 
-const MASTER_VALUE_STORE_KEY="limas_master_values_v6";
-const MASTER_AUDIT_STORE_KEY="limas_master_audit_v6";
+const MASTER_VALUE_STORE_KEY="limas_master_values_v6_"+RUNTIME_STORAGE_NAMESPACE;
+const MASTER_AUDIT_STORE_KEY="limas_master_audit_v6_"+RUNTIME_STORAGE_NAMESPACE;
 
 const MASTER_EDITABLE_FIELDS={
   Country:[
@@ -3035,19 +3049,19 @@ function buildProductIntegrationMappings(){
     if(swift){
       const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
       const limitType=r.meta?.cclLimitType||"DIRECT";
+      const lineageToken=(recordId)=>String(recordId||"").toUpperCase()
+        .replace(/^PRD-(CL|NCL|CRL)-/,"")
+        .replace(/^(CL|NCL|CRL)-/,"");
+      const targetToken=lineageToken(r.recordId);
       const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>
-        /^CL-CCL-/i.test(String(x.recordId||"")) &&
-        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
+        String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-        (String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()) ||
-         String(x.data?.no_cus||"").toUpperCase()===("CCL-"+String(swift)).toUpperCase())
+        lineageToken(x.recordId)===targetToken
       ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
       const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
-        /^NCL-CCL-/i.test(String(x.recordId||"")) &&
-        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
+        String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-        (String(x.data?.CPNM||"").toUpperCase()===String(swift).toUpperCase() ||
-         String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()))
+        lineageToken(x.recordId)===targetToken
       ).reduce((s,x)=>(s+(Number(x.data?.EQVIDR)||0))/1000000,0);
       const treasuryUtil=Number(String(d["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
       const derivedCreditLineTotal=clUpstream+nclUpstream+treasuryUtil;
@@ -3407,12 +3421,12 @@ function reconciliationIssues(){
 
   return issues;
 }
-const EXCEPTION_ACTION_STORE_KEY="limas_exception_actions_v1";
+const EXCEPTION_ACTION_STORE_KEY="limas_exception_actions_v1_"+RUNTIME_STORAGE_NAMESPACE;
 const EXCEPTION_ACTION_STATUSES=["Open","In Progress","Resolved","Closed"];
 
-const SOURCE_REMEDIATION_STORE_KEY="limas_source_remediations_v1";
-const MAPPING_REMEDIATION_STORE_KEY="limas_mapping_remediations_v1";
-const SOURCE_INGESTION_STORE_KEY="limas_source_ingestion_batches_v1";
+const SOURCE_REMEDIATION_STORE_KEY="limas_source_remediations_v1_"+RUNTIME_STORAGE_NAMESPACE;
+const MAPPING_REMEDIATION_STORE_KEY="limas_mapping_remediations_v1_"+RUNTIME_STORAGE_NAMESPACE;
+const SOURCE_INGESTION_STORE_KEY="limas_source_ingestion_batches_v1_"+RUNTIME_STORAGE_NAMESPACE;
 const INGESTION_STATUSES=["Uploaded","Validated","Rejected","Promoted"];
 
 function loadIngestionBatches(){
@@ -3939,6 +3953,48 @@ applyPersistedIngestionBatches();
 cleanseMasterData();
 buildProductIntegrationMappings();
 
+function runtimeSampleInvariantAudit(){
+  if(!IS_PRODUCTION_SAMPLE_RUNTIME)return [];
+  const issues=[];
+  const push=(type,key,detail,actual=null,expected=null)=>issues.push({type,key,detail,actual,expected});
+
+  (limasDemoData.CCL||[]).forEach(master=>{
+    const directRows=(E2E_CCL_LIMIT_SCOPE||[]).filter(x=>
+      String(x.counterpartyId)===String(master.key)&&x.limitType==="DIRECT"
+    );
+    const allocated=directRows.reduce((s,x)=>s+(Number(x.ccl)||0),0);
+    const masterCcl=Number(master.ccl)||0;
+    if(masterCcl>0&&allocated<=0)push("CCL_MASTER_ZERO",master.key,"CCL Master is positive but Direct entity allocation is zero.",allocated,masterCcl);
+    if(Math.abs(masterCcl-allocated)>0.01)push("CCL_MASTER_RECONCILIATION",master.key,"CCL Master does not reconcile to Direct entity CCL allocation.",allocated,masterCcl);
+    directRows.forEach(scope=>{
+      const entity=cclEntityScopeByCode[String(scope.entityCode)];
+      if(!entity||!entity.direct)push("CCL_SCOPE_INVALID",master.key,"Positive Direct CCL limit references an entity without Direct applicability.",scope.entityCode,"Direct");
+    });
+  });
+
+  (productDatabase["CREDIT LINE"]||[]).forEach(row=>{
+    const d=row.data||{},meta=row.meta||{};
+    if(!meta.cclLimitType)return;
+    const key=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim().toUpperCase();
+    const entity=String(meta.reportingEntity||"BMRI").toUpperCase();
+    const limitType=String(meta.cclLimitType||"DIRECT").toUpperCase();
+    const exposure=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+    const scope=cclScopeRecords(key,limitType,entity)[0];
+    if(exposure>0&&!scope)push("CCL_APPLICABLE_LIMIT_MISSING",row.recordId,"Positive Credit Line exposure has no CCL entity/type limit.",0,"configured");
+    if(exposure>0&&scope&&Number(scope.ccl)<=0)push("CCL_APPLICABLE_LIMIT_ZERO",row.recordId,"Positive Credit Line exposure resolves to zero CCL applicable limit.",scope.ccl,"> 0");
+  });
+
+  cclCreditLineLineageAuditRows().forEach(row=>{
+    if(row.status!=="Normal")push("CCL_LINEAGE",row.recordId,"Credit Line lineage does not reconcile.",row.issues.join(" | "),"Normal");
+  });
+
+  return issues;
+}
+const RUNTIME_SAMPLE_INVARIANT_ISSUES=runtimeSampleInvariantAudit();
+if(IS_PRODUCTION_SAMPLE_RUNTIME&&RUNTIME_SAMPLE_INVARIANT_ISSUES.length){
+  throw new Error("Production sample invariant audit failed: "+RUNTIME_SAMPLE_INVARIANT_ISSUES.slice(0,10).map(x=>x.type+"="+x.key).join(", "));
+}
+
 function runtimeFixtureLeakAudit(){
   if(!IS_PRODUCTION_RUNTIME)return [];
   const leaked=[];
@@ -4308,16 +4364,20 @@ function cclCreditLineLineageAuditRows(){
     if(!swift)return;
     const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
     const limitType=r.meta?.cclLimitType||"DIRECT";
-    const cl=(productDatabase.CASHLOAN||[]).filter(x=>/^CL-CCL-/i.test(String(x.recordId||"")) &&
-      String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+    const lineageToken=(recordId)=>String(recordId||"").toUpperCase()
+      .replace(/^PRD-(CL|NCL|CRL)-/,"")
+      .replace(/^(CL|NCL|CRL)-/,"");
+    const targetToken=lineageToken(r.recordId);
+    const cl=(productDatabase.CASHLOAN||[]).filter(x=>
+      String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-      (String(x.recordId||"").toUpperCase().includes(swift.toUpperCase()) || String(x.data?.no_cus||"").toUpperCase()===("CCL-"+swift).toUpperCase()))
-      .reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
-    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>/^NCL-CCL-/i.test(String(x.recordId||"")) &&
-      String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+      lineageToken(x.recordId)===targetToken
+    ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
+    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
+      String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
-      (String(x.data?.CPNM||"").toUpperCase()===swift.toUpperCase() || String(x.recordId||"").toUpperCase().includes(swift.toUpperCase())))
-      .reduce((s,x)=>s+(Number(x.data?.EQVIDR)||0)/1000000,0);
+      lineageToken(x.recordId)===targetToken
+    ).reduce((s,x)=>s+(Number(x.data?.EQVIDR)||0)/1000000,0);
     const treasury=(Number(d["Treasury DN Utilisasi"]||0)||0)+(Number(d["Treasury LN Utilisasi"]||0)||0);
     const commercial=Number(d["Comm Line Total Utilisasi"]||0)||0;
     const sourceTotal=Number(d["Credit Line Total Utilisasi"]||0)||0;
