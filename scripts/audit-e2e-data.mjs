@@ -20,6 +20,77 @@ for(const r of E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]){
   const master=(E2E_MASTER_DATA.CCL||[]).find(m=>String(m.key).toUpperCase()===String(swift||cpnm).toUpperCase());
   assert.ok(master,"CCL NCL source reference must resolve to CCL master for "+(r.meta?.recordId||"unknown"));
 }
+
+// Universal monitoring integrity: positive source exposure must never enter monitoring without an applicable limit scope.
+const countryMaster=new Map((E2E_MASTER_DATA.Country||[]).map(r=>[String(r.key).toUpperCase(),r]));
+const cclMaster=new Map((E2E_MASTER_DATA.CCL||[]).map(r=>[String(r.key).toUpperCase(),r]));
+const mlkMaster=new Map((E2E_MASTER_DATA.MLK||[]).map(r=>[String(r.key),r]));
+const cclScopeMap=new Map(E2E_CCL_LIMIT_SCOPE.map(x=>[String(x.counterpartyId).toUpperCase()+"|"+x.entityCode+"|"+x.limitType,x]));
+const positive=(v)=>Number(v)>0;
+const n=(v)=>Number(String(v??"").replace(/,/g,""))||0;
+
+for(const productId of ["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"]){
+  for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){
+    const d=r.data||{}, code=String(productId==="CASHLOAN"?d.code:productId==="NON CASH LOAN"?d["Country Code"]:productId==="CREDIT LINE"?d.Code:productId==="BONDS"?d["Issuer Country"]:d["Bank Country"]||"").trim().toUpperCase();
+    if(!code||String(code).toUpperCase()==="ID")continue;
+    const master=countryMaster.get(code); if(!master)continue; // out-of-scope country references are not Country monitoring records.
+    const exposure=productId==="CASHLOAN"?n(d.total_bade):productId==="NON CASH LOAN"?n(d.EQVIDR)/1e6:productId==="CREDIT LINE"?n(d["Credit Line Total Utilisasi"]):(productId==="BONDS"?n(d["Amount Eq. IDR Juta"]):n(d.Balance)*n(d["FX Rate to IDR"])/1e6);
+    if(!positive(exposure))continue;
+    const alloc=master.productAllocations?.[productId];
+    assert.ok(alloc && Object.prototype.hasOwnProperty.call(alloc,"total"),"Country Product Allocation missing for positive "+productId+"/"+code);
+    assert.ok(Number.isFinite(Number(alloc.total)),"Country Product Allocation must be numeric for "+productId+"/"+code);
+  }
+}
+
+for(const productId of ["CASHLOAN","NON CASH LOAN","CREDIT LINE"]){
+  for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){
+    if(!r.meta?.cclLimitType)continue;
+    const d=r.data||{},entity=String(r.meta.reportingEntity||"BMRI").toUpperCase(),type=String(r.meta.cclLimitType).toUpperCase();
+    const key=productId==="NON CASH LOAN"?String(d.CPNM||"").trim().toUpperCase():productId==="CASHLOAN"?String(d.no_cus||"").replace(/^CCL-/i,"").toUpperCase():String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim().toUpperCase();
+    const exposure=productId==="CASHLOAN"?n(d.total_bade):productId==="NON CASH LOAN"?n(d.EQVIDR)/1e6:n(d["Credit Line Total Utilisasi"]);
+    if(!positive(exposure))continue;
+    assert.ok(cclMaster.has(key),"CCL master missing for positive "+productId+"/"+key);
+    const scope=cclScopeMap.get(key+"|"+entity+"|"+type);
+    assert.ok(scope,"CCL entity/type limit scope missing for "+key+"/"+entity+"/"+type);
+    assert.ok(Object.prototype.hasOwnProperty.call(scope,"ccl")&&Number.isFinite(Number(scope.ccl)),"CCL limit not configured for "+key+"/"+entity+"/"+type);
+  }
+}
+
+for(const productId of ["CASHLOAN","NON CASH LOAN","CREDIT LINE"]){
+  for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){
+    const id=String(r.meta?.recordId||""),entity=String(r.meta?.reportingEntity||"").toUpperCase();
+    if(!E2E_MLK_ENTITY_SCOPE.includes(entity))continue;
+    const isMlk=productId==="CASHLOAN"?id.startsWith("CL-MLK-"):productId==="NON CASH LOAN"?id.startsWith("NCL-MLK-"):id.startsWith("TL-MLK-");
+    if(!isMlk)continue;
+    const d=r.data||{},key=productId==="CASHLOAN"?String(d.no_cus||""):productId==="NON CASH LOAN"?String(d.CUSTID||""):String(d["Swift Code"]||"").replace(/^TL-/i,"");
+    const exposure=productId==="CASHLOAN"?n(d.total_bade):productId==="NON CASH LOAN"?n(d.EQVIDR)/1e6:n(d["Bade Treasury Line"]||d["Treasury Line Total Utilisasi"]);
+    if(!positive(exposure))continue;
+    const master=mlkMaster.get(key); assert.ok(master,"MLK master missing for positive "+productId+"/"+key+"/"+entity);
+    assert.ok(Object.prototype.hasOwnProperty.call(master,"masterLimit") && Number.isFinite(Number(master.masterLimit)),"MLK limit not configured for "+key+"/"+entity);
+  }
+}
+
+for(const r of E2E_DUMMY_PRODUCT_DATA["Nominal Pertanggungan"]||[]){
+  const d=r.data||{},exp=n(d["Nominal Pertanggungan 2025 (Rp Juta)"]); if(!positive(exp))continue;
+  const master=(E2E_MASTER_DATA.CIL||[]).find(m=>String(m.name||"").trim().toLowerCase()===String(d["Perusahaan Asuransi"]||"").trim().toLowerCase());
+  assert.ok(master,"CIL master missing for positive exposure "+r.meta?.recordId);
+  assert.ok(Object.prototype.hasOwnProperty.call(master.eils||{},String(d.Entitas||"").trim()),"CIL EIL missing for positive exposure "+r.meta?.recordId);
+}
+
+for(const master of E2E_MASTER_DATA.LPG||[]){
+  for(const scope of lpgScopes){
+    const limit=master.limits?.[scope], exposureRecords=[];
+    for(const productId of ["CASHLOAN","NON CASH LOAN"]){
+      for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){
+        const d=r.data||{},key=String(d.ecosystem_lpg||"")+"|"+String(d.segmen_lpg||"").replace(/^Sme$/i,"SME");
+        if(key!==master.key||String(d.region_lpg||"")!==scope)continue;
+        const exp=productId==="CASHLOAN"?n(d.total_bade):n(d.EQVIDR)/1e6; if(positive(exp))exposureRecords.push(exp);
+      }
+    }
+    const exposure=exposureRecords.reduce((s,v)=>s+v,0);
+    if(positive(exposure))assert.ok(Object.prototype.hasOwnProperty.call(master.limits||{},scope)&&Number.isFinite(Number(limit)),"LPG limit missing for positive exposure "+master.key+"/"+scope);
+  }
+}
 for(const r of E2E_MASTER_DATA.MLK||[]){ if(r.entity!==null&&r.entity!==undefined) assert.ok(E2E_MLK_ENTITY_SCOPE.includes(r.entity),"MLK master "+r.key+" uses an entity outside confirmed MLK scope"); const vals=[r.clLimit,r.nclLimit,r.treasuryLine]; if(vals.every(v=>v!==null&&v!==undefined&&v!=="")) { const expected=Number(r.clLimit)+Number(r.nclLimit)+Number(r.treasuryLine); const actual=r.totalLimitExisting===null||r.totalLimitExisting===undefined||r.totalLimitExisting===""?expected:r.totalLimitExisting; near(actual,expected,"MLK facility limit does not reconcile for "+r.key); } }
 const lpgScopes=["Bankwide","Region I","Region II","Region III","Region IV","Region V","Region VI","Region VII","Region VIII","Region IX","Region X","Region XI","Region XII","KP + OVS"];
 for(const r of E2E_MASTER_DATA.LPG||[]){ for(const scope of lpgScopes) assert.ok(Object.prototype.hasOwnProperty.call(r.limits||{},scope),"LPG "+r.key+" missing scope "+scope); const regionSum=lpgScopes.filter(s=>s.startsWith("Region ")).reduce((s,scope)=>s+(Number(r.limits?.[scope])||0),0); near(r.limits.Bankwide,regionSum+(Number(r.limits?.["KP + OVS"])||0),"LPG Bankwide must reconcile for "+r.key); }
