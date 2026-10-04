@@ -17,34 +17,92 @@ const nostro=(data,key,amount,meta={})=>rec("NOSTRO",data,[apply("Country",key,a
 
 export const E2E_MASTER_DATA={
 Country:[
-{key:"ID",name:"Indonesia",statusMaster:"Exist",capacityLimit:120000,capacityDistribution:{domesticLimit:55000,overseasLimit:65000},productAllocations:{CASHLOAN:{domesticLimit:20000,overseasLimit:20000,total:40000},"NON CASH LOAN":{domesticLimit:10000,overseasLimit:15000,total:25000},"CREDIT LINE":{domesticLimit:10000,overseasLimit:10000,total:20000},BONDS:{domesticLimit:10000,overseasLimit:10000,total:20000},NOSTRO:{domesticLimit:5000,overseasLimit:10000,total:15000}}},
 {key:"SG",name:"Singapore",statusMaster:"Exist",capacityLimit:80000,capacityDistribution:{domesticLimit:35000,overseasLimit:45000},productAllocations:{CASHLOAN:{domesticLimit:15000,overseasLimit:10000,total:25000},"NON CASH LOAN":{domesticLimit:5000,overseasLimit:10000,total:15000},"CREDIT LINE":{domesticLimit:5000,overseasLimit:10000,total:15000},BONDS:{domesticLimit:5000,overseasLimit:10000,total:15000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}},
 {key:"CN",name:"China",statusMaster:"Exist",capacityLimit:100000,capacityDistribution:{domesticLimit:30000,overseasLimit:70000},productAllocations:{CASHLOAN:{domesticLimit:5000,overseasLimit:25000,total:30000},"NON CASH LOAN":{domesticLimit:2000,overseasLimit:18000,total:20000},"CREDIT LINE":{domesticLimit:4000,overseasLimit:16000,total:20000},BONDS:{domesticLimit:14000,overseasLimit:6000,total:20000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}},
 {key:"AU",name:"Australia",statusMaster:"Exist",capacityLimit:90000,capacityDistribution:{domesticLimit:40000,overseasLimit:50000},productAllocations:{CASHLOAN:{domesticLimit:15000,overseasLimit:15000,total:30000},"NON CASH LOAN":{domesticLimit:10000,overseasLimit:10000,total:20000},"CREDIT LINE":{domesticLimit:5000,overseasLimit:10000,total:15000},BONDS:{domesticLimit:5000,overseasLimit:10000,total:15000},NOSTRO:{domesticLimit:5000,overseasLimit:5000,total:10000}}}
 ],
 CCL:[
-{key:"ANZBAU3M",name:"Australia and New Zealand Banking Group Limited",category:"Asing",country:"Australia",countryRating:"AA",bobot:.55,rating:"AA-",position:"30/09/2026",ratingIndex:.92,inhouse:80000,tier1:400000,capacity:220000,adjusted:80000,globalParent:"ANZ Group",top200:"Yes",ccl:50,contractual:48},
-{key:"DBSSGSG",name:"DBS Bank Ltd",category:"Asing",country:"Singapore",countryRating:"AA",bobot:.55,rating:"AA-",position:"30/09/2026",ratingIndex:.91,inhouse:60000,tier1:300000,capacity:160000,adjusted:60000,globalParent:"DBS Group",top200:"Yes",ccl:30,contractual:28},
-{key:"MUFGJPJT",name:"MUFG Bank Ltd",category:"Asing",country:"Japan",countryRating:"A+",bobot:.55,rating:"A",position:"30/09/2026",ratingIndex:.86,inhouse:90000,tier1:500000,capacity:250000,adjusted:90000,globalParent:"MUFG",top200:"Yes",ccl:80,contractual:75},
-{key:"OCBCSGSG",name:"Oversea-Chinese Banking Corporation",category:"Asing",country:"Singapore",countryRating:"AA",bobot:.55,rating:"AA-",position:"30/09/2026",ratingIndex:.91,inhouse:50000,tier1:280000,capacity:140000,adjusted:50000,globalParent:"OCBC Group",top200:"Yes",ccl:20,contractual:18}
+{key:"ANZBAU3M",name:"Australia and New Zealand Banking Group Limited",category:"Asing",country:"Australia",countryRating:"AA",bobot:.55,rating:"AA-",position:"30/09/2026",ratingIndex:.92,inhouse:80000,tier1:400000,capacity:220000,adjusted:80000,globalParent:"ANZ Group",top200:"Yes",ccl:50,contractual:48,bankLoanLimit:13,commercialDnLimit:7.875,commercialLnLimit:3.375,commercialLineLimit:11.25,treasuryDnLimit:3.75,treasuryLnLimit:0,treasuryLineLimit:3.75,dataQuality:"Normal"},
+{key:"DBSSGSG",name:"DBS Bank Ltd",category:"Asing",country:"Singapore",countryRating:"AA",bobot:.55,rating:"AA-",position:"30/09/2026",ratingIndex:.91,inhouse:60000,tier1:300000,capacity:160000,adjusted:60000,globalParent:"DBS Group",top200:"Yes",ccl:30,contractual:28,bankLoanLimit:12,commercialDnLimit:8.4,commercialLnLimit:3.6,commercialLineLimit:12,treasuryDnLimit:4,treasuryLnLimit:0,treasuryLineLimit:4,dataQuality:"Normal"},
+{key:"MUFGJPJT",name:"MUFG Bank Ltd",category:"Asing",country:"Japan",countryRating:"A+",bobot:.55,rating:"A",position:"30/09/2026",ratingIndex:.86,inhouse:90000,tier1:500000,capacity:250000,adjusted:90000,globalParent:"MUFG",top200:"Yes",ccl:80,contractual:75,bankLoanLimit:5,commercialDnLimit:5.25,commercialLnLimit:2.25,commercialLineLimit:7.5,treasuryDnLimit:2.5,treasuryLnLimit:0,treasuryLineLimit:2.5,dataQuality:"Normal"},
+{key:"OCBCSGSG",name:"Oversea-Chinese Banking Corporation",category:"Asing",country:"Singapore",countryRating:"AA",bobot:.55,rating:"AA-",position:"30/09/2026",ratingIndex:.91,inhouse:50000,tier1:280000,capacity:140000,adjusted:50000,globalParent:"OCBC Group",top200:"Yes",ccl:20,contractual:18,bankLoanLimit:2.5,commercialDnLimit:2.625,commercialLnLimit:1.125,commercialLineLimit:3.75,treasuryDnLimit:1.25,treasuryLnLimit:0,treasuryLineLimit:1.25,dataQuality:"Normal"}
 ],
 MLK:[
 {key:"4000000001",name:"DJARUM",group:"DJARUM GROUP",groupUsahaHolding:"DJARUM GROUP",subGroup:"DJARUM GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"Swasta",tier:"B",bmpkKonsol:60000,inhouseLimitKonsol:54000,bmpkEntitas:50000,inhouseLimitEntitas:45000,sektorDC:"INDUSTRI ROKOK",dcSectoral:3,rating:"A+",ratingMultiplier:2.5,watchlist:"HIJAU",discountFactor:1,ebitda:5000,kreditBankLain:12000,totalDebt:19000,borrowingCapacity:25000,availableBC:6000,statusPerhitungan:"OK",clLimit:2800,nclLimit:700,treasuryLine:500,masterLimitSetting:5000,masterLimit:5000},
 {key:"1000000002",name:"ANEKA TAMBANG",group:"ANTAM GROUP",groupUsahaHolding:"ANTAM GROUP",subGroup:"ANTAM GROUP",entity:"BMRI",unitKerja:"CB5",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:70000,inhouseLimitKonsol:63000,bmpkEntitas:55000,inhouseLimitEntitas:49500,sektorDC:"PERTAMBANGAN",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:6200,kreditBankLain:15000,totalDebt:22000,borrowingCapacity:30000,availableBC:8000,statusPerhitungan:"OK",clLimit:4500,nclLimit:1500,treasuryLine:500,masterLimitSetting:8000,masterLimit:8000},
 {key:"1600000003",name:"TUNAS MOBILINDO PERKASA",group:"ASTRA GROUP",groupUsahaHolding:"ASTRA GROUP",subGroup:"ASTRA GROUP",entity:"BMRI",unitKerja:"CB4",bumnSwasta:"Swasta",tier:"A",bmpkKonsol:90000,inhouseLimitKonsol:81000,bmpkEntitas:70000,inhouseLimitEntitas:63000,sektorDC:"OTOMOTIF",dcSectoral:2,rating:"A",ratingMultiplier:2.2,watchlist:"KUNING",discountFactor:.95,ebitda:8000,kreditBankLain:18000,totalDebt:30000,borrowingCapacity:35000,availableBC:5000,statusPerhitungan:"OK",clLimit:9000,nclLimit:1200,treasuryLine:800,masterLimitSetting:10000,masterLimit:10000},
 {key:"2000000004",name:"TUNAS RIDEAN",group:"ASTRA GROUP",groupUsahaHolding:"ASTRA GROUP",subGroup:"ASTRA GROUP",entity:"BMRI",unitKerja:"CB4",bumnSwasta:"Swasta",tier:"A",bmpkKonsol:50000,inhouseLimitKonsol:45000,bmpkEntitas:40000,inhouseLimitEntitas:36000,sektorDC:"OTOMOTIF",dcSectoral:2,rating:"A-",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:3500,kreditBankLain:8000,totalDebt:12000,borrowingCapacity:16000,availableBC:4000,statusPerhitungan:"OK",clLimit:1500,nclLimit:400,treasuryLine:300,masterLimitSetting:4000,masterLimit:4000}
-],
+,
+{key:"5000000005",name:"TIMAH GROUP / BMEL",group:"TIMAH GROUP",groupUsahaHolding:"MIND ID HOLDING",subGroup:"TIMAH GROUP",entity:"BMEL",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:85548,bmpkEntitas:248,inhouseLimitKonsol:76993,inhouseLimitEntitas:223,sektorDC:"PERTAMBANGAN",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:1200,kreditBankLain:1500,totalDebt:2200,borrowingCapacity:2400,availableBC:200,statusPerhitungan:"OK",clLimit:214,nclLimit:0,treasuryLine:0,masterLimitSetting:214,masterLimit:214,dataQuality:"Normal"},
+{key:"5000000006",name:"TIMAH GROUP / BMRI",group:"TIMAH GROUP",groupUsahaHolding:"MIND ID HOLDING",subGroup:"TIMAH GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:72041,bmpkEntitas:862,inhouseLimitKonsol:64837,inhouseLimitEntitas:776,sektorDC:"PERTAMBANGAN",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:3200,kreditBankLain:4000,totalDebt:5200,borrowingCapacity:5000,availableBC:900,statusPerhitungan:"OK",clLimit:862,nclLimit:0,treasuryLine:0,masterLimitSetting:862,masterLimit:862,dataQuality:"Normal"},
+{key:"5000000007",name:"INALUM GROUP / BMEL",group:"INALUM GROUP",groupUsahaHolding:"MIND ID HOLDING",subGroup:"INALUM GROUP",entity:"BMEL",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:85548,bmpkEntitas:217,inhouseLimitKonsol:76993,inhouseLimitEntitas:195,sektorDC:"PERTAMBANGAN",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:1400,kreditBankLain:1800,totalDebt:2600,borrowingCapacity:2800,availableBC:500,statusPerhitungan:"OK",clLimit:217,nclLimit:0,treasuryLine:0,masterLimitSetting:217,masterLimit:217,dataQuality:"Normal"},
+{key:"5000000008",name:"INALUM GROUP / BMRI",group:"INALUM GROUP",groupUsahaHolding:"MIND ID HOLDING",subGroup:"INALUM GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:72041,bmpkEntitas:2533,inhouseLimitKonsol:64837,inhouseLimitEntitas:2280,sektorDC:"PERTAMBANGAN",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:6200,kreditBankLain:7000,totalDebt:9500,borrowingCapacity:10000,availableBC:3200,statusPerhitungan:"OK",clLimit:8869,nclLimit:0,treasuryLine:0,masterLimitSetting:8869,masterLimit:8869,dataQuality:"Normal"},
+{key:"5000000009",name:"PERTAMINA GROUP / BMEL",group:"PERTAMINA GROUP",groupUsahaHolding:"PERTAMINA GROUP",subGroup:"PERTAMINA GROUP",entity:"BMEL",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:85548,bmpkEntitas:214,inhouseLimitKonsol:76993,inhouseLimitEntitas:193,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:1500,kreditBankLain:1400,totalDebt:2400,borrowingCapacity:2700,availableBC:900,statusPerhitungan:"OK",clLimit:210,nclLimit:0,treasuryLine:0,masterLimitSetting:214,masterLimit:214,dataQuality:"Normal"},
+{key:"5000000010",name:"PERTAMINA GROUP / BMRI",group:"PERTAMINA GROUP",groupUsahaHolding:"PERTAMINA GROUP",subGroup:"PERTAMINA GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:72041,bmpkEntitas:40842,inhouseLimitKonsol:64837,inhouseLimitEntitas:36758,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:18000,kreditBankLain:26000,totalDebt:48000,borrowingCapacity:52000,availableBC:5000,statusPerhitungan:"OK",clLimit:41400,nclLimit:0,treasuryLine:6865,masterLimitSetting:48265,masterLimit:48265,dataQuality:"Normal"},
+{key:"5000000011",name:"PERTAMINA GROUP / MTF",group:"PERTAMINA GROUP",groupUsahaHolding:"PERTAMINA GROUP",subGroup:"PERTAMINA GROUP",entity:"MTF",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:2555,bmpkEntitas:342,inhouseLimitKonsol:2300,inhouseLimitEntitas:308,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:1100,kreditBankLain:1200,totalDebt:1800,borrowingCapacity:1900,availableBC:350,statusPerhitungan:"OK",clLimit:342,nclLimit:0,treasuryLine:0,masterLimitSetting:342,masterLimit:342,dataQuality:"Normal"},
+{key:"5000000012",name:"PERTAMINA GROUP / MUF",group:"PERTAMINA GROUP",groupUsahaHolding:"PERTAMINA GROUP",subGroup:"PERTAMINA GROUP",entity:"MUF",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:null,bmpkEntitas:null,inhouseLimitKonsol:null,inhouseLimitEntitas:null,sektorDC:"ENERGI",dcSectoral:2,rating:"A-",ratingMultiplier:1.8,watchlist:"HIJAU",discountFactor:1,ebitda:900,kreditBankLain:800,totalDebt:1100,borrowingCapacity:1200,availableBC:null,statusPerhitungan:"TBC",clLimit:null,nclLimit:null,treasuryLine:null,masterLimitSetting:null,masterLimit:null,dataQuality:"Normal"},
+{key:"5000000013",name:"PGN GROUP / BMRI",group:"PGN GROUP",groupUsahaHolding:"PGN GROUP",subGroup:"PGN GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:72041,bmpkEntitas:5940,inhouseLimitKonsol:64837,inhouseLimitEntitas:5346,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:5000,kreditBankLain:6000,totalDebt:9000,borrowingCapacity:9500,availableBC:1200,statusPerhitungan:"OK",clLimit:6317,nclLimit:0,treasuryLine:0,masterLimitSetting:6317,masterLimit:6317,dataQuality:"Normal"},
+{key:"5000000014",name:"PGN GROUP / MTF",group:"PGN GROUP",groupUsahaHolding:"PGN GROUP",subGroup:"PGN GROUP",entity:"MTF",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:2555,bmpkEntitas:80,inhouseLimitKonsol:2300,inhouseLimitEntitas:72,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:800,kreditBankLain:700,totalDebt:1000,borrowingCapacity:1100,availableBC:200,statusPerhitungan:"OK",clLimit:80,nclLimit:0,treasuryLine:0,masterLimitSetting:80,masterLimit:80,dataQuality:"Normal"},
+{key:"5000000015",name:"PGN GROUP / MANSEK",group:"PGN GROUP",groupUsahaHolding:"PGN GROUP",subGroup:"PGN GROUP",entity:"MANSEK",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:1800,bmpkEntitas:120,inhouseLimitKonsol:1620,inhouseLimitEntitas:108,sektorDC:"ENERGI",dcSectoral:2,rating:"A-",ratingMultiplier:1.8,watchlist:"HIJAU",discountFactor:1,ebitda:750,kreditBankLain:500,totalDebt:700,borrowingCapacity:850,availableBC:150,statusPerhitungan:"OK",clLimit:70,nclLimit:0,treasuryLine:0,masterLimitSetting:90,masterLimit:90,dataQuality:"Normal"},],
 CIL:[
 {key:"TUGU",name:"PT Asuransi Tugu Pratama Indonesia Tbk",type:"Asuransi",ic:2000000,multiplier:.04,cit:80000,cil:60000,eils:{BMRI:35000,"Mandiri Taspen":12000,MTF:8000,MUF:5000},score:82,action:"Monitoring as usual"},
 {key:"PLN-INS",name:"PT Asuransi Perisai Listrik Nasional",type:"Asuransi",ic:1000000,multiplier:.03,cit:30000,cil:30000,eils:{BMRI:15000,"Mandiri Taspen":7000,MTF:5000,MUF:3000},score:61,action:"Review allocation"},
 {key:"ASKRIDA",name:"PT Asuransi Bangun Askrida",type:"Asuransi",ic:1200000,multiplier:.02,cit:24000,cil:24000,eils:{BMRI:12000,"Mandiri Taspen":5500,MTF:4000,MUF:2500},score:74,action:"Monitoring as usual"}
 ],
 LPG:[
-{key:"BATUBARA|Corporate",sector:"BATUBARA",segment:"Corporate",limits:{Bankwide:50000,"Region I":0,"Region II":0,"Region III":0,"Region IV":0,"Region V":0,"Region VI":0,"Region VII":0,"Region VIII":0,"Region IX":0,"Region X":0,"Region XI":0,"Region XII":0,"KP + OVS":50000}},
+{key:"BATUBARA|Corporate",sector:"BATUBARA",segment:"Corporate",limits:{Bankwide:50000,"Region I":0,"Region II":0,"Region III":0,"Region IV":16000,"Region V":8000,"Region VI":6000,"Region VII":0,"Region VIII":0,"Region IX":0,"Region X":0,"Region XI":0,"Region XII":0,"KP + OVS":20000}},
 {key:"BATUBARA|Commercial",sector:"BATUBARA",segment:"Commercial",limits:{Bankwide:30000,"Region I":2500,"Region II":2500,"Region III":2500,"Region IV":2500,"Region V":2500,"Region VI":2500,"Region VII":2500,"Region VIII":2500,"Region IX":2500,"Region X":2500,"Region XI":0,"Region XII":0,"KP + OVS":5000}},
-{key:"ENERGI & AIR|Corporate",sector:"ENERGI & AIR",segment:"Corporate",limits:{Bankwide:40000}}
+{key:"ENERGI & AIR|Corporate",sector:"ENERGI & AIR",segment:"Corporate",limits:{Bankwide:40000,"Region I":0,"Region II":0,"Region III":0,"Region IV":0,"Region V":0,"Region VI":0,"Region VII":0,"Region VIII":0,"Region IX":0,"Region X":0,"Region XI":0,"Region XII":0,"KP + OVS":40000}}
 ]
 };
+
+export const E2E_COUNTRY_MONITORING_POLICY={
+  homeCountryCode:"ID",
+  monitoringUniverse:"FOREIGN_COUNTRY_ONLY",
+  excludedCountryCodes:["ID"],
+  rule:"Domestic/home country remains in product source data but is excluded from Country Limit Monitoring."
+};
+
+export const E2E_ENTITY_MASTER=[
+  {entityCode:"BMRI",entityName:"Bank Mandiri",entityType:"PARENT",parentEntity:null,countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"BMEL",entityName:"Bank Mandiri (Europe) Limited",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"GB",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MANTAP",entityName:"Mandiri Tunas Finance / MANTAP",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MTF",entityName:"Mandiri Tunas Finance",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MUF",entityName:"Mandiri Utama Finance",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MIR",entityName:"Mandiri Inhealth / MIR",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MCI",entityName:"Mandiri Capital Indonesia",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MANSEK",entityName:"Mandiri Sekuritas",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MMI",entityName:"Mandiri Manajemen Investasi",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"AMFS",entityName:"Axa Mandiri Financial Services",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true}
+];
+
+export const E2E_MLK_ENTITY_SCOPE=["BMEL","BMRI","MANSEK","MTF","MUF"];
+
+export const E2E_CCL_ENTITY_SCOPE=[
+  {entityCode:"BMRI",entityType:"PARENT",direct:true,indirect:false},
+  {entityCode:"MANTAP",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"BMEL",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"MTF",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"MUF",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"MIR",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"MCI",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"MANSEK",entityType:"SUBSIDIARY",direct:true,indirect:false},
+  {entityCode:"MMI",entityType:"SUBSIDIARY",direct:true,indirect:true},
+  {entityCode:"AMFS",entityType:"SUBSIDIARY",direct:true,indirect:true}
+];
+
+export const E2E_CCL_LIMIT_SCOPE=[
+  {counterpartyId:"ANZBAU3M",entityCode:"BMRI",limitType:"DIRECT",ccl:45,contractual:43,facility:13.5,bankLoan:12,commercialLine:10,treasuryLine:3.5},
+  {counterpartyId:"ANZBAU3M",entityCode:"MTF",limitType:"DIRECT",ccl:5,contractual:5,facility:1.5,bankLoan:1,commercialLine:0.5,treasuryLine:0},
+  {counterpartyId:"ANZBAU3M",entityCode:"MMI",limitType:"INDIRECT",ccl:2,contractual:1.8,facility:0.5,bankLoan:0,commercialLine:0.5,treasuryLine:0},
+  {counterpartyId:"DBSSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:26,contractual:24,facility:13,bankLoan:10,commercialLine:9,treasuryLine:4},
+  {counterpartyId:"DBSSGSG",entityCode:"MANTAP",limitType:"DIRECT",ccl:4,contractual:4,facility:3,bankLoan:2,commercialLine:1,treasuryLine:0},
+  {counterpartyId:"MUFGJPJT",entityCode:"BMRI",limitType:"DIRECT",ccl:70,contractual:65,facility:8,bankLoan:4,commercialLine:5,treasuryLine:3},
+  {counterpartyId:"MUFGJPJT",entityCode:"MCI",limitType:"DIRECT",ccl:10,contractual:10,facility:2,bankLoan:1,commercialLine:1,treasuryLine:0},
+  {counterpartyId:"MUFGJPJT",entityCode:"AMFS",limitType:"INDIRECT",ccl:2,contractual:1.8,facility:0.5,bankLoan:0,commercialLine:0,treasuryLine:0.5},
+  {counterpartyId:"OCBCSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:17,contractual:15,facility:4.25,bankLoan:2,commercialLine:2,treasuryLine:0.25},
+  {counterpartyId:"OCBCSGSG",entityCode:"MMI",limitType:"DIRECT",ccl:3,contractual:3,facility:0.75,bankLoan:0.5,commercialLine:0.25,treasuryLine:0}
+];
 
 const p={CASHLOAN:[], "NON CASH LOAN":[], "CREDIT LINE":[], "Investment Line":[], BONDS:[], NOSTRO:[], "Nominal Pertanggungan":[]};
 
@@ -85,6 +143,48 @@ mlkRows.forEach(([cif,name,clAmt,nclAmt,tlAmt],i)=>{
   p.CASHLOAN.push(cl({no_cus:cif,nm_cus:name,no_rek:"MLK-CL-"+cif,total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,clAmt,"MLK",{recordId:"CL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID"}));
   p["NON CASH LOAN"].push(ncl({NO:String(50+i),MODULE:"EPLC",TRXREF:"NCL-MLK-"+cif,CUSTID:cif,CUSTNM:name,CPNM:(name+" Trade Services"),"Country Code":"ID","Country Name":"Indonesia",CCY:"USD",AMOUNT:String(nclAmt*1000000/17310),BALANCE:String(nclAmt*1000000/17310),EXCHANGERT:"17310",EQVIDR:String(nclAmt*1000000),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},cif,nclAmt*1000000,"MLK",{recordId:"NCL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID"}));
   p["CREDIT LINE"].push(credit({No:String(70+i),Nama:name+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,tlAmt,"Bade Treasury Line",{scope:"Treasury"})],{recordId:"TL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST"}));
+});
+
+// MLK extended entity/source coverage. These are distinct source records, not duplicates.
+const mlkExtendedSourceRows=[
+  ["5000000005","BMEL","TIMAH GROUP","500",250,100,214],
+  ["5000000006","BMRI","TIMAH GROUP","600",262,0,862],
+  ["5000000007","BMEL","INALUM GROUP","450",0,0,217],
+  ["5000000008","BMRI","INALUM GROUP","7800",1069,0,8869],
+  ["5000000009","BMEL","PERTAMINA GROUP","180",34,0,214],
+  ["5000000010","BMRI","PERTAMINA GROUP","42000",6000,265,48265],
+  ["5000000011","MTF","PERTAMINA GROUP","250",62,30,342],
+  ["5000000012","MUF","PERTAMINA GROUP","0",0,0,0],
+  ["5000000013","BMRI","PGN GROUP","5500",817,0,6317],
+  ["5000000014","MTF","PGN GROUP","60",20,0,80],
+  ["5000000015","MANSEK","PGN GROUP","65",15,10,90]
+];
+mlkExtendedSourceRows.forEach(([cif,entity,group,clAmt,nclAmt,tlAmt,master])=>{
+  p.CASHLOAN.push(cl({no_cus:cif,nm_cus:cif+" / "+entity,no_rek:"MLK-CL-"+cif,total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,Number(clAmt),"MLK",{recordId:"CL-MLK-EXT-"+cif,sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:entity,groupId:group}));
+  p["NON CASH LOAN"].push(ncl({NO:"EXT-"+cif,MODULE:"EPLC",TRXREF:"NCL-MLK-EXT-"+cif,CUSTID:cif,CUSTNM:cif+" / "+entity,CPNM:cif+" Trade Services","Country Code":"ID","Country Name":"Indonesia",CCY:"USD",AMOUNT:String(Number(nclAmt)*1000000/17310),BALANCE:String(Number(nclAmt)*1000000/17310),EXCHANGERT:"17310",EQVIDR:String(Number(nclAmt)*1000000),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},cif,Number(nclAmt)*1000000,"MLK",{recordId:"NCL-MLK-EXT-"+cif,sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:entity,groupId:group}));
+  p["CREDIT LINE"].push(credit({No:"EXT-"+cif,Nama:cif+" "+entity+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,Number(tlAmt),"Bade Treasury Line",{scope:"Treasury",entity})],{recordId:"TL-MLK-EXT-"+cif,sourceSystem:"LIMAST",reportingEntity:entity,groupId:group}));
+});
+
+// CCL entity-scoped source records. Entity/type are explicit enrichment metadata.
+const cclEntitySourceRows=[
+  ["ANZBAU3M","MTF","DIRECT",1000,500000000,500],
+  ["DBSSGSG","MANTAP","DIRECT",1000,500000000,1000],
+  ["MUFGJPJT","MCI","DIRECT",800,400000000,700],
+  ["OCBCSGSG","MMI","DIRECT",500,200000000,500],
+  ["DBSSGSG","AMFS","DIRECT",400,100000000,400],
+  ["ANZBAU3M","MMI","INDIRECT",0,800000000,500],
+  ["MUFGJPJT","AMFS","INDIRECT",0,300000000,600]
+];
+cclEntitySourceRows.forEach(([swift,entity,limitType,clAmt,nclEq,creditAmt],i)=>{
+  const recKey=String(i+1).padStart(3,"0");
+  p.CASHLOAN.push(cl({no_cus:"CCL-"+limitType+"-"+entity+"-"+swift,nm_cus:entity+" allocation / "+swift,no_rek:"CCL-PA-CL-"+recKey,total_limit:"",total_bade:String(clAmt),project_location:"Mapped",code:""},swift,Number(clAmt),"CCL",{recordId:"CL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
+  p["NON CASH LOAN"].push(ncl({NO:"PA-"+recKey,MODULE:"EPLC",TRXREF:"NCL-CCL-PA-"+recKey,CUSTID:"NCL-CCL-PA-"+recKey,CUSTNM:entity+" allocation",CPNM:swift,"Country Code":"", "Country Name":"—",CCY:"USD",AMOUNT:String(Number(nclEq)/17310),BALANCE:String(Number(nclEq)/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},swift,Number(nclEq),"CCL",{recordId:"NCL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
+  p["CREDIT LINE"].push(credit({No:"PA-"+recKey,Nama:entity+" / "+swift,"Swift Code":swift,"Swift Code Vlookup":swift,Code:"",Negara:"Mapped","Bank":"Foreign",
+    "Comm DN":String(creditAmt*.75),"Comm DN Utilisasi":String(creditAmt*.75),"Comm LN":String(creditAmt*.25),"Comm LN Utilisasi":String(creditAmt*.25),
+    "Comm Line Total":String(creditAmt),"Comm Line Total Utilisasi":String(creditAmt),
+    "Treasury DN":"0","Treasury DN Utilisasi":"0","Treasury LN":"0","Treasury LN Utilisasi":"0","Treasury Line Total":"0","Treasury Line Total Utilisasi":"0",
+    "Credit Line Total":String(creditAmt),"Credit Line Total Utilisasi":String(creditAmt)},[apply("CCL",swift,Number(creditAmt),"Credit Line",{entity, cclLimitType:limitType})],
+    {recordId:"CRL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
 });
 
 // Investment Line is source-only / scoped.
