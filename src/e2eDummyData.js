@@ -66,14 +66,14 @@ export const E2E_COUNTRY_MONITORING_POLICY={
 export const E2E_ENTITY_MASTER=[
   {entityCode:"BMRI",entityName:"Bank Mandiri",entityType:"PARENT",parentEntity:null,countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
   {entityCode:"BMEL",entityName:"Bank Mandiri (Europe) Limited",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"GB",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"MANTAP",entityName:"Mandiri Tunas Finance / MANTAP",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"MTF",entityName:"Mandiri Tunas Finance",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MANTAP",entityName:"MANTAP",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MTF",entityName:"MTF",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
   {entityCode:"MUF",entityName:"Mandiri Utama Finance",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"MIR",entityName:"Mandiri Inhealth / MIR",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"MCI",entityName:"Mandiri Capital Indonesia",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"MANSEK",entityName:"Mandiri Sekuritas",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"MMI",entityName:"Mandiri Manajemen Investasi",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
-  {entityCode:"AMFS",entityName:"Axa Mandiri Financial Services",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true}
+  {entityCode:"MIR",entityName:"MIR",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MCI",entityName:"MCI",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MANSEK",entityName:"MANSEK",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"MMI",entityName:"MMI",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true},
+  {entityCode:"AMFS",entityName:"AMFS",entityType:"SUBSIDIARY",parentEntity:"BMRI",countryCode:"ID",consolidationStatus:"CONSOLIDATED",activeFlag:true}
 ];
 
 export const E2E_MLK_ENTITY_SCOPE=["BMEL","BMRI","MANSEK","MTF","MUF"];
