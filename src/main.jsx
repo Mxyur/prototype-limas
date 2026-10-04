@@ -2709,7 +2709,10 @@ const NCL_BOOKING_REFERENCE={
   // Explicit LIMAS enrichment only; the golden NCL source fields remain untouched.
   "NCL-EXCO-001":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
   "NCL-EXCO-002":{bookingOffice:"Bank Mandiri Singapore",bookingOfficeType:"Overseas"},
-  "NCL-EXCO-003":{bookingOffice:"Bank Mandiri (Europe) Limited London",bookingOfficeType:"Overseas"}
+  "NCL-EXCO-003":{bookingOffice:"Bank Mandiri (Europe) Limited London",bookingOfficeType:"Overseas"},
+  "NCL-COUNTRY-SG":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
+  "NCL-COUNTRY-CN":{bookingOffice:"Bank Mandiri Shanghai",bookingOfficeType:"Overseas"},
+  "NCL-COUNTRY-AU":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"}
 };
 
 function integrationDomainAllowed(row,domain){
