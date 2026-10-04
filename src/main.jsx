@@ -207,7 +207,12 @@ function lpgSectorTotalRows(){
   return Object.values(groups);
 }
 function lpgDisplayRows(){return [...lpgSectorTotalRows(),...lpgLeafRows()];}
-function lpgScopeLimit(row,scope=LPG_BANK_SCOPE){if(!row)return null;return row.limits?.[scope]??(scope===LPG_BANK_SCOPE?row.limit??null:null);}
+function lpgScopeLimit(row,scope=LPG_BANK_SCOPE){
+  if(!row)return null;
+  const raw=row.limits?.[scope]??(scope===LPG_BANK_SCOPE?row.limit??null:null);
+  if(raw===null||raw===undefined||raw==="")return null;
+  return normalizeMasterLimit("LPG",raw).amount;
+}
 function lpgProductAttribute(r,field){return String(r?.data?.[field]??"").trim();}
 function lpgProductClassification(r){
   const sector=lpgProductAttribute(r,"ecosystem_lpg"),segment=lpgProductAttribute(r,"segmen_lpg"),region=lpgProductAttribute(r,"region_lpg");
@@ -250,7 +255,9 @@ function lpgRawProductApps(row,scope){
 }
 function lpgScopeProductExposure(row,scope){
   const apps=lpgRawProductApps(row,scope);
-  return {amount:apps.reduce((a,x)=>a+(Number(x.amount)||0),0),apps};
+  // Always aggregate canonical utilization, never source-native amount.
+  // Example: LPG NCL DWH source is Rp, while LPG master is Rp Juta.
+  return {amount:apps.reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0),apps};
 }
 function lpgScopeExposure(row,scope=LPG_BANK_SCOPE){
   const product=lpgScopeProductExposure(row,scope);
@@ -465,11 +472,11 @@ function recordExposure(type,row){
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
 }
 function recordLimit(type,row){
-  if(type==="Country")return Number(row.capacityLimit)||0;
-  if(type==="CCL")return (Number(row.ccl)||0)*1000;
-  if(type==="MLK")return Number(row.masterLimit)||0;
-  if(type==="CIL")return Number(row.cil)||0;
-  if(type==="LPG")return Number(lpgScopeLimit(row,LPG_BANK_SCOPE)||0);
+  if(type==="Country")return normalizeMasterLimit("Country",row.capacityLimit).amount;
+  if(type==="CCL")return normalizeMasterLimit("CCL",row.ccl).amount;
+  if(type==="MLK")return normalizeMasterLimit("MLK",row.masterLimit).amount;
+  if(type==="CIL")return normalizeMasterLimit("CIL",row.cil).amount;
+  if(type==="LPG")return normalizeMasterLimit("LPG",lpgScopeLimit(row,LPG_BANK_SCOPE)).amount;
   return Number(row.limit)||0;
 }
 function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposure(type,row);return limit?exp/limit:0}
@@ -2371,6 +2378,27 @@ const DOMAIN_CANONICAL_UNITS={
   CIL:"Rp Juta",
   LPG:"Rp Juta"
 };
+
+// Master limits are normalized to the same canonical domain unit used by utilization.
+// Source/master input may have a different native unit (e.g. CCL is maintained in Rp Miliar),
+// but monitoring must never compare different units.
+const MASTER_CANONICAL_TRANSFORMS={
+  Country:{sourceUnit:"Rp Juta",factor:1},
+  CCL:{sourceUnit:"Rp Miliar",factor:1000},
+  MLK:{sourceUnit:"Rp Juta",factor:1},
+  CIL:{sourceUnit:"Rp Juta",factor:1},
+  LPG:{sourceUnit:"Rp Juta",factor:1}
+};
+function normalizeMasterLimit(domain,raw){
+  const value=Number(raw)||0;
+  const t=MASTER_CANONICAL_TRANSFORMS[domain]||{sourceUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",factor:1};
+  return {
+    amount:value*t.factor,
+    sourceUnit:t.sourceUnit,
+    targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta",
+    factor:t.factor
+  };
+}
 const productCanonicalTransform=(domain,productId,row)=>{
   const d=row?.data||{};
   const targetUnit=DOMAIN_CANONICAL_UNITS[domain]||"Rp Juta";
