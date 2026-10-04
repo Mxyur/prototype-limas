@@ -3078,7 +3078,8 @@ function canonicalProductQualityIssues(){
       if(productId==="NOSTRO"&&(!d.CCY||!(Number(d["FX Rate to IDR"])>0)||!d["FX Rate Date"]))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_FX_METADATA",detail:"Nostro canonical IDR utilization requires CCY, positive FX Rate to IDR, and FX Rate Date."});
       if(productId==="NOSTRO"){
         const balance=Number(d.Balance),fx=Number(d["FX Rate to IDR"]),idr=Number(d["Balance IDR"]);
-        if(balance&&fx&&idr&&Math.abs(idr-(balance*fx/1000000))>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NOSTRO_FX_RECONCILIATION",detail:"Balance × FX Rate to IDR does not reconcile to Balance IDR."});
+        // Balance IDR is a source IDR amount; canonical Rp Juta is calculated separately in integration.
+        if(balance&&fx&&idr&&Math.abs(idr-(balance*fx))>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NOSTRO_FX_RECONCILIATION",detail:"Balance × FX Rate to IDR does not reconcile to source Balance IDR."});
       }
       if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
     });
@@ -3545,7 +3546,8 @@ function numericReconciliationAudit(){
   });
   (productDatabase.NOSTRO||[]).forEach(r=>{
     const d=r.data||{},balance=Number(d.Balance),fx=Number(d["FX Rate to IDR"]),idr=Number(d["Balance IDR"]);
-    if(balance&&fx&&idr)check("Product Database","NOSTRO","Balance × FX / 1,000,000 = Balance IDR (Rp Juta)",idr,balance*fx/1000000,.01);
+    if(balance&&fx&&idr)check("Product Database","NOSTRO","Balance × FX = source Balance IDR",idr,balance*fx,.01,"Rp");
+
   });
   (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
     const audit=creditLineAuditRows([r])[0];
