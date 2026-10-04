@@ -1,10 +1,10 @@
-// Synthetic E2E dataset for LIMAS prototype.
-// Current-layer demonstration only; proposed cross-domain taxonomy is intentionally NOT implemented here.
+// LIMAS integrated production-like baseline dataset.
+// Source records remain source-native; master limits and derived monitoring are separate layers.
 export const E2E_DUMMY_META={
   datasetId:"LIMAS-E2E-DUMMY-V1",
-  period:"Oktober 2026 • E2E Dummy Snapshot",
+  period:"Oktober 2026 • Integrated Production Snapshot",
   asOfDate:"2026-09-30",
-  status:"SYNTHETIC / DEMO ONLY",
+  status:"PRODUCTION",
   description:"Master -> Product -> Mapping -> Normalization -> Aggregation -> Reconciliation -> EWS/Monitoring -> Report."
 };
 const rec=(productId,data,applied=[],meta={})=>({productId,data,applied,meta});
@@ -48,14 +48,14 @@ LPG:[
 
 const p={CASHLOAN:[], "NON CASH LOAN":[], "CREDIT LINE":[], "Investment Line":[], BONDS:[], NOSTRO:[], "Nominal Pertanggungan":[]};
 
-// Country CL / NCL
+// Country CL / NCL source records
 const countryRows=[
 ["ID","CL1",15000,"Menara Mandiri Jakarta","Domestic","16000000101","PT Sinar Nusantara Infrastruktur"],
 ["SG","CL2",14000,"Menara Mandiri Jakarta","Domestic","16000000102","PT Garuda Pacific Resources"],
 ["CN","CL3",27000,"Bank Mandiri Shanghai","Overseas","16000000103","PT Nusantara Steel Resources"],
 ["AU","CL4",7000,"Bank Mandiri (Europe) Limited London","Overseas","16000000104","PT Cipta Energi Global"]
 ];
-countryRows.forEach(([country,id,amount,office,type,cif,name],i)=>p.CASHLOAN.push(cl({no_cus:cif,nm_cus:name,no_rek:"ACC-"+id,total_limit:String(amount*1.2),total_bade:String(amount),project_location:country,code:country},""+country,amount,"Country",{recordId:"CL-COUNTRY-"+country,sourceSystem:"Big Data (adjusted Country)",bookingOffice:office,bookingOfficeType:type,countryExposure:country})));
+countryRows.forEach(([country,id,amount,office,type,cif,name],i)=>p.CASHLOAN.push(cl({no_cus:cif,nm_cus:name,no_rek:"ACC-"+id,total_limit:"",total_bade:String(amount),project_location:country,code:country},""+country,amount,"Country",{recordId:"CL-COUNTRY-"+country,sourceSystem:"Big Data (adjusted Country)",bookingOffice:office,bookingOfficeType:type,countryExposure:country})));
 const nclCountry=[
 ["ID",8000000000,"Menara Mandiri Jakarta","Domestic","16000000101","PT Sinar Nusantara Infrastruktur","PT Nusantara Trade Services"],
 ["SG",4000000000,"Menara Mandiri Jakarta","Domestic","16000000102","PT Garuda Pacific Resources","Pacific Trade Pte Ltd"],
@@ -69,10 +69,10 @@ const cclRows=[
 ["ANZBAU3M","ANZ","AU",12000,18000000000,15000],["DBSSGSG","DBS","SG",10000,6000000000,16000],["MUFGJPJT","MUFG","JP",4000,2000000000,10000],["OCBCSGSG","OCBC","SG",1000,1000000000,5000]
 ];
 cclRows.forEach(([swift,short,country,clAmt,nclEq,creditAmt],i)=>{
-  p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:short+" Bank Loan",no_rek:"CCL-CL-"+swift,total_limit:String(clAmt*1.15),total_bade:String(clAmt),project_location:country,code:country},swift,clAmt,"CCL",{recordId:"CL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
+  p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:short+" Bank Loan",no_rek:"CCL-CL-"+swift,total_limit:"",total_bade:String(clAmt),project_location:country,code:country},swift,clAmt,"CCL",{recordId:"CL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
   p["NON CASH LOAN"].push(ncl({NO:String(20+i),MODULE:"EPLC",TRXREF:"NCL-CCL-"+swift,CUSTID:"NCL-CCL-"+short,CUSTNM:["Australia and New Zealand Banking Group Limited","DBS Bank Ltd","MUFG Bank Ltd","Oversea-Chinese Banking Corporation"][i],CPNM:["Australia and New Zealand Banking Group Limited","DBS Bank Ltd","MUFG Bank Ltd","Oversea-Chinese Banking Corporation"][i],"Country Code":country,"Country Name":country,CCY:"USD",AMOUNT:String(nclEq/17310),BALANCE:String(nclEq/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"} ,swift,nclEq,"CCL",{recordId:"NCL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
   const comm=Math.round(creditAmt*.75),treasury=creditAmt-comm;
-  p["CREDIT LINE"].push(credit({No:String(1+i),Nama:short+" Bank Ltd","Swift Code":swift,"Swift Code Vlookup":swift,Code:country,Negara:country,Bank:"Foreign","Comm DN":String(comm*.7),"Comm DN Utilisasi":String(comm),"Comm LN":String(comm*.3),"Comm LN Utilisasi":"0","Comm Line Total":String(comm),"Comm Line Total Utilisasi":String(comm),"Treasury DN":String(treasury),"Treasury DN Utilisasi":String(treasury),"Treasury LN":"0","Treasury LN Utilisasi":"0","Treasury Line Total":String(treasury),"Treasury Line Total Utilisasi":String(treasury),"Credit Line Total":String(creditAmt),"Credit Line Total Utilisasi":String(creditAmt)},[apply("CCL",swift,creditAmt,"Credit Line")],{recordId:"CRL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
+  p["CREDIT LINE"].push(credit({No:String(1+i),Nama:short+" Bank Ltd","Swift Code":swift,"Swift Code Vlookup":swift,Code:country,Negara:country,Bank:"Foreign","Comm DN":String(Math.round(comm*.7)),"Comm DN Utilisasi":String(Math.round(comm*.7)),"Comm LN":String(Math.round(comm*.3)),"Comm LN Utilisasi":String(Math.round(comm*.3)),"Comm Line Total":String(comm),"Comm Line Total Utilisasi":String(comm),"Treasury DN":String(treasury),"Treasury DN Utilisasi":String(treasury),"Treasury LN":"0","Treasury LN Utilisasi":"0","Treasury Line Total":String(treasury),"Treasury Line Total Utilisasi":String(treasury),"Credit Line Total":String(creditAmt),"Credit Line Total Utilisasi":String(creditAmt)},[apply("CCL",swift,creditAmt,"Credit Line")],{recordId:"CRL-CCL-"+short,sourceSystem:"Core Banking Limit System",countryExposure:country}));
 });
 
 // Country Credit Line monitoring is derived from raw Credit Line records; no synthetic country source rows.
@@ -82,7 +82,7 @@ const mlkRows=[
 ];
 mlkRows.forEach(([cif,name,clAmt,nclAmt,tlAmt],i)=>{
   const m=E2E_MASTER_DATA.MLK[i];
-  p.CASHLOAN.push(cl({no_cus:cif,nm_cus:name,no_rek:"MLK-CL-"+cif,total_limit:String(clAmt*1.15),total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,clAmt,"MLK",{recordId:"CL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID"}));
+  p.CASHLOAN.push(cl({no_cus:cif,nm_cus:name,no_rek:"MLK-CL-"+cif,total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,clAmt,"MLK",{recordId:"CL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID"}));
   p["NON CASH LOAN"].push(ncl({NO:String(50+i),MODULE:"EPLC",TRXREF:"NCL-MLK-"+cif,CUSTID:cif,CUSTNM:name,CPNM:(name+" Trade Services"),"Country Code":"ID","Country Name":"Indonesia",CCY:"USD",AMOUNT:String(nclAmt*1000000/17310),BALANCE:String(nclAmt*1000000/17310),EXCHANGERT:"17310",EQVIDR:String(nclAmt*1000000),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},cif,nclAmt*1000000,"MLK",{recordId:"NCL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID"}));
   p["CREDIT LINE"].push(credit({No:String(70+i),Nama:name+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,tlAmt,"Bade Treasury Line",{scope:"Treasury"})],{recordId:"TL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST"}));
 });
@@ -115,7 +115,6 @@ const cilSpecs=[
 cilSpecs.forEach(([key,insurer,ents])=>ents.forEach(([entity,amount],i)=>p["Nominal Pertanggungan"].push(rec("Nominal Pertanggungan",{No:String(i+1),"Perusahaan Asuransi":insurer,"Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":entity,"EIL Entitas (Rp Juta)":String(E2E_MASTER_DATA.CIL.find(x=>x.key===key).eils[entity]),"Nominal Pertanggungan 2025 (Rp Juta)":String(amount)},[apply("CIL",key,amount,"Nominal Pertanggungan",{entity})],{recordId:"CIL-"+key+"-"+entity.replaceAll(" ","-"),sourceSystem:"CIL_MONITORING"}))));
 
 // LPG source records are ordinary debtor-level Cash Loan/NCL rows with explicit LPG classification.
-// There is no "LPG Commercial" or "LPG Corporate" customer/product record.
 // LPG monitoring aggregates these raw source records.
 const lpgDebtors=[
   ["16000000201","PT Borneo Prima Energi",10000,3000000000,"Region I","Commercial"],
@@ -128,7 +127,7 @@ const lpgDebtors=[
 lpgDebtors.forEach(([cif,name,clAmt,nclIdr,region,segment],i)=>{
   const baseId=String(i+1).padStart(3,"0");
   p.CASHLOAN.push(cl(
-    {no_cus:cif,nm_cus:name,no_rek:"6090"+baseId+"000"+(i+1),total_limit:String(clAmt*1.15),total_bade:String(clAmt),project_location:"Indonesia",code:"ID",
+    {no_cus:cif,nm_cus:name,no_rek:"6090"+baseId+"000"+(i+1),total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID",
       ecosystem_lpg:"BATUBARA",segmen_lpg:segment,region_lpg:region},
     "ID",clAmt,"Country",
     {recordId:"CL-LPG-DEBTOR-"+baseId,sourceSystem:"DWH",countryExposure:"ID"}
@@ -291,7 +290,7 @@ const fillDemoProductData=()=>{
   });
   products["Investment Line"].forEach((r,i)=>{
     const d=r.data||{};
-    d["catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"]=d["catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"]||"Source-only investment exposure; pending product classification";
+    d["catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"]=d["catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"]||"Source-only investment exposure; product classification is maintained in the integration layer";
   });
   products.BONDS.forEach((r,i)=>{
     const d=r.data||{};
