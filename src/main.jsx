@@ -528,6 +528,7 @@ function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
     .filter(a=>String(a.entity||"")===String(entityCode)&&String(a.cclLimitType||"DIRECT")===String(limitType))
     .reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
 }
+const CCL_REPORT_CATEGORIES=["Asing","KBMI IV","KBMI III","KBMI II","KBMI I"];
 function cclScopeRecordsForCategory(category,entityCode=null,limitType="DIRECT"){
   const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
   return E2E_CCL_LIMIT_SCOPE.filter(x=>x.limitType===limitType&&(!entityCode||x.entityCode===entityCode)&&masters.some(m=>String(m.key)===String(x.counterpartyId)));
@@ -551,7 +552,7 @@ function cclCategoryAllMetric(category,limitType="DIRECT"){
   return {counterpartyCount,ccl,contractual,os,osMax:os,util:contractual?os/contractual:0};
 }
 function buildCCLDirectReportRows(){
-  const cats=[...new Set((limasDemoData.CCL||[]).map(r=>r.category).filter(Boolean))];
+  const cats=CCL_REPORT_CATEGORIES;
   return cats.map((category,i)=>{
     const cons=cclCategoryAllMetric(category,"DIRECT");
     const bmri=cclCategoryMetric(category,"BMRI","DIRECT");
@@ -574,7 +575,7 @@ function buildCCLDirectReportRows(){
   });
 }
 function buildCCLIndirectReportRows(){
-  const cats=[...new Set((limasDemoData.CCL||[]).map(r=>r.category).filter(Boolean))];
+  const cats=CCL_REPORT_CATEGORIES;
   return cats.map((category,i)=>{
     const mmi=cclCategoryMetric(category,"MMI","INDIRECT"),amfs=cclCategoryMetric(category,"AMFS","INDIRECT");
     const indirectCounterparties=new Set([...cclScopeRecordsForCategory(category,"MMI","INDIRECT"),...cclScopeRecordsForCategory(category,"AMFS","INDIRECT")].map(x=>String(x.counterpartyId)));
@@ -695,7 +696,7 @@ function mlkMonitoringRows(rows){
     const bade=members.map(mlkFacilityMetrics).reduce((a,x)=>a+(x.totalBadeExisting||0),0);
     const groupMlk=totalMaster;
     const groupBmpkKonsol=mlkSum(members,"bmpkKonsol"),groupMlkToBmpkConsol=groupBmpkKonsol&&groupMlk?groupMlk/groupBmpkKonsol:null,groupMlkToBmpkEntitas=totalBmpk&&groupMlk?groupMlk/totalBmpk:null;
-    out.push({no:out.length+1,tier:"—",holding,subGroup:"Sub-total Group",flag:members[0]?.bumnSwasta||"—",unit:"—",entity:"Sub-total Group",bmpkKonsol:groupBmpkKonsol,bmpkEntitas:totalBmpk,limitFasilitas:facility,bade,borrowing:totalBorrowing,masterLimit:null,masterLimitSetting:null,mlk:groupMlk,utilBade:facility&&bade!==null?bade/facility:null,utilFacilityBmpk:totalBmpk&&facility?facility/totalBmpk:null,utilMlkBmpk:groupMlkToBmpkEntitas,utilMlkBmpkConsol:groupMlkToBmpkConsol,debtors:members.length,totalBmpk:totalBmpk,totalMaster:totalMaster,totalBorrowing:totalBorrowing,variance:null,status:"Normal",cif:"—",name:"—",products:{},rowType:"Sub-total Group"});
+    out.push({no:out.length+1,tier:"—",holding,subGroup:"Sub-total Group",flag:members[0]?.bumnSwasta||"—",unit:"—",entity:"Sub-total Group",bmpkKonsol:groupBmpkKonsol,bmpkEntitas:totalBmpk,limitFasilitas:facility,bade,borrowing:totalBorrowing,masterLimit:null,masterLimitSetting:null,mlk:groupMlk,utilBade:facility&&bade!==null?bade/facility:null,utilFacilityBmpk:totalBmpk&&facility?facility/totalBmpk:null,utilMlkBmpk:groupMlkToBmpkEntitas,utilMlkBmpkConsol:groupMlkToBmpkConsol,debtors:members.length,totalBmpk:totalBmpk,totalMaster:totalMaster,totalBorrowing:totalBorrowing,variance:null,status:"Normal",cif:"—",name:"—",products:{},metricAsOf:MLK_METRIC_AS_OF,rowType:"Sub-total Group"});
   });
   return out;
 }
@@ -3326,6 +3327,9 @@ function dataQualityIssueRows(){
   masterCanonicalQualityIssues().forEach(x=>out.push({
     layer:"Master Limit",domain:x.domain||"Master Limit",key:x.key||"—",object:x.key||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue",recordId:null,productId:null
   }));
+  entityScopeDataQualityIssues().forEach(x=>out.push({
+    layer:"Product Database",domain:x.limitType||"Product Database",key:x.recordId||"—",object:x.productId||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
+  }));
   canonicalProductQualityIssues().forEach(x=>out.push({
     layer:"Product Database",domain:"Product Database",key:x.recordId||"—",object:x.productId||"—",issueType:x.type,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
   }));
@@ -3419,6 +3423,24 @@ function productContributionMap(type,key){
 }
 function productContributionDetail(type,key){return Object.entries(productContributionMap(type,key)).map(([product,amount])=>({product,amount})).filter(x=>x.amount!==0);}
 
+function entityScopeDataQualityIssues(){
+  const issues=[];
+  Object.values(productDatabase||{}).flat().forEach(r=>{
+    const entity=String(r.meta?.reportingEntity||"").toUpperCase();
+    if(!entity)return;
+    if(!entityMasterByCode[entity])issues.push({layer:"Product Database",limitType:"Reference",key:r.recordId,type:"INVALID_ENTITY_ENRICHMENT",detail:"Reporting entity enrichment is not registered in Entity Master.",productId:r.productId,recordId:r.recordId});
+    if((r.productId==="CASHLOAN"||r.productId==="NON CASH LOAN"||r.productId==="CREDIT LINE")){
+      const cclType=String(r.meta?.cclLimitType||"").toUpperCase();
+      if(cclType&&r.productId!=="CASHLOAN"&&["DIRECT","INDIRECT"].indexOf(cclType)<0)
+        issues.push({layer:"Product Database",limitType:"CCL",key:r.recordId,type:"CCL_LIMIT_TYPE_INVALID",detail:"Product CCL limit type enrichment is invalid.",productId:r.productId,recordId:r.recordId});
+      if(String(r.meta?.integrationDomains||"").includes("MLK")&&!mlkEntityEligible(entity))
+        issues.push({layer:"Product Database",limitType:"MLK",key:r.recordId,type:"MLK_ENTITY_NOT_ELIGIBLE",detail:"Product record is enriched with an entity outside MLK scope.",productId:r.productId,recordId:r.recordId});
+      if(String(r.meta?.integrationDomains||"").includes("CCL")&&!cclEntityScopeByCode[entity])
+        issues.push({layer:"Product Database",limitType:"CCL",key:r.recordId,type:"CCL_ENTITY_NOT_ELIGIBLE",detail:"Product record is enriched with an entity outside CCL scope.",productId:r.productId,recordId:r.recordId});
+    }
+  });
+  return issues;
+}
 function canonicalProductQualityIssues(){
   const issues=[];
   Object.entries(productDatabase).forEach(([productId,rows])=>{
@@ -3471,6 +3493,9 @@ function masterCanonicalQualityIssues(){
           if(x.sourced&&x.domestic!==null&&x.overseas!==null&&Math.abs(x.total-(x.domestic+x.overseas))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"PRODUCT_SPLIT_MISMATCH",detail:x.product+" Domestic + Overseas ≠ Product Total."});
         });
       }
+      if(type==="MLK"){
+        if(r.entity&&!mlkEntityEligible(r.entity))issues.push({layer:"Master Limit",domain:type,key:r.key,type:"INVALID_ENTITY_SCOPE",detail:"MLK entity is outside the confirmed MLK entity universe."});
+      }
       if(type==="CCL"){
         if(!cclEntityScopeByCode[String(r.entity||"").toUpperCase()]&&r.entity){
           issues.push({layer:"Master Limit",domain:type,key:r.key,type:"INVALID_ENTITY_SCOPE",detail:"CCL entity scope is not registered in Entity Master."});
@@ -3482,6 +3507,13 @@ function masterCanonicalQualityIssues(){
         if(r.creditLineLimit!==undefined&&Math.abs(Number(r.creditLineLimit)-(comm+trs))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_FACILITY_TOTAL_MISMATCH",detail:"Credit Line Total ≠ Commercial Line + Treasury Line."});
         const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0);
         if(Math.abs(direct-(Number(r.ccl)||0))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_ENTITY_ALLOCATION_MISMATCH",detail:"Sum of Direct entity CCL allocations ≠ CCL master."});
+      }
+      if(type==="CCL"){
+        const scoped=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key));
+        scoped.forEach(x=>{
+          if(!entityMasterByCode[x.entityCode])issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_ENTITY_REFERENCE_INVALID",detail:"CCL scope references an entity not present in Entity Master: "+x.entityCode});
+          if(!["DIRECT","INDIRECT"].includes(String(x.limitType)))issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_LIMIT_TYPE_INVALID",detail:"CCL scope type must be DIRECT or INDIRECT."});
+        });
       }
       if(type==="CIL"){
         const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
