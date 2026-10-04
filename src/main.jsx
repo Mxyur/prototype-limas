@@ -3029,11 +3029,28 @@ function cleanseMasterData(){
     if(Number(r.ic)>0&&Number(r.multiplier)>0)r.cit=Number((r.ic*r.multiplier).toFixed(2));
   });
   (limasDemoData.LPG||[]).forEach(r=>{
+    // LPG master values are source-owned. KP + OVS is a non-regional scope and
+    // must never be derived by subtracting regional scopes during cleansing.
+    // Reconciliation is validation-only and must not mutate explicit master values.
     const bankwide=Number(r.limits?.Bankwide)||0;
-    const regionValues=LPG_REGIONAL_SCOPES.map(s=>r.limits?.[s]).filter(v=>v!==undefined&&v!==null).map(Number);
-    if(r.limits&&regionValues.length===LPG_REGIONAL_SCOPES.length&&r.limits["KP + OVS"]!==undefined){
-      const regional=regionValues.reduce((a,v)=>a+(Number(v)||0),0);
-      r.limits["KP + OVS"]=Number((bankwide-regional).toFixed(2));
+    const regionalValues=LPG_REGION_ONLY_SCOPES
+      .map(scope=>r.limits?.[scope])
+      .filter(v=>v!==undefined&&v!==null)
+      .map(Number);
+    if(r.limits&&regionalValues.length===LPG_REGION_ONLY_SCOPES.length){
+      const regional=regionalValues.reduce((a,v)=>a+(Number(v)||0),0);
+      const derivedKpOvs=Number((bankwide-regional).toFixed(2));
+      const configuredKpOvs=r.limits["KP + OVS"];
+      // Keep the explicit source/master value intact. The derived value is
+      // intentionally not written back; reconciliation consumes it separately.
+      if(configuredKpOvs!==undefined&&configuredKpOvs!==null){
+        r.lpgDerivedChecks={
+          ...(r.lpgDerivedChecks||{}),
+          kpOvsDerivedFromBankwide:derivedKpOvs,
+          kpOvsSourceValue:Number(configuredKpOvs),
+          kpOvsVariance:Number((Number(configuredKpOvs)-derivedKpOvs).toFixed(2))
+        };
+      }
     }
   });
   Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
