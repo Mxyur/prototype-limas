@@ -36,7 +36,7 @@ const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_re
 const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT Asuransi Tugu Pratama Indonesia Tbk","Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":"BMRI","EIL Entitas (Rp Juta)":"60093270.28","Nominal Pertanggungan 2025 (Rp Juta)":"11573402.55","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":"13060790.52","Utilisasi EIL (%)":"21.73%","CIL (Rp Juta)":"107814276.74","CIT (Rp Juta)":"108150600","Utilisasi CIL (%)":"11.02%","% Utilisasi (Nominal Pertanggungan/CIL)":"10.74%","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)":"12.12%","Skor Akreditasi (PCP)":"79.38","Klasifikasi EWS (PCP)":"Monitoring","Status / Rekomendasi Action Plan":"Monitoring as usual / no specific action"},"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "286035.62", "total_bade": "286035.62", "project_location": "China", "code": "CN", "MatDate/Jatem": "", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "24532.90", "BALANCE": "24532.90", "EXCHANGERT": "17310", "EQVIDR": "425000000", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "FABIAEAA", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "CCY": "AED", "Balance": "26.64", "FX Rate to IDR": "4700", "FX Rate Date": "2026-04-30", "Balance IDR": "125208"}};
 const integrationRuntimeSource={
   Country:{"CASHLOAN":"Big Data (adjusted Country)","NON CASH LOAN":"NTF -> Provided by DWB","CREDIT LINE":"Data Utilisasi Credit Line","BONDS":"Market Risk/Treasury","NOSTRO":"Internal Mandiri"},
-  CCL:{"CASHLOAN":"Core Banking Limit System","NON CASH LOAN":"Core Banking Limit System","CREDIT LINE":"Core Banking Limit System"},
+  CCL:{"CREDIT LINE":"Credit Line Utilization / Derived from FI CL + FI NCL + Treasury"},
   MLK:{"CASHLOAN":"LIMAST","NON CASH LOAN":"LIMAST","CREDIT LINE":"LIMAST"},
   CIL:{"Nominal Pertanggungan":"CIL_MONITORING"},
   LPG:{"CASHLOAN":"Master Debitur / Master Cash Loan → LPG aggregation","NON CASH LOAN":"Master Debitur / Master NCL → LPG aggregation"}
@@ -50,7 +50,7 @@ const integrationTargets={
     "BONDS":"Country Exposure = Issuer Country; Booking Office source = Branch; Domestic/Overseas requires booking-office reference",
     "NOSTRO":"Country Exposure = Bank Country; Booking Office source = Branch; Balance is normalized to IDR using CCY + FX Rate to IDR + FX Rate Date"
 },
-  CCL:{"CASHLOAN":"Bank / Counterparty mapping","NON CASH LOAN":"Swift Code / Counterparty","CREDIT LINE":"Swift Code","Investment Line":"Swift Code / Entity"},
+  CCL:{"CREDIT LINE":"Swift Code → Credit Line → Bank Loan + Commercial Line + Treasury Line"},
   MLK:{"CASHLOAN":"CIF","NON CASH LOAN":"CUSTID / CIF","CREDIT LINE":"CIF / Debtor mapping (Treasury scope)"},
   CIL:{"Nominal Pertanggungan":"Insurance Company + Entity"},
   LPG:{"CASHLOAN":"CIF → Ecosystem LPG / Segmen LPG / Scope Region","NON CASH LOAN":"CUSTID/CIF → Ecosystem LPG / Segmen LPG / Scope Region"}
@@ -117,8 +117,8 @@ const domainDataContract={
   CCL:{
     masterKey:"Kode Bank / Swift Code",
     masterObject:"Counterparty Bank",
-    linkedProducts:["CASHLOAN","NON CASH LOAN","CREDIT LINE"],
-    utilizationGrain:"Bank / Swift Code + Periode",
+    linkedProducts:["CREDIT LINE"],
+    utilizationGrain:"Bank / Swift Code + Entity + Direct/Indirect + Periode",
     masterDescription:"Counterparty profile + risk/capacity basis + approved CCL / contractual limit."
   },
   MLK:{
@@ -524,15 +524,15 @@ function cclEntityFacility(counterpartyKey,entityCode,limitType="DIRECT"){
   }:null;
 }
 function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
-  // CCL exposure is a controlled aggregation of Bank Loan (Cash Loan)
-  // plus Credit Line utilization. NCL is underlying lineage for Commercial
-  // Line and must not be added independently, otherwise the same exposure
-  // can be counted twice.
+  // CCL consumes the derived Credit Line layer only.
+  // Bank Loan = FI Cash Loan upstream; Commercial Line = FI Non Cash Loan upstream;
+  // Treasury Line comes from the Treasury component. Raw CL/NCL are never added
+  // directly to CCL, preventing double counting across lineage layers.
   return productApplicationsFor("CCL",counterpartyKey)
     .filter(a=>
       String(a.entity||"")===String(entityCode) &&
       String(a.cclLimitType||"DIRECT")===String(limitType) &&
-      ["CASHLOAN","CREDIT LINE"].includes(a.productId) && a.cclExposureRole!=="LINEAGE_ONLY"
+      a.productId==="CREDIT LINE"
     )
     .reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
 }
@@ -2958,11 +2958,6 @@ function buildProductIntegrationMappings(){
     const entity=String(r.meta?.reportingEntity||"").toUpperCase()||null;
     if(cif&&E2E_MASTER_DATA.MLK.some(x=>String(x.key)===cif))
       addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF",entity:mlkEntityEligible(entity)?entity:null});
-    if(/^CCL-/i.test(cif)){
-      const cclKey=cif.replace(/^CCL-/i,"");
-      if((limasDemoData.CCL||[]).some(x=>String(x.key).toUpperCase()===cclKey.toUpperCase()))
-        addIntegrationMapping("CASHLOAN",r,{limitType:"CCL",key:cclKey,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan CCL reference -> CCL Swift",entity:entity,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
-    }
   });
 
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
@@ -2980,23 +2975,43 @@ function buildProductIntegrationMappings(){
       });
     }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null});
-    const cclRef=resolveCclMaster("NON CASH LOAN",r);
-    if(cclRef){
-      const sourceField=swift?"Swift Code":"CPNM";
-      const sourceValue=swift?swift:(String(d.CPNM||d.CUSTNM||"").trim());
-      addIntegrationMapping("NON CASH LOAN",r,{
-        limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",
-        sourceField,sourceValue,
-        mappingRule:swift?"NCL Swift Code enrichment -> CCL Swift":"NCL CPNM/Counterparty Reference -> CCL Swift",
-        entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"
-      });
-    }
+    // FI NCL is upstream of Credit Line / Commercial Line.
+    // It is intentionally not registered as a direct CCL utilization mapping.
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
 
+  cclCreditLineLineageAuditRows().forEach(audit=>{
+    checks.push({layer:"CCL Lineage",domain:"CCL",rule:"FI CL -> Bank Loan + FI NCL -> Commercial Line + Treasury -> Credit Line",actual:audit.status,expected:"Normal",diff:null,unit:"Rp Juta",status:audit.status==="Normal"?"PASS":"FAIL"});
+  });
   (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
     const d=r.data||{},swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim(),total=Number(d["Credit Line Total Utilisasi"]||0),country=String(d.Code||"").trim();
-    if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
+    if(swift){
+      const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
+      const limitType=r.meta?.cclLimitType||"DIRECT";
+      const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>
+        /^CL-CCL-/i.test(String(x.recordId||"")) &&
+        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
+        String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
+        (String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()) ||
+         String(x.data?.no_cus||"").toUpperCase()===("CCL-"+String(swift)).toUpperCase())
+      ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
+      const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
+        /^NCL-CCL-/i.test(String(x.recordId||"")) &&
+        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
+        String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
+        (String(x.data?.CPNM||"").toUpperCase()===String(swift).toUpperCase() ||
+         String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()))
+      ).reduce((s,x)=>(s+(Number(x.data?.EQVIDR)||0))/1000000,0);
+      const treasuryUtil=Number(String(d["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+      const derivedCreditLineTotal=clUpstream+nclUpstream+treasuryUtil;
+      addIntegrationMapping("CREDIT LINE",r,{
+        limitType:"CCL",key:swift,amount:derivedCreditLineTotal,label:"Credit Line",
+        sourceField:"Swift Code Vlookup",sourceValue:swift,
+        mappingRule:"FI CL -> Bank Loan + FI NCL -> Commercial Line + Treasury -> Credit Line -> CCL",
+        entity,cclLimitType:limitType,
+        cclLineage:{bankLoan:clUpstream,commercialLine:nclUpstream,treasuryLine:treasuryUtil,creditLineTotal:derivedCreditLineTotal}
+      });
+    }
     const mlkKey=swift.match(/^TL-(.+)$/i)?.[1]||"";
     if(mlkKey&&(limasDemoData.MLK||[]).some(x=>String(x.key)===mlkKey)){
       const treasury=Number(String(d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
@@ -4221,6 +4236,36 @@ function creditLineAuditRows(rows){
     if(!near(commercialUtil+treasuryUtil,creditUtil)) issues.push("Credit Line Utilisasi ≠ Commercial Utilisasi + Treasury Utilisasi");
     return {recordId:r.recordId,status:issues.length?"Data Issue":"Normal",issues};
   });
+}
+
+function cclCreditLineLineageAuditRows(){
+  const rows=[];
+  (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
+    const d=r.data||{}, swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim();
+    if(!swift)return;
+    const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
+    const limitType=r.meta?.cclLimitType||"DIRECT";
+    const cl=(productDatabase.CASHLOAN||[]).filter(x=>/^CL-CCL-/i.test(String(x.recordId||"")) &&
+      String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+      String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
+      (String(x.recordId||"").toUpperCase().includes(swift.toUpperCase()) || String(x.data?.no_cus||"").toUpperCase()===("CCL-"+swift).toUpperCase()))
+      .reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
+    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>/^NCL-CCL-/i.test(String(x.recordId||"")) &&
+      String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+      String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
+      (String(x.data?.CPNM||"").toUpperCase()===swift.toUpperCase() || String(x.recordId||"").toUpperCase().includes(swift.toUpperCase())))
+      .reduce((s,x)=>s+(Number(x.data?.EQVIDR)||0)/1000000,0);
+    const treasury=(Number(d["Treasury DN Utilisasi"]||0)||0)+(Number(d["Treasury LN Utilisasi"]||0)||0);
+    const commercial=Number(d["Comm Line Total Utilisasi"]||0)||0;
+    const sourceTotal=Number(d["Credit Line Total Utilisasi"]||0)||0;
+    const expected=cl+ncl+treasury;
+    const issues=[];
+    if(Math.abs(ncl-commercial)>.01)issues.push("NCL FI ≠ Commercial Line Utilisasi");
+    if(Math.abs((commercial+treasury)-sourceTotal)>.01)issues.push("Commercial + Treasury ≠ Credit Line source total");
+    if(Math.abs(expected-(cl+sourceTotal))>.01)issues.push("Derived Credit Line lineage mismatch");
+    rows.push({recordId:r.recordId,swift,entity,limitType,bankLoan:cl,commercialLine:ncl,commercialLineSource:commercial,treasuryLine:treasury,sourceCreditLine:sourceTotal,derivedCreditLine:expected,status:issues.length?"Data Issue":"Normal",issues});
+  });
+  return rows;
 }
 
 function numericReconciliationAudit(){
