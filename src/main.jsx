@@ -2655,6 +2655,9 @@ function reconciliationIssues(){
     (rows||[]).forEach(row=>{
       const d=row.data||{};
       if(countryProducts.includes(productId)){
+        // Some source records are explicitly scoped to another monitoring domain (e.g. LPG DWH).
+        // Their absence from Country mapping is intentional and must not become a false DQ.
+        if(!integrationDomainAllowed(row,"Country"))return;
         const field=productSourceField(productId,"Country");
         const key=String(d[field]??"").trim();
         const mappings=(productIntegrationMappings[productId]||[]).filter(a=>a.limitType==="Country"&&String(a.recordId)===String(row.recordId));
