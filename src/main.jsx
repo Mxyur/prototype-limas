@@ -788,6 +788,10 @@ function Report({nav}){
       </div>
     </div></section>
     <section className="card">
+      <div className="head"><div><h2>Production Release Gate</h2><p>Report output tetap dapat dibuat untuk review, tetapi readiness mengikuti gate canonical.</p></div><Status v={releaseGate().status==="READY"?"Normal":"Data Issue"}/></div>
+      <div className="body"><div className="toolbar"><span className="chip blue">Gate: {releaseGate().status}</span><span className="muted-small">{releaseGate().blockingLayers.length} blocking layers • {releaseGate().numericFailures.length} numeric failures • {releaseGate().activeDq} active DQ</span></div></div>
+    </section>
+    <section className="card">
       <div className="head"><div><h2>End-to-End Data Control</h2><p>Control point sebelum angka masuk Report dan Monitoring.</p></div><span className="chip blue">Canonical Pipeline</span></div>
       <div className="body"><div className="integration-chip-grid">
         {canonicalPipelineControls().map((x,i)=><div className="mini integration-chip" key={"pipeline-"+i}>
@@ -885,6 +889,19 @@ function Dashboard({nav}){
           <div className="mini integration-chip"><b>3. Product Utilization</b><div className="muted-small">Source record → target key → aggregation → outstanding/exposure.</div></div>
           <div className="mini integration-chip"><b>4. Monitoring / Report</b><div className="muted-small">Utilisasi → remaining → threshold → EWS/Breach → report.</div></div>
         </div></div>
+      </section>
+
+      <section className="card">
+        <div className="head"><div><h2>Production Release Gate</h2><p>Gate final sebelum canonical monitoring/report dianggap siap dipromosikan.</p></div><Status v={releaseGate().status==="READY"?"Normal":"Data Issue"}/></div>
+        <div className="body">
+          <div className="metric-grid">
+            <DomainKpi label="Gate" value={releaseGate().status} sub="Production readiness" accent={releaseGate().status==="READY"?"":"red"}/>
+            <DomainKpi label="Blocking Layers" value={releaseGate().blockingLayers.length} sub="Pipeline layers with issue"/>
+            <DomainKpi label="Numeric Failures" value={releaseGate().numericFailures.length} sub="Arithmetic reconciliation"/>
+            <DomainKpi label="Active DQ" value={releaseGate().activeDq} sub="Open DQ records"/>
+          </div>
+          <div className="field-help">{releaseGate().detail}</div>
+        </div>
       </section>
 
       <section className="card">
@@ -3597,6 +3614,22 @@ function masterCanonicalQualityIssues(){
   });
   return issues;
 }
+function releaseGate(){
+  const controls=canonicalPipelineControls();
+  const numeric=numericReconciliationAudit().filter(x=>x.status==="FAIL");
+  const activeDq=dataQualityIssueRows().length;
+  const blockingLayers=controls.filter(x=>x.status==="Data Issue");
+  const status=blockingLayers.length||numeric.length||activeDq?"BLOCKED":"READY";
+  return {
+    status,
+    blockingLayers,
+    numericFailures:numeric,
+    activeDq,
+    detail:status==="READY"
+      ?"Master, Product Dictionary, Product Database, Integration, Report/Monitoring dan Numeric Reconciliation pass."
+      :"Release ditahan sampai seluruh blocking Data Quality / reconciliation issue cleared."
+  };
+}
 function canonicalPipelineControls(){
   const masterIssues=masterCanonicalQualityIssues();
   const productIssues=canonicalProductQualityIssues();
@@ -4195,6 +4228,7 @@ function ProductUsage({view}){
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table product-master-table"><thead><tr><th>Business Attribute</th><th>Source / Rule</th><th>Canonical Treatment</th></tr></thead>
           <tbody>
+            <tr><td><b>Terminology Crosswalk</b></td><td>{view==="CREDIT LINE"?"TDN / TLN / CDN / CLN": "—"}</td><td>{view==="CREDIT LINE"?"Treasury DN/LN dan Commercial DN/LN adalah vocabulary/source aliases; tidak dibuat sebagai universe product terpisah.":"Source terminology tetap source-native."}</td></tr>
             <tr><td><b>Primary Key</b></td><td>{item.key||"—"}</td><td>Business key product-specific; Record ID tetap technical key.</td></tr>
             <tr><td><b>Country Exposure</b></td><td>{mapping.countryExposureField||"—"}</td><td>{mapping.countryExposureLabel||"Not applicable"}</td></tr>
             <tr><td><b>Booking Office</b></td><td>{mapping.bookingOfficeField||"—"}</td><td>{mapping.bookingOfficeLabel||"Not applicable"}</td></tr>
