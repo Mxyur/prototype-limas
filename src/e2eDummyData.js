@@ -76,7 +76,7 @@ export const E2E_ENTITY_MASTER=[
   {entityCode:"AMFS",entityName:"AMFS",entityType:"SUBSIDIARY",parentEntity:null,countryCode:null,consolidationStatus:null,activeFlag:true}
 ];
 
-export const E2E_MLK_ENTITY_SCOPE=["BMEL","BMRI"];
+export const E2E_MLK_ENTITY_SCOPE=["BMEL","BMRI","MANSEK","MTF","MUF"];
 
 export const E2E_CCL_ENTITY_SCOPE=[
   {entityCode:"BMRI",entityType:"PARENT",direct:true,indirect:false},
