@@ -1,7 +1,7 @@
 // LIMAS integrated production-like baseline dataset.
 // Source records remain source-native; master limits and derived monitoring are separate layers.
 export const E2E_DUMMY_META={
-  datasetId:"LIMAS-E2E-DUMMY-V1",
+  datasetId:"LIMAS-PRODUCTION-SNAPSHOT-V1",
   period:"Oktober 2026 • Integrated Production Snapshot",
   asOfDate:"2026-09-30",
   status:"PRODUCTION",
