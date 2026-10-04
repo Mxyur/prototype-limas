@@ -2,11 +2,17 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
-import {E2E_DUMMY_META,E2E_MASTER_DATA,E2E_DUMMY_PRODUCT_DATA} from './e2eDummyData';
+import {E2E_DUMMY_META,E2E_MASTER_DATA,E2E_DUMMY_PRODUCT_DATA,E2E_COUNTRY_MONITORING_POLICY,E2E_ENTITY_MASTER,E2E_MLK_ENTITY_SCOPE,E2E_CCL_ENTITY_SCOPE,E2E_CCL_LIMIT_SCOPE} from './e2eDummyData';
 const LPG_BANK_SCOPE="Bankwide";
 const LPG_REGIONAL_SCOPES=["Region I","Region II","Region III","Region IV","Region V","Region VI","Region VII","Region VIII","Region IX","Region X","Region XI","Region XII","KP + OVS"];
 const LPG_SCOPES=[LPG_BANK_SCOPE,...LPG_REGIONAL_SCOPES];
+const LPG_REGION_ONLY_SCOPES=LPG_REGIONAL_SCOPES.filter(scope=>scope!=="KP + OVS");
 const lpgScopeKey=(scope)=>String(scope).replace(/[^A-Za-z0-9]+/g,"_");
+const HOME_COUNTRY_CODE=E2E_COUNTRY_MONITORING_POLICY.homeCountryCode||"ID";
+const countryMonitoringEligible=(code)=>!E2E_COUNTRY_MONITORING_POLICY.excludedCountryCodes.includes(String(code||"").trim().toUpperCase());
+const entityMasterByCode=Object.fromEntries((E2E_ENTITY_MASTER||[]).map(x=>[x.entityCode,x]));
+const mlkEntityEligible=(code)=>(E2E_MLK_ENTITY_SCOPE||[]).includes(String(code||"").toUpperCase());
+const cclEntityScopeByCode=Object.fromEntries((E2E_CCL_ENTITY_SCOPE||[]).map(x=>[x.entityCode,x]));
 
 const RBAC_SESSION_KEY="limas_rbac_session_v1";
 const RBAC_ROLES={Maker:{label:"Maker",user:"Risk Management Maker"},Checker:{label:"Checker",user:"Risk Management Checker"},Viewer:{label:"Viewer",user:"Risk Management Viewer"}};
@@ -64,7 +70,21 @@ function getMasterSections(type){
     "Identitas":s["Identitas"]||[],
     "Limit & Gap":s["Limit & Gap"]||[]
   };
-  if(type==="CCL") return {"Bank Profile":s["Bank Profile"]||[],"Risk & Capacity":s["Risk & Capacity"]||[],"Limit":(s["Limit"]||[]).filter(([f])=>f!=="Utilisasi Capacity")};
+  if(type==="CCL") return {
+    "Bank Profile":s["Bank Profile"]||[],
+    "Risk & Capacity":s["Risk & Capacity"]||[],
+    "Limit":(s["Limit"]||[]).filter(([f])=>f!=="Utilisasi Capacity"),
+    "Facility Allocation":[
+      ["Bank Loan Limit (Rp Miliar)","—"],
+      ["Commercial DN Limit (Rp Miliar)","—"],
+      ["Commercial LN Limit (Rp Miliar)","—"],
+      ["Commercial Line Limit (Rp Miliar)","—"],
+      ["Treasury DN Limit (Rp Miliar)","—"],
+      ["Treasury LN Limit (Rp Miliar)","—"],
+      ["Treasury Line Limit (Rp Miliar)","—"]
+    ],
+    "Entity Scope":[["Direct Limit Entities","—"],["Indirect Limit Entities","—"]]
+  };
   if(type==="MLK") return {"Profil Debitur":s["Profil Debitur"]||[],"Risk & Regulatory":s["Risk & Regulatory"]||[],"Financial & Capacity":s["Financial & Capacity"]||[],"Product Limit & Exposure":(s["Product Limit & Exposure"]||[]).filter(([f])=>!String(f).toLowerCase().includes("bade")),"Master Limit":s["Master Limit"]||[]};
   if(type==="CIL") return {
     "Insurance Profile":s["Insurance Profile"]||[],
@@ -266,9 +286,17 @@ function lpgScopeExposure(row,scope=LPG_BANK_SCOPE){
 function lpgScopeSource(row,scope=LPG_BANK_SCOPE){
   return lpgScopeProductExposure(row,scope).apps.length?"Product Feed":"No Product Data";
 }
+function lpgScopeLimitStatus(row,scope){
+  const raw=row?.limits?.[scope];
+  if(raw===null||raw===undefined||raw==="")return "NOT_CONFIGURED";
+  return Number(raw)===0?"APPROVED_ZERO":"CONFIGURED";
+}
 function lpgScopeUtil(row,scope){
+  const limitStatus=lpgScopeLimitStatus(row,scope);
   const lim=lpgScopeLimit(row,scope),exp=lpgScopeExposure(row,scope);
-  return lim&&exp!==null?exp/lim:null;
+  if(exp===null||limitStatus==="NOT_CONFIGURED")return null;
+  if(Number(lim)===0)return exp>0?Infinity:0;
+  return exp/lim;
 }
 function lpgMaxUtilization(row){return Math.max(...LPG_SCOPES.map(scope=>lpgScopeUtil(row,scope)).filter(v=>v!==null),0);}
 function lpgExceptionScope(row){
@@ -276,10 +304,11 @@ function lpgExceptionScope(row){
 }
 function lpgCrosscheck(row){
   const bw=lpgScopeExposure(row,LPG_BANK_SCOPE);
-  const regional=LPG_REGIONAL_SCOPES.map(scope=>lpgScopeExposure(row,scope)).filter(v=>v!==null);
+  const regionApps=LPG_REGION_ONLY_SCOPES.map(scope=>lpgScopeExposure(row,scope)).filter(v=>v!==null);
+  const kpoApps=lpgScopeExposure(row,"KP + OVS");
   if(bw===null)return {status:"Pending",variance:null,mode:"Bankwide product data belum tersedia"};
-  if(regional.length===0)return {status:"Pending",variance:null,mode:"Regional product data belum tersedia"};
-  const sum=regional.reduce((a,v)=>a+v,0),variance=bw-sum;
+  if(regionApps.length===0&&kpoApps===null)return {status:"Pending",variance:null,mode:"Scope product data belum tersedia"};
+  const sum=regionApps.reduce((a,v)=>a+v,0)+(kpoApps??0),variance=bw-sum;
   return {status:Math.abs(variance)<0.01?"Match":"Selisih",variance,mode:"Product Feed"};
 }
 function lpgSourceCoverage(row){
@@ -467,6 +496,80 @@ function countryMaxUtilization(row){
   const countryUtil=recordLimit("Country",row)?recordExposure("Country",row)/recordLimit("Country",row):0;
   return Math.max(countryUtil,...metrics.flatMap(x=>[x.productUtil||0,x.domesticUtil||0,x.overseasUtil||0]));
 }
+function cclScopeRecords(counterpartyKey,limitType=null,entityCode=null){
+  return (E2E_CCL_LIMIT_SCOPE||[]).filter(x=>
+    String(x.counterpartyId)===String(counterpartyKey) &&
+    (!limitType||x.limitType===limitType) &&
+    (!entityCode||x.entityCode===entityCode)
+  );
+}
+function cclScopeLimit(counterpartyKey,entityCode,limitType="DIRECT"){
+  const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
+  return row?normalizeMasterLimit("CCL",row.ccl).amount:null;
+}
+function cclScopeContractual(counterpartyKey,entityCode,limitType="DIRECT"){
+  const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
+  return row?normalizeMasterLimit("CCL",row.contractual).amount:null;
+}
+function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
+  return productApplicationsFor("CCL",counterpartyKey)
+    .filter(a=>String(a.entity||"")===String(entityCode)&&String(a.cclLimitType||"DIRECT")===String(limitType))
+    .reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
+}
+function cclCategoryMetric(category,entityCode=null,limitType="DIRECT",includeParent=false){
+  const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
+  const scopes=E2E_CCL_LIMIT_SCOPE.filter(x=>x.limitType===limitType&&(!entityCode||x.entityCode===entityCode)&&masters.some(m=>String(m.key)===String(x.counterpartyId)));
+  const counterpartyCount=new Set(scopes.map(x=>String(x.counterpartyId))).size;
+  const ccl=scopes.reduce((s,x)=>s+(Number(x.ccl)||0),0)*1000;
+  const contractual=scopes.reduce((s,x)=>s+(Number(x.contractual)||0),0)*1000;
+  const os=scopes.reduce((s,x)=>s+cclEntityExposure(x.counterpartyId,x.entityCode,x.limitType),0);
+  return {counterpartyCount,ccl,contractual,os,osMax:os,util:contractual?os/contractual:0};
+}
+function cclCategoryAllMetric(category,limitType="DIRECT"){
+  const masters=(limasDemoData.CCL||[]).filter(r=>String(r.category||"")===String(category));
+  const scopes=E2E_CCL_LIMIT_SCOPE.filter(x=>x.limitType===limitType&&masters.some(m=>String(m.key)===String(x.counterpartyId)));
+  const counterpartyCount=new Set(scopes.map(x=>String(x.counterpartyId))).size;
+  const ccl=scopes.reduce((s,x)=>s+(Number(x.ccl)||0),0)*1000;
+  const contractual=scopes.reduce((s,x)=>s+(Number(x.contractual)||0),0)*1000;
+  const os=scopes.reduce((s,x)=>s+cclEntityExposure(x.counterpartyId,x.entityCode,x.limitType),0);
+  return {counterpartyCount,ccl,contractual,os,osMax:os,util:contractual?os/contractual:0};
+}
+function buildCCLDirectReportRows(){
+  const cats=[...new Set((limasDemoData.CCL||[]).map(r=>r.category).filter(Boolean))];
+  return cats.map((category,i)=>{
+    const cons=cclCategoryAllMetric(category,"DIRECT");
+    const bmri=cclCategoryMetric(category,"BMRI","DIRECT");
+    const subsidiaries={counterpartyCount:0,ccl:0,contractual:0,os:0,osMax:0,util:0};
+    E2E_CCL_ENTITY_SCOPE.filter(x=>x.entityCode!=="BMRI"&&x.direct).forEach(x=>{
+      const m=cclCategoryMetric(category,x.entityCode,"DIRECT");
+      subsidiaries.counterpartyCount+=m.counterpartyCount;subsidiaries.ccl+=m.ccl;subsidiaries.contractual+=m.contractual;subsidiaries.os+=m.os;subsidiaries.osMax+=m.osMax;
+    });
+    subsidiaries.util=subsidiaries.contractual?subsidiaries.os/subsidiaries.contractual:0;
+    return {
+      no:i+1,category,counterpartyCount:cons.counterpartyCount,
+      consolidatedCcl:cons.ccl,consolidatedContractual:cons.contractual,consolidatedOs:cons.os,consolidatedOsMax:cons.osMax,consolidatedUtil:cons.util,
+      bmriCcl:bmri.ccl,bmriContractual:bmri.contractual,bmriOs:bmri.os,bmriOsMax:bmri.osMax,bmriUtil:bmri.util,
+      subsidiaryCcl:subsidiaries.ccl,subsidiaryContractual:subsidiaries.contractual,subsidiaryOs:subsidiaries.os,subsidiaryOsMax:subsidiaries.osMax,subsidiaryUtil:subsidiaries.util,
+      status:cons.util>=1?"Breach":cons.util>=.8?"Warning":"Normal"
+    };
+  });
+}
+function buildCCLIndirectReportRows(){
+  const cats=[...new Set((limasDemoData.CCL||[]).map(r=>r.category).filter(Boolean))];
+  return cats.map((category,i)=>{
+    const mmi=cclCategoryMetric(category,"MMI","INDIRECT"),amfs=cclCategoryMetric(category,"AMFS","INDIRECT");
+    const cons={counterpartyCount:mmi.counterpartyCount+amfs.counterpartyCount,ccl:mmi.ccl+amfs.ccl,contractual:mmi.contractual+amfs.contractual,os:mmi.os+amfs.os,osMax:mmi.osMax+amfs.osMax};
+    cons.util=cons.contractual?cons.os/cons.contractual:0;
+    return {
+      no:i+1,category,counterpartyCount:cons.counterpartyCount,
+      consolidatedCcl:cons.ccl,consolidatedContractual:cons.contractual,consolidatedOs:cons.os,consolidatedOsMax:cons.osMax,consolidatedUtil:cons.util,
+      mmiCcl:mmi.ccl,mmiContractual:mmi.contractual,mmiOs:mmi.os,mmiOsMax:mmi.osMax,mmiUtil:mmi.util,
+      amfsCcl:amfs.ccl,amfsContractual:amfs.contractual,amfsOs:amfs.os,amfsOsMax:amfs.osMax,amfsUtil:amfs.util,
+      status:cons.util>=1?"Breach":cons.util>=.8?"Warning":"Normal"
+    };
+  });
+}
+
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
@@ -552,7 +655,9 @@ function mlkMonitoringRows(rows){
   const out=[];
   rows.forEach(r=>{
     const f=mlkFacilityMetrics(r),bmpkKonsol=mlkNum(r.bmpkKonsol),bmpkEntitas=mlkNum(r.bmpkEntitas),borrowing=mlkNum(r.borrowingCapacity),masterLimit=mlkNum(r.masterLimit),setting=mlkNum(r.masterLimitSetting);
-    out.push({no:out.length+1,tier:r.tier,holding:r.groupUsahaHolding||r.group,subGroup:r.subGroup||r.group,flag:r.bumnSwasta,unit:r.unitKerja,entity:r.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:null,utilBade:f.totalLimitExisting?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk:null,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:productContributionMap("MLK",r.key),rowType:"Debtor"});
+    const mlkValue=masterLimit;
+    const utilMlkBmpk=bmpkEntitas&&mlkValue?mlkValue/bmpkEntitas:null,utilMlkBmpkConsol=bmpkKonsol&&mlkValue?mlkValue/bmpkKonsol:null;
+    out.push({no:out.length+1,tier:r.tier,holding:r.groupUsahaHolding||r.group,subGroup:r.subGroup||r.group,flag:r.bumnSwasta,unit:r.unitKerja,entity:r.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:mlkValue,utilBade:f.totalLimitExisting&&f.totalBadeExisting!==null?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk,utilMlkBmpkConsol,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:productContributionMap("MLK",r.key),rowType:"Debtor"});
   });
   const groups=new Map();
   rows.forEach(r=>{const h=r.groupUsahaHolding||r.group||"—";if(!groups.has(h))groups.set(h,[]);groups.get(h).push(r);});
@@ -560,7 +665,9 @@ function mlkMonitoringRows(rows){
     const totalMaster=mlkSum(members,"masterLimit"),totalBorrowing=mlkSum(members,"borrowingCapacity"),totalBmpk=mlkSum(members,"bmpkEntitas");
     const facility=members.map(mlkFacilityMetrics).map(x=>x.totalLimitExisting).filter(v=>v!==null).reduce((a,v)=>a+v,0);
     const bade=members.map(mlkFacilityMetrics).reduce((a,x)=>a+(x.totalBadeExisting||0),0);
-    out.push({no:out.length+1,tier:"—",holding,subGroup:"Sub-total Group",flag:members[0]?.bumnSwasta||"—",unit:"—",entity:"Sub-total Group",bmpkKonsol:mlkSum(members,"bmpkKonsol"),bmpkEntitas:totalBmpk,limitFasilitas:facility,bade,borrowing:totalBorrowing,masterLimit:null,masterLimitSetting:null,mlk:null,utilBade:facility?bade/facility:null,utilFacilityBmpk:totalBmpk?facility/totalBmpk:null,utilMlkBmpk:null,debtors:members.length,totalBmpk:totalBmpk,totalMaster:totalMaster,totalBorrowing:totalBorrowing,variance:null,status:"Normal",cif:"—",name:"—",products:{},rowType:"Sub-total Group"});
+    const groupMlk=totalMaster;
+    const groupBmpkKonsol=mlkSum(members,"bmpkKonsol"),groupMlkToBmpkConsol=groupBmpkKonsol&&groupMlk?groupMlk/groupBmpkKonsol:null,groupMlkToBmpkEntitas=totalBmpk&&groupMlk?groupMlk/totalBmpk:null;
+    out.push({no:out.length+1,tier:"—",holding,subGroup:"Sub-total Group",flag:members[0]?.bumnSwasta||"—",unit:"—",entity:"Sub-total Group",bmpkKonsol:groupBmpkKonsol,bmpkEntitas:totalBmpk,limitFasilitas:facility,bade,borrowing:totalBorrowing,masterLimit:null,masterLimitSetting:null,mlk:groupMlk,utilBade:facility&&bade!==null?bade/facility:null,utilFacilityBmpk:totalBmpk&&facility?facility/totalBmpk:null,utilMlkBmpk:groupMlkToBmpkEntitas,utilMlkBmpkConsol:groupMlkToBmpkConsol,debtors:members.length,totalBmpk:totalBmpk,totalMaster:totalMaster,totalBorrowing:totalBorrowing,variance:null,status:"Normal",cif:"—",name:"—",products:{},rowType:"Sub-total Group"});
   });
   return out;
 }
@@ -589,6 +696,22 @@ const LPG_REPORT_COLUMNS=[
     ["CL • Bankwide","cl"],["NCL • Bankwide","ncl"],["Bankwide vs Regional","crosscheck"],["Bankwide Source Reconciliation","bankwideReconciliation"],["Regional Source Coverage","regionalCoverage"],["Data Quality","dataQuality"],["Status","status"]
 ];
 const reportConfig={
+  "CCL_DIRECT":{title:"CCL Direct Limit — BMRI & Perusahaan Anak",subtitle:"Consolidated vs BMRI vs Subsidiaries by counterparty category.",source:"CCL entity scope + counterparty master",note:"Direct Limit memakai entity universe BMRI + seluruh Perusahaan Anak yang telah ditetapkan; Subsidiaries adalah aggregation bucket, bukan entity baru.",columns:[
+    ["No","no"],["Kategori Bank","category"],["Jumlah Bank","counterpartyCount"],
+    ["Konsolidasi • CCL","consolidatedCcl"],["Konsolidasi • Limit Kontraktual","consolidatedContractual"],["Konsolidasi • OS","consolidatedOs"],["Konsolidasi • OS Max","consolidatedOsMax"],["Konsolidasi • Utilisasi (%)","consolidatedUtil"],
+    ["Bank Mandiri • CCL","bmriCcl"],["Bank Mandiri • Limit Kontraktual","bmriContractual"],["Bank Mandiri • OS","bmriOs"],["Bank Mandiri • OS Max","bmriOsMax"],["Bank Mandiri • Utilisasi (%)","bmriUtil"],
+    ["Perusahaan Anak • CCL","subsidiaryCcl"],["Perusahaan Anak • Limit Kontraktual","subsidiaryContractual"],["Perusahaan Anak • OS","subsidiaryOs"],["Perusahaan Anak • OS Max","subsidiaryOsMax"],["Perusahaan Anak • Utilisasi (%)","subsidiaryUtil"],["Status","status"]
+  ]},
+  "CCL_INDIRECT":{title:"CCL Indirect Limit — MMI & AMFS",subtitle:"Indirect Limit khusus MMI dan AMFS.",source:"CCL entity scope + counterparty master",note:"MMI Direct/Indirect dan AMFS Direct/Indirect disimpan sebagai scope yang berbeda; tidak saling overwrite.",columns:[
+    ["No","no"],["Kategori Bank","category"],["Jumlah Bank","counterpartyCount"],
+    ["Konsolidasi • CCL","consolidatedCcl"],["Konsolidasi • Limit Kontraktual","consolidatedContractual"],["Konsolidasi • OS","consolidatedOs"],["Konsolidasi • OS Max","consolidatedOsMax"],["Konsolidasi • Utilisasi (%)","consolidatedUtil"],
+    ["MMI • CCL","mmiCcl"],["MMI • Limit Kontraktual","mmiContractual"],["MMI • OS","mmiOs"],["MMI • OS Max","mmiOsMax"],["MMI • Utilisasi (%)","mmiUtil"],
+    ["AMFS • CCL","amfsCcl"],["AMFS • Limit Kontraktual","amfsContractual"],["AMFS • OS","amfsOs"],["AMFS • OS Max","amfsOsMax"],["AMFS • Utilisasi (%)","amfsUtil"],["Status","status"]
+  ]},
+  "MLK_CONSOLIDATED":{title:"Management Limit Konsolidasi (MLK)",subtitle:"Group → Entity dengan facility limit, Bade, BMPK dan MLK.",source:"MLK Master + entity scope + Product Utilization",note:"Group row adalah aggregation. Entity row adalah underlying contribution. Consolidated value tidak dijumlahkan kembali dengan entity rows.",columns:[
+    ["No","no"],["Group Usaha","holding"],["BUMN/Swasta","flag"],["Unit Kerja Pengelola BMRI","unit"],["Entitas","entity"],["BMPK Konsol","bmpkKonsol"],["BMPK Entitas","bmpkEntitas"],["Limit Fasilitas","limitFasilitas"],["Total Bade","bade"],["Borrowing Capacity","borrowing"],["Master Limit","masterLimit"],["Master Limit Konsolidasi (MLK)","mlk"],["Utilisasi Limit Fasilitas","utilBade"],["MLK thd BMPK Entitas","utilMlkBmpk"],["MLK thd BMPK Konsol","utilMlkBmpkConsol"],["Status","status"]
+  ]},
+
   Country:{title:"3. Monitoring Eksposur & Capacity Limit per Negara",subtitle:"Capacity Limit → Domestic/Overseas Distribution → Product Limit → Domestic/Overseas Exposure.",source:"master_reportMonitoring.xlsx • Sheet COUNTRY_MONITORING",note:"Country capacity adalah master layer. Capacity didistribusikan ke Domestic/Overseas lalu diturunkan ke masing-masing product. Exposure/Bade tetap menjadi monitoring layer dan Domestic/Overseas ditentukan dari Booking Office Type.",columns:[
     ["No","no"],["Negara","country"],["Code","code"],["Status","statusMaster"],["Capacity Limit","capacity"],["Capacity Distribution Domestic","capacityDomestic"],["Capacity Distribution Overseas","capacityOverseas"],["Allocated Capacity","allocatedCapacity"],["Unallocated Capacity","unallocatedCapacity"],["CASHLOAN Domestic Limit","clDomesticLimit"],["CASHLOAN Overseas Limit","clOverseasLimit"],["CASHLOAN Total Limit","clTotalLimit"],["NON CASH LOAN Domestic Limit","nclDomesticLimit"],["NON CASH LOAN Overseas Limit","nclOverseasLimit"],["NON CASH LOAN Total Limit","nclTotalLimit"],["CREDIT LINE Domestic Limit","comDomesticLimit"],["CREDIT LINE Overseas Limit","comOverseasLimit"],["CREDIT LINE Total Limit","comTotalLimit"],["BONDS Domestic Limit","bondDomesticLimit"],["BONDS Overseas Limit","bondOverseasLimit"],["BONDS Total Limit","bondTotalLimit"],["NOSTRO Domestic Limit","nosDomesticLimit"],["NOSTRO Overseas Limit","nosOverseasLimit"],["NOSTRO Total Limit","nosTotalLimit"],["Domestic Exposure","domestic"],["Overseas Exposure","overseas"],["Unmapped Booking Exposure","unmapped"],["TOTAL EXPOSURE","total"],["Status Monitoring","status"]
   ]},
@@ -620,13 +743,15 @@ function downloadReportCsv(type,rows){
 }
 function Report({nav}){
   const [type,setType]=useState("Country"),[period,setPeriod]=useState(E2E_DUMMY_META.period),[status,setStatus]=useState("All"),[generated,setGenerated]=useState(false);
-  const rows=(buildReportDummy(limasDemoData)[type]||[]),filtered=rows.filter(r=>status==="All"||statusForReport(r)===status),cfg=reportConfig[type];
+  const reportData=buildReportDummy(limasDemoData);
+  const rows=type==="CCL_DIRECT"?buildCCLDirectReportRows():type==="CCL_INDIRECT"?buildCCLIndirectReportRows():type==="MLK_CONSOLIDATED"?(reportData.MLK||[]):(reportData[type]||[]);
+  const filtered=rows.filter(r=>status==="All"||statusForReport(r)===status),cfg=reportConfig[type];
   const generate=()=>setGenerated(true);
   const summary={total:rows.length,normal:rows.filter(r=>statusForReport(r)==="Normal").length,warning:rows.filter(r=>statusForReport(r)==="Warning").length,breach:rows.filter(r=>statusForReport(r)==="Breach").length,issue:rows.filter(r=>statusForReport(r)==="Data Issue").length};
   return <Layout screen="report" onNav={nav}><Header title="Generate Monitoring Report" subtitle="Generate report monitoring dengan struktur yang mengikuti master report masing-masing limit"/><div className="page">
     <section className="card"><div className="head"><div><h2>Report Generator</h2><p>Generate report dari monitoring read model yang sama dengan halaman Monitoring.</p></div><div className="chip blue">Prototype Reconciled Data • {rows.length} records</div></div><div className="body">
       <div className="report-controls">
-        <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>MLK</option><option>CIL</option><option>LPG</option></select></div>
+        <div><label>Jenis Report</label><select className="select" value={type} onChange={e=>{setType(e.target.value);setGenerated(false);setStatus("All")}}><option>Country</option><option>CCL</option><option>CCL_DIRECT</option><option>CCL_INDIRECT</option><option>MLK</option><option>MLK_CONSOLIDATED</option><option>CIL</option><option>LPG</option></select></div>
         <div><label>Periode</label><select className="select" value={period} onChange={e=>setPeriod(e.target.value)}><option>{E2E_DUMMY_META.period}</option></select></div>
         <div><label>Status</label><select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select></div>
         <div className="report-actions"><button className="btn primary" onClick={generate}>Generate Report</button><button className="btn secondary" onClick={()=>downloadReportCsv(type,filtered)}>Download CSV</button></div>
@@ -652,7 +777,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['subsidiaries','♙','Perusahaan Anak'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===6&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>{currentLimasUser()}</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS • {roleLabel()}</div></div></div></div>}
 function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user);return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><button className="btn primary" onClick={()=>{setLimasSession(role,user);go();}}>Masuk ke LIMAS</button><div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -1203,18 +1328,53 @@ function LPGMonitor({nav}){
 }
 
 function MLKMonitor({nav}){
-  const rows=mlkMonitoringRows(limasDemoData.MLK||[]),debtors=rows.filter(r=>r.rowType==="Debtor");
+  const [entity,setEntity]=useState("ALL");
+  const allRows=mlkMonitoringRows(limasDemoData.MLK||[]);
+  const rows=allRows.filter(r=>r.rowType!=="Debtor"||entity==="ALL"||String(r.entity)===entity);
+  const debtors=rows.filter(r=>r.rowType==="Debtor");
   const totalLimit=debtors.reduce((a,r)=>a+(Number(r.masterLimit)||0),0),totalExposure=debtors.reduce((a,r)=>a+(Number(r.bade)||0),0),util=totalLimit?totalExposure/totalLimit:0;
   return <Layout screen="MLK" onNav={nav}><Header title="Debtor / MLK Monitoring" subtitle="Holding → Sub-Group → Entitas → Debtor/CIF • Facility Limit + Bade + Master Limit"/><div className="page">
+    <section className="card"><div className="body"><div className="toolbar"><label className="muted-small">Entity Scope</label><select className="select" value={entity} onChange={e=>setEntity(e.target.value)}><option value="ALL">ALL MLK ENTITIES</option>{E2E_MLK_ENTITY_SCOPE.map(code=><option key={code} value={code}>{code}</option>)}</select><span className="chip blue">Scope: {E2E_MLK_ENTITY_SCOPE.join(" • ")}</span></div></div></section>
     <div className="metric-grid"><DomainKpi label="Debtor / CIF" value={debtors.length} sub="Canonical MLK master"/><DomainKpi label="Master Limit" value={totalLimit.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Final debtor Master Limit"/><DomainKpi label="Total Bade" value={totalExposure.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="CL + NCL + Treasury Bade"/><DomainKpi label="Utilisasi Master" value={(util*100).toFixed(2)+"%"} sub="Total Bade / Master Limit" accent={util>=1?"red":util>=0.8?"yellow":""}/><DomainKpi label="Data Issue" value={debtors.filter(r=>r.status==="Data Issue").length} sub="Master / mapping"/></div>
     <section className="card"><div className="head"><div><h2>MLK Hierarchy & Aggregation</h2><p>Monitoring memisahkan debtor master dengan subtotal group. Master Limit Setting tidak otomatis dijumlahkan dengan Existing Limit sebagai universal rule.</p></div><span className="chip blue">Holding → Sub-Group → Entitas → CIF</span></div><div className="body"><div className="integration-chip-grid"><div className="mini integration-chip"><b>Master</b><div className="muted-small">CIF, group, entity, regulatory, capacity dan Master Limit.</div></div><div className="mini integration-chip"><b>Facility</b><div className="muted-small">CL Limit + NCL Limit + Treasury Line = Total Limit Existing.</div></div><div className="mini integration-chip"><b>Exposure</b><div className="muted-small">CL Bade + NCL Bade + Bade Treasury Line = Total Bade Existing.</div></div><div className="mini integration-chip"><b>Report</b><div className="muted-small">Debtor dan Sub-total Group dipisahkan dari MLK konsolidasi.</div></div></div></div></section>
     <section className="card"><div className="head"><div><h2>Monitoring Detail</h2><p>Nilai fasilitas dan exposure tidak lagi disamakan dengan Master Limit.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Row Type</th><th>Tier</th><th>Holding</th><th>Sub-Group</th><th>Entitas</th><th>CIF</th><th>Limit Fasilitas</th><th>Total Bade</th><th>Borrowing Capacity</th><th>Master Limit Setting</th><th>Master Limit</th><th>MLK</th><th>Util. Bade/Limit</th><th>Util. Limit/BMPK</th><th>Status</th></tr></thead><tbody>{rows.map((r,i)=><tr key={r.rowType+"|"+r.cif+"|"+i}><td>{r.rowType}</td><td>{r.tier}</td><td>{r.holding}</td><td>{r.subGroup}</td><td>{r.entity}</td><td className="key">{r.cif}</td><td>{fmtReport(r.limitFasilitas)}</td><td>{fmtReport(r.bade)}</td><td>{fmtReport(r.borrowing)}</td><td>{fmtReport(r.masterLimitSetting)}</td><td>{fmtReport(r.masterLimit)}</td><td>{fmtReport(r.mlk)}</td><td>{r.utilBade==null?"—":(r.utilBade*100).toFixed(2)+"%"}</td><td>{r.utilFacilityBmpk==null?"—":(r.utilFacilityBmpk*100).toFixed(2)+"%"}</td><td><Status v={r.status}/></td></tr>)}</tbody></table></div></div></section>
   </div></Layout>;
 }
 
+function CCLMonitor({nav}){
+  const [limitType,setLimitType]=useState("DIRECT"),[entityScope,setEntityScope]=useState("CONSOLIDATED");
+  const entityOptions=limitType==="DIRECT"?["CONSOLIDATED","BMRI","SUBSIDIARIES",...E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).map(x=>x.entityCode)]:["CONSOLIDATED","MMI","AMFS"];
+  const rows=limasDemoData.CCL||[];
+  const visible=rows.map(r=>{
+    const metric=entityScope==="CONSOLIDATED"
+      ?{limit:recordLimit("CCL",r),os:recordExposure("CCL",r),contractual:normalizeMasterLimit("CCL",r.contractual).amount}
+      :entityScope==="BMRI"
+        ?{limit:cclScopeLimit(r.key,"BMRI",limitType),os:cclEntityExposure(r.key,"BMRI",limitType),contractual:cclScopeContractual(r.key,"BMRI",limitType)}
+        :entityScope==="SUBSIDIARIES"
+          ?(()=>{const scopes=E2E_CCL_ENTITY_SCOPE.filter(x=>x.entityCode!=="BMRI"&&x[limitType.toLowerCase()]);const vals=scopes.map(x=>({limit:cclScopeLimit(r.key,x.entityCode,limitType),os:cclEntityExposure(r.key,x.entityCode,limitType),contractual:cclScopeContractual(r.key,x.entityCode,limitType)}));return {limit:vals.reduce((s,x)=>s+(x.limit||0),0),os:vals.reduce((s,x)=>s+x.os,0),contractual:vals.reduce((s,x)=>s+(x.contractual||0),0)}})()
+          :{limit:cclScopeLimit(r.key,entityScope,limitType),os:cclEntityExposure(r.key,entityScope,limitType),contractual:cclScopeContractual(r.key,entityScope,limitType)};
+    const util=metric.contractual?metric.os/metric.contractual:0;
+    return {...r,...metric,util,status:util>=1?"Breach":util>=.8?"Warning":"Normal"};
+  }).filter(r=>r.limit!==null&&r.limit!==undefined);
+  const total=visible.reduce((a,r)=>a+r.limit,0),os=visible.reduce((a,r)=>a+r.os,0),contractual=visible.reduce((a,r)=>a+(r.contractual||0),0),util=contractual?os/contractual:0;
+  return <Layout screen="CCL" onNav={nav}><Header title="Counterparty / CCL Monitoring" subtitle="Direct / Indirect • BMRI & Perusahaan Anak • Counterparty • Commercial / Treasury"/>
+    <div className="page">
+      <section className="card"><div className="body"><div className="toolbar">
+        <select className="select" value={limitType} onChange={e=>{setLimitType(e.target.value);setEntityScope(e.target.value==="DIRECT"?"CONSOLIDATED":"MMI");}}><option>DIRECT</option><option>INDIRECT</option></select>
+        <select className="select" value={entityScope} onChange={e=>setEntityScope(e.target.value)}>{entityOptions.map(x=><option key={x}>{x}</option>)}</select>
+        <span className="chip blue">Direct entities: {E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).length} • Indirect entities: {E2E_CCL_ENTITY_SCOPE.filter(x=>x.indirect).length}</span>
+      </div></div></section>
+      <div className="metric-grid"><DomainKpi label="Applicable Limit" value={total.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Rp Juta"/><DomainKpi label="OS" value={os.toLocaleString("id-ID",{maximumFractionDigits:2})} sub="Current exposure"/><DomainKpi label="Utilisasi" value={(util*100).toFixed(2)+"%"} sub="OS / Contractual" accent={util>=1?"red":util>=.8?"yellow":""}/><DomainKpi label="Counterparties" value={visible.length} sub="Current scope"/></div>
+      <section className="card"><div className="head"><div><h2>CCL Entity Scope</h2><p>Entity dan Direct/Indirect dipisahkan dari counterparty identity.</p></div></div><div className="body"><div className="integration-chip-grid">{E2E_CCL_ENTITY_SCOPE.map(x=><div className="mini integration-chip" key={x.entityCode}><b>{x.entityCode}</b><div className="muted-small">{entityMasterByCode[x.entityCode]?.entityName||"—"} • Direct: {x.direct?"Yes":"No"} • Indirect: {x.indirect?"Yes":"No"}</div></div>)}</div></div></section>
+      <section className="card"><div className="head"><div><h2>Monitoring Detail</h2><p>Commercial/Treasury hierarchy ada di Master dan utilization tetap berasal dari Product Database.</p></div></div><div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Swift</th><th>Bank</th><th>Entity Scope</th><th>Type</th><th>CCL</th><th>Contractual</th><th>OS</th><th>Utilisasi</th><th>Commercial</th><th>Treasury</th><th>Status</th></tr></thead><tbody>{visible.map((r,i)=><tr key={r.key+"-"+i}><td className="key">{r.key}</td><td>{r.name}</td><td>{entityScope}</td><td>{limitType}</td><td>{r.limit?.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{r.contractual?.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{r.os?.toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{(r.util*100).toFixed(2)}%</td><td>{fmtReport(r.commercialLineLimit*1000)}</td><td>{fmtReport(r.treasuryLineLimit*1000)}</td><td><Status v={r.status}/></td></tr>)}</tbody></table></div></div></section>
+    </div>
+  </Layout>;
+}
+
 function Monitor({type,nav}){
   if(type==="LPG")return <LPGMonitor nav={nav}/>;
   if(type==="MLK")return <MLKMonitor nav={nav}/>;
+  if(type==="CCL")return <CCLMonitor nav={nav}/>;
 
   const rows=limasDemoData[type]||[];
   const totalLimit=rows.reduce((a,r)=>a+recordLimit(type,r),0);
@@ -1739,7 +1899,14 @@ const MASTER_EDITABLE_FIELDS={
     {section:"Bank Profile",field:"Kategori Bank",path:["category"],kind:"text"},
     {section:"Bank Profile",field:"Negara",path:["country"],kind:"text"},
     {section:"Limit",field:"CCL",path:["ccl"],kind:"number"},
-    {section:"Limit",field:"Limit Contractual",path:["contractual"],kind:"number"}
+    {section:"Limit",field:"Limit Contractual",path:["contractual"],kind:"number"},
+    {section:"Facility Allocation",field:"Bank Loan Limit (Rp Miliar)",path:["bankLoanLimit"],kind:"number"},
+    {section:"Facility Allocation",field:"Commercial DN Limit (Rp Miliar)",path:["commercialDnLimit"],kind:"number"},
+    {section:"Facility Allocation",field:"Commercial LN Limit (Rp Miliar)",path:["commercialLnLimit"],kind:"number"},
+    {section:"Facility Allocation",field:"Commercial Line Limit (Rp Miliar)",path:["commercialLineLimit"],kind:"number"},
+    {section:"Facility Allocation",field:"Treasury DN Limit (Rp Miliar)",path:["treasuryDnLimit"],kind:"number"},
+    {section:"Facility Allocation",field:"Treasury LN Limit (Rp Miliar)",path:["treasuryLnLimit"],kind:"number"},
+    {section:"Facility Allocation",field:"Treasury Line Limit (Rp Miliar)",path:["treasuryLineLimit"],kind:"number"}
   ],
   MLK:[
     {section:"Profil Debitur",field:"Nama Debitur",path:["name"],kind:"text"},
@@ -2010,10 +2177,16 @@ function masterFieldValue(type,section,field,base,row,index){
   if(type==="CCL"){
     const p=productContributionMap("CCL",row.key),total=recordExposure("CCL",row);
     const bankLoan=p.CASHLOAN||0,contractualCanonical=(Number(row.contractual)||0)*1000,contractUtil=contractualCanonical?total/contractualCanonical:0;
+    const entityDirect=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(row.key)&&x.limitType==="DIRECT").map(x=>x.entityCode);
+    const entityIndirect=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(row.key)&&x.limitType==="INDIRECT").map(x=>x.entityCode);
     const map={"Nama bank":row.name,"CIF/Swift":row.key,"Negara":row.country,"Kategori Bank":row.category,
       "Country Rating":row.countryRating,"Bobot":row.bobot,"Rating":row.rating,"Posisi Rating":row.position,
       "Rating Index":row.ratingIndex,"Limit Inhouse (Rp Miliar)":row.inhouse,"Tier 1 Capital (Rp Miliar)":row.tier1,
       "Capacity":row.capacity,"Capacity Limit Adjusted":row.adjusted,"CCL":row.ccl,"Limit Contractual":row.contractual,
+      "Bank Loan Limit (Rp Miliar)":row.bankLoanLimit,"Commercial DN Limit (Rp Miliar)":row.commercialDnLimit,"Commercial LN Limit (Rp Miliar)":row.commercialLnLimit,
+      "Commercial Line Limit (Rp Miliar)":row.commercialLineLimit,"Treasury DN Limit (Rp Miliar)":row.treasuryDnLimit,"Treasury LN Limit (Rp Miliar)":row.treasuryLnLimit,
+      "Treasury Line Limit (Rp Miliar)":row.treasuryLineLimit,
+      "Direct Limit Entities":entityDirect.join(", ")||"—","Indirect Limit Entities":entityIndirect.join(", ")||"—",
       "Outstanding":total,"Limit":row.ccl,"Total":total,"Bank Loan":bankLoan,
       "Commercial Line":p["CREDIT LINE|Commercial"]||0,"Treasury Line":p["CREDIT LINE|Treasury"]||0,
       "Utilisasi CCL":row.ccl?total/row.ccl:0,"Utilisasi Limit Kontraktual":contractUtil,
@@ -2506,7 +2679,7 @@ function addIntegrationMapping(productId,row,config){
     limitType:config.limitType,key,amount:raw,label:config.label||demoProductLabel(productId),
     productId,recordId:row.recordId,sourceField:config.sourceField||productSourceField(productId,config.limitType),
     sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
-    scope:config.scope||null,entity:config.entity||null,masterMatch:Boolean(master),
+    scope:config.scope||null,entity:config.entity||null,cclLimitType:config.cclLimitType||(config.limitType==="CCL"?"DIRECT":null),masterMatch:Boolean(master),
     masterObject:master?.name||master?.sector||master?.key||"—",
     bookingOffice:(override?.bookingOffice||config.bookingOffice||booking.bookingOffice),
     bookingOfficeType:(override?.bookingOfficeType||config.bookingOfficeType||booking.bookingOfficeType),
@@ -2521,13 +2694,14 @@ function buildProductIntegrationMappings(){
 
   (productDatabase.CASHLOAN||[]).forEach(r=>{
     const d=r.data||{},code=String(d.code||"").trim(),cif=String(d.no_cus||"").trim();
-    if(code)addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> Country Code"});
+    if(code&&countryMonitoringEligible(code))addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> eligible foreign Country Code"});
+    const entity=String(r.meta?.reportingEntity||"").toUpperCase()||null;
     if(cif&&E2E_MASTER_DATA.MLK.some(x=>String(x.key)===cif))
-      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF"});
+      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF",entity:mlkEntityEligible(entity)?entity:null});
     if(/^CCL-/i.test(cif)){
       const cclKey=cif.replace(/^CCL-/i,"");
       if((limasDemoData.CCL||[]).some(x=>String(x.key).toUpperCase()===cclKey.toUpperCase()))
-        addIntegrationMapping("CASHLOAN",r,{limitType:"CCL",key:cclKey,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan CCL reference -> CCL Swift"});
+        addIntegrationMapping("CASHLOAN",r,{limitType:"CCL",key:cclKey,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan CCL reference -> CCL Swift",entity:entity,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     }
   });
 
@@ -2545,20 +2719,20 @@ function buildProductIntegrationMappings(){
           :"NCL Country Code -> Country Code"
       });
     }
-    if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF"});
+    if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null});
     if(swift){
-      addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift"});
+      addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift",entity:String(r.meta?.reportingEntity||"").toUpperCase()||null,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     }else{
       const names=[d.CUSTNM,d.CPNM].map(v=>String(v||"").trim().toLowerCase()).filter(Boolean);
       const cclRef=(limasDemoData.CCL||[]).find(m=>names.includes(String(m.name||"").trim().toLowerCase()));
-      if(cclRef)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTNM / CPNM",sourceValue:d.CUSTNM||d.CPNM,mappingRule:"NCL Counterparty Reference -> CCL Swift"});
+      if(cclRef)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTNM / CPNM",sourceValue:d.CUSTNM||d.CPNM,mappingRule:"NCL Counterparty Reference -> CCL Swift",entity:String(r.meta?.reportingEntity||"").toUpperCase()||null,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     }
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
 
   (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
     const d=r.data||{},swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim(),total=Number(d["Credit Line Total Utilisasi"]||0),country=String(d.Code||"").trim();
-    if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift"});
+    if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift",entity:String(r.meta?.reportingEntity||"").toUpperCase()||null,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     if(country){
       const components=[
         ["Commercial","Comm DN Utilisasi","Domestic"],["Commercial","Comm LN Utilisasi","Overseas"],
@@ -2611,6 +2785,22 @@ function cleanseMasterData(){
     const clLimit=mlkNum(r.clLimit),nclLimit=mlkNum(r.nclLimit),treasuryLimit=mlkNum(r.treasuryLine);
     if(clLimit!==null&&nclLimit!==null&&treasuryLimit!==null)r.totalLimitExisting=clLimit+nclLimit+treasuryLimit;
     if(r.masterLimitSetting===null||r.masterLimitSetting===undefined||r.masterLimitSetting==="")r.masterLimit=r.totalLimitExisting??r.masterLimit;
+  });
+  (limasDemoData.CCL||[]).forEach(r=>{
+    const commDn=mlkNum(r.commercialDnLimit),commLn=mlkNum(r.commercialLnLimit),trsDn=mlkNum(r.treasuryDnLimit),trsLn=mlkNum(r.treasuryLnLimit);
+    if(commDn!==null&&commLn!==null)r.commercialLineLimit=Number((commDn+commLn).toFixed(6));
+    if(trsDn!==null&&trsLn!==null)r.treasuryLineLimit=Number((trsDn+trsLn).toFixed(6));
+    const comm=mlkNum(r.commercialLineLimit),trs=mlkNum(r.treasuryLineLimit);
+    if(comm!==null&&trs!==null)r.creditLineLimit=Number((comm+trs+(mlkNum(r.bankLoanLimit)??0)).toFixed(6));
+  });
+  (limasDemoData.CCL||[]).forEach(r=>{
+    const comm=(Number(r.commercialDnLimit)||0)+(Number(r.commercialLnLimit)||0);
+    const trs=(Number(r.treasuryDnLimit)||0)+(Number(r.treasuryLnLimit)||0);
+    if(r.commercialLineLimit!==undefined)check("Master","CCL","Commercial Line = Comm DN + Comm LN",Number(r.commercialLineLimit),comm,.01,"Rp Miliar");
+    if(r.treasuryLineLimit!==undefined)check("Master","CCL","Treasury Line = Treasury DN + Treasury LN",Number(r.treasuryLineLimit),trs,.01,"Rp Miliar");
+    if(r.creditLineLimit!==undefined)check("Master","CCL","Facility Total = Bank Loan + Commercial + Treasury",Number(r.creditLineLimit),(Number(r.bankLoanLimit)||0)+comm+trs,.01,"Rp Miliar");
+    const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0);
+    check("Master","CCL","Direct entity CCL allocation = master CCL",direct,Number(r.ccl||0),.01,"Rp Miliar");
   });
   (limasDemoData.CIL||[]).forEach(r=>{
     const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
@@ -3219,6 +3409,18 @@ function masterCanonicalQualityIssues(){
           if(x.sourced&&x.domestic!==null&&x.overseas!==null&&Math.abs(x.total-(x.domestic+x.overseas))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"PRODUCT_SPLIT_MISMATCH",detail:x.product+" Domestic + Overseas ≠ Product Total."});
         });
       }
+      if(type==="CCL"){
+        if(!cclEntityScopeByCode[String(r.entity||"").toUpperCase()]&&r.entity){
+          issues.push({layer:"Master Limit",domain:type,key:r.key,type:"INVALID_ENTITY_SCOPE",detail:"CCL entity scope is not registered in Entity Master."});
+        }
+        const comm=(Number(r.commercialDnLimit)||0)+(Number(r.commercialLnLimit)||0);
+        const trs=(Number(r.treasuryDnLimit)||0)+(Number(r.treasuryLnLimit)||0);
+        if(r.commercialLineLimit!==undefined&&Math.abs(Number(r.commercialLineLimit)-comm)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_COMMERCIAL_SPLIT_MISMATCH",detail:"Commercial Line ≠ Commercial DN + Commercial LN."});
+        if(r.treasuryLineLimit!==undefined&&Math.abs(Number(r.treasuryLineLimit)-trs)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_TREASURY_SPLIT_MISMATCH",detail:"Treasury Line ≠ Treasury DN + Treasury LN."});
+        if(r.creditLineLimit!==undefined&&Math.abs(Number(r.creditLineLimit)-((Number(r.bankLoanLimit)||0)+comm+trs))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_FACILITY_TOTAL_MISMATCH",detail:"Credit Line hierarchy total does not reconcile."});
+        const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0);
+        if(Math.abs(direct-(Number(r.ccl)||0))>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CCL_ENTITY_ALLOCATION_MISMATCH",detail:"Sum of Direct entity CCL allocations ≠ CCL master."});
+      }
       if(type==="CIL"){
         const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
         if(Math.abs(Number(r.cil||0)-sumEil)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"CIL_EIL_MISMATCH",detail:"CIL ≠ sum of EIL."});
@@ -3226,12 +3428,17 @@ function masterCanonicalQualityIssues(){
       }
       if(type==="LPG"){
         const limits=r.limits||{};
-        const hasAll=LPG_REGIONAL_SCOPES.every(scope=>limits[scope]!==undefined&&limits[scope]!==null);
-        if(hasAll&&limits["Bankwide"]!==undefined&&limits["KP + OVS"]!==undefined){
-          const regional=LPG_REGIONAL_SCOPES.reduce((a,scope)=>a+(Number(limits[scope])||0),0);
+        const hasAll=LPG_SCOPES.every(scope=>limits[scope]!==undefined&&limits[scope]!==null);
+        if(!hasAll)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_LIMIT_MISSING",detail:"One or more LPG scopes are not configured in master."});
+        if(limits["Bankwide"]!==undefined&&limits["KP + OVS"]!==undefined){
+          const regional=LPG_REGION_ONLY_SCOPES.reduce((a,scope)=>a+(Number(limits[scope])||0),0);
           const total=regional+(Number(limits["KP + OVS"])||0);
-          if(Math.abs(Number(limits.Bankwide)-total)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_MISMATCH",detail:"Bankwide ≠ Regional scopes + KP + OVS."});
+          if(Math.abs(Number(limits.Bankwide)-total)>.01)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_MISMATCH",detail:"Bankwide ≠ Region I–XII + KP + OVS."});
         }
+        LPG_SCOPES.forEach(scope=>{
+          const status=lpgScopeLimitStatus(r,scope),exp=lpgScopeExposure(r,scope);
+          if(exp!==null&&status==="NOT_CONFIGURED")issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_WITHOUT_LIMIT",detail:scope+" has utilization but no configured master limit."});
+        });
       }
     });
   });
@@ -3648,8 +3855,8 @@ function numericReconciliationAudit(){
   });
   (limasDemoData.LPG||[]).forEach(r=>{
     const lim=r.limits||{};
-    const regional=LPG_REGIONAL_SCOPES.reduce((s,scope)=>s+(Number(lim[scope])||0),0);
-    check("Master","LPG","Bankwide Limit = Regional Limits + KP + OVS",lim.Bankwide,regional+(Number(lim["KP + OVS"])||0));
+    const regional=LPG_REGION_ONLY_SCOPES.reduce((s,scope)=>s+(Number(lim[scope])||0),0);
+    check("Master","LPG","Bankwide Limit = Region I-XII + KP + OVS",lim.Bankwide,regional+(Number(lim["KP + OVS"])||0));
   });
 
   // Product source numeric controls.
@@ -3915,6 +4122,26 @@ function Products({nav}){
   </Layout>;
 }
 
+function SubsidiaryCenter({nav}){
+  const [entity,setEntity]=useState("BMRI");
+  const selected=entityMasterByCode[entity];
+  const ccl=E2E_CCL_ENTITY_SCOPE.find(x=>x.entityCode===entity);
+  const mlk=E2E_MLK_ENTITY_SCOPE.includes(entity);
+  const entityCclScope=(E2E_CCL_LIMIT_SCOPE||[]).filter(x=>x.entityCode===entity);
+  const sourceRows=Object.values(productDatabase||{}).flat().filter(r=>String(r.data?.entity_code||r.meta?.reportingEntity||"").toUpperCase()===entity);
+  return <Layout screen="subsidiaries" onNav={nav}><Header title="Perusahaan Anak" subtitle="Entity registry + MLK/CCL scope + product coverage + consolidated readiness"/>
+    <div className="page">
+      <section className="card"><div className="head"><div><h2>Entity Registry</h2><p>Perusahaan Anak menjadi reporting dimension; Product Database tetap source-oriented.</p></div><span className="chip blue">{E2E_ENTITY_MASTER.length} entities</span></div>
+        <div className="body"><div className="table-wrap"><table className="table"><thead><tr><th>Entity</th><th>Nama</th><th>Tipe</th><th>Country</th><th>MLK</th><th>CCL Direct</th><th>CCL Indirect</th><th>Consolidation</th></tr></thead><tbody>{E2E_ENTITY_MASTER.map(x=>{const scope=E2E_CCL_ENTITY_SCOPE.find(s=>s.entityCode===x.entityCode);return <tr key={x.entityCode} className={entity===x.entityCode?"lpg-total-row":""} onClick={()=>setEntity(x.entityCode)} style={{cursor:"pointer"}}><td className="key">{x.entityCode}</td><td>{x.entityName}</td><td>{x.entityType}</td><td>{x.countryCode}</td><td><Status v={E2E_MLK_ENTITY_SCOPE.includes(x.entityCode)?"Normal":"Not Applicable"}/></td><td><Status v={scope?.direct?"Normal":"Not Applicable"}/></td><td><Status v={scope?.indirect?"Normal":"Not Applicable"}/></td><td>{x.consolidationStatus}</td></tr>})}</tbody></table></div></div>
+      </section>
+      <section className="card"><div className="head"><div><h2>{entity} • Scope Detail</h2><p>{selected?.entityName||"—"} • {selected?.entityType||"—"}</p></div></div><div className="body"><div className="metric-grid"><DomainKpi label="MLK Eligible" value={mlk?"YES":"NO"} sub="Current confirmed universe"/><DomainKpi label="CCL Direct" value={ccl?.direct?"YES":"NO"} sub="Direct scope"/><DomainKpi label="CCL Indirect" value={ccl?.indirect?"YES":"NO"} sub="Indirect scope"/><DomainKpi label="Mapped CCL Limits" value={entityCclScope.length} sub="Counterparty scope records"/></div>
+        <div className="toolbar" style={{marginTop:12}}><button className="btn secondary" onClick={()=>mlk&&nav("MLK")}>Open MLK Monitoring</button><button className="btn secondary" onClick={()=>ccl?.direct&&nav("CCL")}>Open CCL Monitoring</button><button className="btn ghost" onClick={()=>nav("products")}>Product Universe</button></div>
+      </div></section>
+      <section className="card"><div className="head"><div><h2>Consolidation Rule</h2><p>Entity-level values can roll up to Bank Mandiri Group without duplicating source transactions.</p></div></div><div className="body"><div className="integration-chip-grid"><div className="mini integration-chip"><b>Entity</b><div className="muted-small">{entity} is an explicit reporting entity.</div></div><div className="mini integration-chip"><b>Source</b><div className="muted-small">{sourceRows.length} product records carry explicit entity enrichment in the demo snapshot.</div></div><div className="mini integration-chip"><b>Consolidated</b><div className="muted-small">Consolidated values are aggregations, never additional source exposure.</div></div><div className="mini integration-chip"><b>DQ</b><div className="muted-small">Unmapped entity is an exception, not a reason to force data into BMRI.</div></div></div></div></section>
+    </div>
+  </Layout>;
+}
+
 function AccessControl({nav}){
   const [role,setRole]=useState(currentLimasRole()),[user,setUser]=useState(currentLimasUser());
   const apply=()=>{setLimasSession(role,user);alert("Demo session role diubah menjadi "+role+".");};
@@ -3955,6 +4182,7 @@ function App(){
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;
   if(screen==="detail") return <Detail nav={nav} type={sel} recordKey={selKey} key={sel+":"+selKey} />;
   if(screen==="products") return <Products nav={nav}/>;
+  if(screen==="subsidiaries") return <SubsidiaryCenter nav={nav}/>;
   if(screen==="report") return <Report nav={nav}/>;
   if(screen==="warning") return <Warning nav={nav}/>;
   if(screen==="quality") return <DataQuality nav={nav}/>;
