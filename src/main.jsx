@@ -991,7 +991,7 @@ function Report({nav}){
   </div></Layout>;
 }
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
-function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Master Limit Setup'],['detail','▤','Master Limit Detail'],['products','▦','Product Universe & Integration'],['subsidiaries','♙','Perusahaan Anak'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===6&&<div className="section">Reporting</div>}{i===11&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
+function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Limit Setup'],['products','▦','Product Data & Integration'],['subsidiaries','♙','Perusahaan Anak'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===10&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>{currentLimasUser()}</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS • {roleLabel()}</div></div></div></div>}
 function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user);return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><button className="btn primary" onClick={()=>{setLimasSession(role,user);go();}}>Masuk ke LIMAS</button><div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div></div></div>}
 
@@ -1890,7 +1890,7 @@ function MasterCreateForm({type,onCreated,onCancel}){
 }
 
 
-function EntityProductLimitSetup(){
+function LimitAllocationSetup({type,onTypeChange}){
   const [type,setType]=useState("MLK"),[entityFilter,setEntityFilter]=useState("ALL"),[query,setQuery]=useState("");
   const [selectedCcl,setSelectedCcl]=useState(()=>String((limasDemoData.CCL||[])[0]?.key||""));
   const [editingKey,setEditingKey]=useState(""),[draft,setDraft]=useState({});
@@ -1911,6 +1911,54 @@ function EntityProductLimitSetup(){
   const pendingMlk=filteredMlk.filter(r=>entityProductSetupStatus("MLK",r.key,r.entity)==="Pending Approval").length;
   const configuredCcl=cclScopes.length;
   const possibleCcl=E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct||x.indirect).length;
+
+  const renderGenericAllocation=()=>{
+    if(type==="Country"){
+      return <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table"><thead><tr><th>Country</th><th>Allocation Dimension</th><th>Product</th><th>Domestic Limit</th><th>Overseas Limit</th><th>Total Product Limit</th><th>Setup Source</th><th>Detail</th></tr></thead>
+          <tbody>{(limasDemoData.Country||[]).flatMap(row=>
+            Object.entries(row.productAllocations||{}).map(([product,v])=><tr key={row.key+"|"+product}>
+              <td className="key">{row.key} • {row.name}</td><td>Domestic / Overseas</td><td>{demoProductLabel(product)}</td>
+              <td>{Number(v?.domesticLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td>{Number(v?.overseasLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td>{Number(v?.total??((Number(v?.domesticLimit)||0)+(Number(v?.overseasLimit)||0))).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td><span className="chip blue">Country Master</span></td>
+              <td><button className="btn ghost" onClick={()=>nav("detail",{type:"Country",key:row.key})}>Open Master Detail</button></td>
+            </tr>)
+          )}</tbody>
+        </table>
+      </div>;
+    }
+    if(type==="CIL"){
+      return <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table"><thead><tr><th>Insurance</th><th>Entity</th><th>Entity Limit Type</th><th>Approved Limit</th><th>Utilization Source</th><th>Detail</th></tr></thead>
+          <tbody>{(limasDemoData.CIL||[]).flatMap(row=>
+            Object.entries(row.eils||{}).map(([entity,limit])=><tr key={row.key+"|"+entity}>
+              <td className="key">{row.key} • {row.name}</td><td>{entity}</td><td>EIL</td>
+              <td>{Number(limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td><span className="chip blue">Nominal Pertanggungan</span></td>
+              <td><button className="btn ghost" onClick={()=>nav("detail",{type:"CIL",key:row.key})}>Open Master Detail</button></td>
+            </tr>)
+          )}</tbody>
+        </table>
+      </div>;
+    }
+    if(type==="LPG"){
+      return <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table"><thead><tr><th>Ecosystem</th><th>Segment</th><th>Scope</th><th>Configured Limit</th><th>Scope Meaning</th><th>Detail</th></tr></thead>
+          <tbody>{(limasDemoData.LPG||[]).flatMap(row=>
+            LPG_SCOPES.map(scope=><tr key={row.key+"|"+scope}>
+              <td className="key">{row.sector}</td><td>{row.segment}</td><td>{scope}</td>
+              <td>{Number(row.limits?.[scope]||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td>{scope==="Bankwide"?"Parent / Bankwide":scope==="KP + OVS"?"Kantor Pusat + Overseas":"Regional"}</td>
+              <td><button className="btn ghost" onClick={()=>nav("detail",{type:"LPG",key:row.key})}>Open Master Detail</button></td>
+            </tr>)
+          )}</tbody>
+        </table>
+      </div>;
+    }
+    return null;
+  };
 
   const startEdit=(row,typeArg)=>{
     const masterKey=typeArg==="MLK"?row.key:selectedCclRow?.key;
@@ -1963,17 +2011,16 @@ function EntityProductLimitSetup(){
   };
 
   return <section className="card">
-    <div className="head"><div><h2>Entity Product Limit Setup</h2><p>Level 2: approved limit allocation per Entitas/Perusahaan Anak. Tidak menyimpan current utilization.</p></div><span className="chip blue">Setup ≠ Utilization ≠ Monitoring</span></div>
+    <div className="head"><div><h2>Limit Allocation & Scope</h2><p>Level 2: detail limit setelah parent Master Limit. Struktur allocation mengikuti domain; actual utilization tetap berada di Product Database.</p></div><span className="chip blue">Level 2 • Limit Setup</span></div>
     <div className="body">
       <div className="integration-chip-grid">
-        <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">Parent ceiling / policy. Atur di Master Limit Setup.</div></div>
-        <div className="mini integration-chip"><b>2. Entity Product Limit</b><div className="muted-small">Approved allocation per entity + product. Atur di menu ini.</div></div>
-        <div className="mini integration-chip"><b>3. Product Database</b><div className="muted-small">Source records dan actual utilization/outstanding. Tidak menyimpan limit.</div></div>
-        <div className="mini integration-chip"><b>4. Monitoring</b><div className="muted-small">Limit approved vs canonical product utilization → EWS/Breach.</div></div>
+        <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">Parent / domain ceiling. Setup di tab Master Limit.</div></div>
+        <div className="mini integration-chip"><b>2. Limit Allocation</b><div className="muted-small">Approved scope/allocation per domain dimension + product.</div></div>
+        <div className="mini integration-chip"><b>3. Product Database</b><div className="muted-small">Source records + actual utilization/outstanding. Tidak menyimpan limit.</div></div>
+        <div className="mini integration-chip"><b>4. Monitoring</b><div className="muted-small">Approved limit vs canonical utilization → EWS / Breach.</div></div>
       </div>
       <div className="tabs" style={{marginTop:14}}>
-        <button className={"tab "+(type==="MLK"?"active":"")} onClick={()=>{setType("MLK");setEditingKey("");setDraft({});}}>MLK • Debtor Entity</button>
-        <button className={"tab "+(type==="CCL"?"active":"")} onClick={()=>{setType("CCL");setEditingKey("");setDraft({});}}>CCL • Counterparty Entity</button>
+        {["Country","CCL","MLK","CIL","LPG"].map(d=><button className={"tab "+(type===d?"active":"")} key={d} onClick={()=>{setType(d);setEditingKey("");setDraft({});onTypeChange?.(d);}}>{d}</button>)}
       </div>
 
       {type==="MLK"&&<div className="toolbar" style={{marginTop:12}}>
@@ -2004,6 +2051,7 @@ function EntityProductLimitSetup(){
         </table>
       </div>}
 
+      {!["MLK","CCL"].includes(type)&&renderGenericAllocation()}
       {type==="CCL"&&<div className="table-wrap" style={{marginTop:12}}>
         <table className="table"><thead><tr><th>Counterparty</th><th>Entity</th><th>Type</th>{productFields.map(x=><th key={x.key}>{x.label}</th>)}<th>Status</th><th>Action</th></tr></thead>
           <tbody>{cclScopes.map(row=>{
@@ -2050,19 +2098,19 @@ function Setup({nav,setSel}){
     e.target.value="";
   };
   return <Layout screen="setup" onNav={nav}>
-    <Header title="Limit Setup & Product Utilization" subtitle="Pisahkan setup master limit, entity-product allocation, source utilization, dan monitoring"/>
+    <Header title="Limit Setup" subtitle="Satu standar UI untuk Master Limit dan Limit Allocation / Scope"/>
     <div className="page">
       <section className="card">
         <div className="body">
           <div className="tabs">
-            <button className={"tab "+(mode==="master"?"active":"")} onClick={()=>setMode("master")}>1. Master Limit Setup</button>
-            <button className={"tab "+(mode==="entity-product"?"active":"")} onClick={()=>setMode("entity-product")}>2. Entity Product Limit Setup</button>
-            <button className="tab" onClick={()=>nav("products")}>3. Product Database / Utilization</button>
-            <button className="tab" onClick={()=>nav("MLK")}>4. Monitoring</button><button className="tab" onClick={()=>nav("CCL")}>CCL Monitoring</button>
+            <button className={"tab "+(mode==="master"?"active":"")} onClick={()=>setMode("master")}>1. Master Limit</button>
+            <button className={"tab "+(mode==="allocation"?"active":"")} onClick={()=>setMode("allocation")}>2. Limit Allocation / Scope</button>
+            <button className="tab" onClick={()=>nav("products")}>Product Database / Utilization</button>
+            <button className="tab" onClick={()=>nav("dashboard")}>Monitoring Dashboard</button>
           </div>
         </div>
       </section>
-      {mode==="entity-product"&&<EntityProductLimitSetup/>}
+      {mode==="allocation"&&<LimitAllocationSetup type={type} onTypeChange={setType}/>}
       {mode==="master"&&<section className="card">
         <div className="head">
           <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • approved master limit, lifecycle, version dan audit disimpan terpisah dari Product Database.</p></div>
@@ -2097,7 +2145,7 @@ function Setup({nav,setSel}){
                 <td>{linkedProducts.map(p=><span key={p} className="chip blue" style={{marginRight:5,marginBottom:4,display:"inline-block"}}>{integrationLabel(p)}</span>)}</td>
                 <td>v{gov.version||1}</td><td><Status v={lifecycleStatus(gov)}/></td>
                 <td><span className="chip blue">{gov.approvalStatus||"Approved"}</span>{gov.pendingValues&&<div className="muted-small">Draft perubahan tersimpan</div>}</td>
-                <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Buka Detail</button></td>
+                <td><button className="btn ghost" onClick={()=>{setSel(type);nav("detail",{type,key:r.key})}}>Open Master Detail</button></td>
               </tr>;
             })}</tbody>
           </table></div>
