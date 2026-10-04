@@ -41,6 +41,9 @@ MLK:[
 {key:"5000000010",name:"PERTAMINA GROUP / BMRI",group:"PERTAMINA GROUP",groupUsahaHolding:"PERTAMINA GROUP",subGroup:"PERTAMINA GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:72041,bmpkEntitas:40842,inhouseLimitKonsol:64837,inhouseLimitEntitas:36758,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:18000,kreditBankLain:26000,totalDebt:48000,borrowingCapacity:52000,availableBC:5000,statusPerhitungan:"OK",clLimit:41400,nclLimit:0,treasuryLine:6865,masterLimitSetting:48265,masterLimit:48265,dataQuality:"Normal"},
 
 
+{key:"5000000011",name:"PERTAMINA GROUP / MTF",group:"PERTAMINA GROUP",groupUsahaHolding:"PERTAMINA GROUP",subGroup:"PERTAMINA GROUP",entity:"MTF",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:60000,bmpkEntitas:342,inhouseLimitKonsol:54000,inhouseLimitEntitas:308,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:800,kreditBankLain:800,totalDebt:1200,borrowingCapacity:1500,availableBC:200,statusPerhitungan:"OK",clLimit:300,nclLimit:20,treasuryLine:22,masterLimitSetting:342,masterLimit:342,dataQuality:"Normal"},
+{key:"5000000014",name:"PGN GROUP / MTF",group:"PGN GROUP",groupUsahaHolding:"PGN GROUP",subGroup:"PGN GROUP",entity:"MTF",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:60000,bmpkEntitas:80,inhouseLimitKonsol:54000,inhouseLimitEntitas:72,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:300,kreditBankLain:300,totalDebt:500,borrowingCapacity:600,availableBC:100,statusPerhitungan:"OK",clLimit:65,nclLimit:10,treasuryLine:5,masterLimitSetting:80,masterLimit:80,dataQuality:"Normal"},
+{key:"5000000015",name:"PGN GROUP / MANSEK",group:"PGN GROUP",groupUsahaHolding:"PGN GROUP",subGroup:"PGN GROUP",entity:"MANSEK",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:60000,bmpkEntitas:90,inhouseLimitKonsol:54000,inhouseLimitEntitas:81,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:350,kreditBankLain:350,totalDebt:550,borrowingCapacity:650,availableBC:100,statusPerhitungan:"OK",clLimit:70,nclLimit:15,treasuryLine:5,masterLimitSetting:90,masterLimit:90,dataQuality:"Normal"},
 {key:"5000000013",name:"PGN GROUP / BMRI",group:"PGN GROUP",groupUsahaHolding:"PGN GROUP",subGroup:"PGN GROUP",entity:"BMRI",unitKerja:"CB6",bumnSwasta:"BUMN",tier:"A",bmpkKonsol:72041,bmpkEntitas:5940,inhouseLimitKonsol:64837,inhouseLimitEntitas:5346,sektorDC:"ENERGI",dcSectoral:2,rating:"A",ratingMultiplier:2,watchlist:"HIJAU",discountFactor:1,ebitda:5000,kreditBankLain:6000,totalDebt:9000,borrowingCapacity:9500,availableBC:1200,statusPerhitungan:"OK",clLimit:6317,nclLimit:0,treasuryLine:0,masterLimitSetting:6317,masterLimit:6317,dataQuality:"Normal"},
 
 ],
@@ -95,8 +98,9 @@ export const E2E_CCL_LIMIT_SCOPE=[
   {counterpartyId:"ANZBAU3M",entityCode:"BMRI",limitType:"DIRECT",ccl:45,contractual:43,facility:25.5,bankLoan:12,commercialLine:10,treasuryLine:3.5},
   {counterpartyId:"ANZBAU3M",entityCode:"MTF",limitType:"DIRECT",ccl:5,contractual:5,facility:1.5,bankLoan:1,commercialLine:0.5,treasuryLine:0},
   {counterpartyId:"ANZBAU3M",entityCode:"MMI",limitType:"INDIRECT",ccl:2,contractual:1.8,facility:0.5,bankLoan:0,commercialLine:0.5,treasuryLine:0},
-  {counterpartyId:"DBSSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:26,contractual:24,facility:23,bankLoan:10,commercialLine:9,treasuryLine:4},
+  {counterpartyId:"DBSSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:25,contractual:23,facility:22,bankLoan:10,commercialLine:8,treasuryLine:4},
   {counterpartyId:"DBSSGSG",entityCode:"MANTAP",limitType:"DIRECT",ccl:4,contractual:4,facility:3,bankLoan:2,commercialLine:1,treasuryLine:0},
+  {counterpartyId:"DBSSGSG",entityCode:"AMFS",limitType:"DIRECT",ccl:1,contractual:1,facility:1,bankLoan:0.4,commercialLine:0.4,treasuryLine:0.2},
   {counterpartyId:"MUFGJPJT",entityCode:"BMRI",limitType:"DIRECT",ccl:70,contractual:65,facility:12,bankLoan:4,commercialLine:5,treasuryLine:3},
   {counterpartyId:"MUFGJPJT",entityCode:"MCI",limitType:"DIRECT",ccl:10,contractual:10,facility:2,bankLoan:1,commercialLine:1,treasuryLine:0},
   {counterpartyId:"MUFGJPJT",entityCode:"AMFS",limitType:"INDIRECT",ccl:2,contractual:1.8,facility:0.5,bankLoan:0,commercialLine:0,treasuryLine:0.5},
@@ -171,7 +175,7 @@ const cclEntitySourceRows=[
   ["DBSSGSG","MANTAP","DIRECT",1000,500000000,1000],
   ["MUFGJPJT","MCI","DIRECT",800,400000000,700],
   ["OCBCSGSG","MMI","DIRECT",500,200000000,500],
-  ["DBSSGSG","AMFS","DIRECT",400,100000000,400],
+  ["DBSSGSG","AMFS","DIRECT",300,75000000,300],
   ["ANZBAU3M","MMI","INDIRECT",0,800000000,500],
   ["MUFGJPJT","AMFS","INDIRECT",0,300000000,600]
 ];
