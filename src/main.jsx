@@ -3,26 +3,30 @@ import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
 import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE} from './e2eDummyData';
+import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE} from './productionSampleData';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
 // - VITE_LIMAS_RUNTIME_MODE may explicitly select E2E or PRODUCTION.
 const LIMAS_RUNTIME_MODE=String(
   import.meta.env?.VITE_LIMAS_RUNTIME_MODE ||
-  (import.meta.env?.DEV ? "E2E" : "PRODUCTION")
+  (import.meta.env?.DEV ? "E2E" : "PRODUCTION_SAMPLE")
 ).trim().toUpperCase();
 const IS_E2E_RUNTIME=LIMAS_RUNTIME_MODE==="E2E";
-const IS_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION";
-const E2E_DUMMY_META=IS_E2E_RUNTIME?E2E_DUMMY_META_FIXTURE:{period:"",datasetId:"",asOfDate:""};
-const E2E_MASTER_DATA=IS_E2E_RUNTIME?E2E_MASTER_DATA_FIXTURE:{};
-const E2E_DUMMY_PRODUCT_DATA=IS_E2E_RUNTIME?E2E_DUMMY_PRODUCT_DATA_FIXTURE:{};
-const E2E_COUNTRY_MONITORING_POLICY=IS_E2E_RUNTIME?E2E_COUNTRY_MONITORING_POLICY_FIXTURE:{homeCountryCode:"ID",excludedCountryCodes:[]};
-const E2E_ENTITY_MASTER=IS_E2E_RUNTIME?E2E_ENTITY_MASTER_FIXTURE:[];
-const E2E_MLK_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_MLK_ENTITY_SCOPE_FIXTURE:[];
-const E2E_CCL_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_CCL_ENTITY_SCOPE_FIXTURE:[];
-const E2E_CCL_LIMIT_SCOPE=IS_E2E_RUNTIME?E2E_CCL_LIMIT_SCOPE_FIXTURE:[];
+const IS_PRODUCTION_SAMPLE_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION_SAMPLE";
+const IS_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION"||IS_PRODUCTION_SAMPLE_RUNTIME;
+const IS_LIVE_PRODUCTION_RUNTIME=LIMAS_RUNTIME_MODE==="PRODUCTION";
+const ACTIVE_SAMPLE_RUNTIME=IS_E2E_RUNTIME||IS_PRODUCTION_SAMPLE_RUNTIME;
+const E2E_DUMMY_META=IS_E2E_RUNTIME?E2E_DUMMY_META_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_META:{period:"",datasetId:"",asOfDate:""};
+const E2E_MASTER_DATA=IS_E2E_RUNTIME?E2E_MASTER_DATA_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_MASTER_DATA:{};
+const E2E_DUMMY_PRODUCT_DATA=IS_E2E_RUNTIME?E2E_DUMMY_PRODUCT_DATA_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_PRODUCT_DATA:{};
+const E2E_COUNTRY_MONITORING_POLICY=IS_E2E_RUNTIME?E2E_COUNTRY_MONITORING_POLICY_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY:{homeCountryCode:"ID",excludedCountryCodes:[]};
+const E2E_ENTITY_MASTER=IS_E2E_RUNTIME?E2E_ENTITY_MASTER_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_ENTITY_MASTER:[];
+const E2E_MLK_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_MLK_ENTITY_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE:[];
+const E2E_CCL_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_CCL_ENTITY_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE:[];
+const E2E_CCL_LIMIT_SCOPE=IS_E2E_RUNTIME?E2E_CCL_LIMIT_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE:[];
 if(!IS_E2E_RUNTIME&&!IS_PRODUCTION_RUNTIME){
-  throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E or PRODUCTION.");
+  throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E, PRODUCTION_SAMPLE or PRODUCTION.");
 }
 
 const LPG_BANK_SCOPE="Bankwide";
@@ -57,7 +61,7 @@ const domains={"Country": {"sheet": "COUNTRY_MONITORING", "key": "Country Code",
 const productFields={"CASHLOAN": ["no_cus", "nm_cus", "kd_cab", "nm_cab", "no_rek", "gas_reporting", "buc_reporting", "jns_krd", "src", "j_guna", "revolv", "bilokj", "total_limit", "total_bade", "project_location", "code", "MatDate/Jatem", "ecosystem_lpg", "segmen_lpg", "region_lpg", "unit_pengelola"], "NON CASH LOAN": ["NO", "MODULE", "Swift Code", "REPORTTYPE", "TRXREF", "RELREF", "CUSTID", "CUSTNM", "CPNM", "CPCNTY", "CPBK", "BKCNTRY", "Country Code", "Country Name", "Type of Judgment", "TRXTYPE", "CCY", "AMOUNT", "BALANCE", "EXCHANGERT", "EQVIDR", "FINTYPE", "TRXDATE", "DUEDATE", "SERVCODE", "SERVNM", "PCCD", "PCNM", "BUCD", "SOF", "INTRT", "ecosystem_lpg", "segmen_lpg", "region_lpg"], "COMMERCIAL LINE (CRDT)": ["No", "Nama", "Swift Code", "Swift Code Vlookup", "Code", "Aging Schedule RM", "Negara", "Bank", "RM", "Dept.", "BMFIR", "Fitch", "Moody's", "S&P", "Treasury DN", "Treasury DN Utilisasi", "Treasury LN", "Treasury LN Utilisasi", "Treasury Line Total", "Treasury Line Total Utilisasi", "Comm DN", "Comm DN Utilisasi", "Comm LN", "Comm LN Utilisasi", "Comm Line Total", "Comm Line Total Utilisasi", "Corporate Card", "Credit Line Total", "Credit Line Total Utilisasi"], "Investment Line": ["No", "Nama Bank", "Nama Entity (Scope Entity : AKK)", "Switftcode", "Jenis Invesment Line", "Amount Invesment Line", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa"], "BONDS": ["Date", "Branch", "Securities Type", "Securities Name", "Issuer Name", "Issuer Country", "Issuer Type", "Portfolio", "CCY", "Amount", "Amount Eq. IDR Juta", "Maturity Date", "Coupon", "Potential P/L (Eq. IDR Juta)"], "NOSTRO": ["Year", "Branch", "SwfitCode", "Bank Name", "Bank Country", "CCY", "Balance", "FX Rate to IDR", "FX Rate Date", "Balance IDR"]};
 const productSample={"Nominal Pertanggungan":{"No":"1","Perusahaan Asuransi":"PT Asuransi Tugu Pratama Indonesia Tbk","Jenis Prudk Asuransi":"Asuransi Kredit","Entitas":"BMRI","EIL Entitas (Rp Juta)":"60093270.28","Nominal Pertanggungan 2025 (Rp Juta)":"11573402.55","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)":"13060790.52","Utilisasi EIL (%)":"21.73%","CIL (Rp Juta)":"107814276.74","CIT (Rp Juta)":"108150600","Utilisasi CIL (%)":"11.02%","% Utilisasi (Nominal Pertanggungan/CIL)":"10.74%","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)":"12.12%","Skor Akreditasi (PCP)":"79.38","Klasifikasi EWS (PCP)":"Monitoring","Status / Rekomendasi Action Plan":"Monitoring as usual / no specific action"},"CASHLOAN": {"no_cus": "16000000010", "nm_cus": "PURE SOURCE DAIRY FARM CO., LTD", "kd_cab": "60900", "nm_cab": "PT BANK MANDIRI SHANGHAI (CNY)", "no_rek": "6090100009393", "gas_reporting": "WHOLESALE CIB", "buc_reporting": "CB105", "jns_krd": "I-SYN-CNY", "src": "KLN", "j_guna": "KREDIT INVESTASI", "revolv": "N", "bilokj": "9999", "total_limit": "286035.62", "total_bade": "286035.62", "project_location": "China", "code": "CN", "MatDate/Jatem": "", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "NON CASH LOAN": {"NO": "1", "MODULE": "EXCO", "Swift Code": "ANZB AU 3M", "REPORTTYPE": "Export Collection Financing", "TRXREF": "XC77126002607", "RELREF": "", "CUSTID": "16000005630", "CUSTNM": "PT. PABRIK KERTAS TJIWI KIMIA TBK", "CPNM": "KENSINGTON INTERNATIONAL LIMITED", "CPCNTY": "", "CPBK": "", "BKCNTRY": "", "Country Code": "HK", "Country Name": "Hong Kong", "Type of Judgment": "CPNM", "TRXTYPE": "D/A", "CCY": "USD", "AMOUNT": "24532.90", "BALANCE": "24532.90", "EXCHANGERT": "17310", "EQVIDR": "425000000", "FINTYPE": "DISCOUNT/REDISCOUNT", "TRXDATE": "07/04/2026", "DUEDATE": "02/10/2026", "SERVCODE": "77106", "SERVNM": "Trade Operation Export", "PCCD": "77106", "PCNM": "Trade Operation Export", "BUCD": "", "SOF": "T", "INTRT": "6.97", "ecosystem_lpg":"BATUBARA", "segmen_lpg":"Commercial", "region_lpg":"Region V"}, "COMMERCIAL LINE (CRDT)": {"No": "1", "Nama": "Australia and New Zealand Banking Group Limited", "Swift Code": "ANZB AU 3M", "Swift Code Vlookup": "ANZBAU3M", "Code": "AU", "Aging Schedule RM": "Raden Rizky Herfianda", "Negara": "Australia", "Bank": "Foreign", "RM": "2", "Dept.": "IFI", "BMFIR": "AA", "Fitch": "AA-", "Moody's": "Aa2", "S&P": "AA-", "Treasury DN": "50000", "Treasury DN Utilisasi": "1469.93", "Treasury LN": "140000", "Treasury LN Utilisasi": "0", "Treasury Line Total": "190000", "Treasury Line Total Utilisasi": "1469.93", "Comm DN": "775000", "Comm DN Utilisasi": "6618.77", "Comm LN": "35000", "Comm LN Utilisasi": "0", "Comm Line Total": "810000", "Comm Line Total Utilisasi": "6618.77", "Corporate Card": "0", "Credit Line Total": "1000000", "Credit Line Total Utilisasi": "8088.69"}, "Investment Line": {"No": "1", "Nama Bank": "ANZ", "Nama Entity (Scope Entity : AKK)": "DPBM", "Switftcode": "ANZxx", "Jenis Invesment Line": "Deposito", "Amount Invesment Line": "10000000000", "catatan : baru sebagai pooling untuk eksposur produk/fasilitas yang belum termapping sebagai apa": ""}, "BONDS": {"Date": "30-Apr-26", "Branch": "Head Office", "Securities Type": "Fixed Rate", "Securities Name": "FR0037", "Issuer Name": "Indo Gov", "Issuer Country": "ID", "Issuer Type": "Government", "Portfolio": "Banking Book", "CCY": "IDR", "Amount": "585424000000", "Amount Eq. IDR Juta": "585424", "Maturity Date": "15-Sep-26", "Coupon": "12%", "Potential P/L (Eq. IDR Juta)": "0"}, "NOSTRO": {"Year": "Apr-26", "Branch": "Head Office", "SwfitCode": "FABIAEAA", "Bank Name": "FIRST ABU DABI BANK", "Bank Country": "AE", "CCY": "AED", "Balance": "26.64", "FX Rate to IDR": "4700", "FX Rate Date": "2026-04-30", "Balance IDR": "125208"}};
 // Source templates are useful in E2E/local mode only. Production templates must not expose fixture values.
-if(IS_PRODUCTION_RUNTIME){
+if(IS_LIVE_PRODUCTION_RUNTIME){
   Object.keys(productSample).forEach(k=>delete productSample[k]);
 }
 
@@ -2832,7 +2836,7 @@ function initializeRuntimeDataset(){
   ["Country","CCL","MLK","CIL","LPG"].forEach(type=>{limasDemoData[type]=[];});
   ["CASHLOAN","NON CASH LOAN","CREDIT LINE","Investment Line","BONDS","NOSTRO","Nominal Pertanggungan"].forEach(productId=>{productDatabase[productId]=[];productIntegrationMappings[productId]=[];});
 
-  if(IS_E2E_RUNTIME){
+  if(ACTIVE_SAMPLE_RUNTIME){
     Object.entries(E2E_MASTER_DATA).forEach(([type,rows])=>{
       limasDemoData[type]=JSON.parse(JSON.stringify(rows));
     });
