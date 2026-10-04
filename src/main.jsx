@@ -3993,6 +3993,20 @@ function runtimeSampleInvariantAudit(){
     if(row.status!=="Normal")push("CCL_LINEAGE",row.recordId,"Credit Line lineage does not reconcile.",row.issues.join(" | "),"Normal");
   });
 
+  // CCL monitoring must consume the Credit Line source utilization, not a
+  // lineage-derived value that can silently collapse to zero.
+  (productDatabase["CREDIT LINE"]||[]).forEach(row=>{
+    const meta=row.meta||{},d=row.data||{};
+    if(!meta.cclLimitType)return;
+    const swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim();
+    const sourceTotal=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+    if(sourceTotal<=0)return;
+    const entity=String(meta.reportingEntity||"BMRI").toUpperCase();
+    const limitType=String(meta.cclLimitType||"DIRECT").toUpperCase();
+    const mapped=cclEntityExposure(swift,entity,limitType);
+    if(mapped<=0)push("CCL_OS_ZERO_AFTER_MAPPING",row.recordId,"Positive Credit Line utilization did not reach CCL monitoring.",mapped,"> 0");
+  });
+
   return issues;
 }
 const RUNTIME_SAMPLE_INVARIANT_ISSUES=runtimeSampleInvariantAudit();
