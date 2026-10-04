@@ -3261,7 +3261,8 @@ const productFieldNotes={
   "NOSTRO":{
     "Branch":"Branch pada source Nostro digunakan sebagai source kantor pembukuan bila dibutuhkan untuk bucket Domestic/Overseas; tidak membuat field Booking Office baru.",
     "Bank Country":"Country pada source Nostro sebagai Country Exposure/Country Limit.",
-    "Balance":"Balance dalam kurs asli; workbook mencatat kebutuhan konversi menggunakan kurs tengah NTR."
+    "Balance":"Balance dalam kurs asli; workbook mencatat kebutuhan konversi menggunakan kurs tengah NTR.",
+    "Balance IDR":"Nilai Balance hasil konversi ke IDR pada source level. Canonical monitoring kemudian menormalisasi IDR menjadi Rp Juta."
   },
   "Nominal Pertanggungan":{
     "Perusahaan Asuransi":"Nama perusahaan asuransi pada monitoring CIL.",
