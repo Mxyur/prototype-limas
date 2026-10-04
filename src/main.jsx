@@ -593,6 +593,7 @@ function buildCCLIndirectReportRows(){
 
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
+  if(type==="CCL") return E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).reduce((s,x)=>s+cclEntityExposure(row.key,x.entityCode,"DIRECT"),0);
   return productApplicationsFor(type,row.key).reduce((a,x)=>a+(Number(x.normalizedAmount??x.amount)||0),0);
 }
 function recordLimit(type,row){
@@ -2155,7 +2156,7 @@ function createMasterRecord(type,values){
   if((limasDemoData[type]||[]).some(r=>String(r.key).toLowerCase()===key.toLowerCase()))throw new Error("Unique Key sudah ada.");
   const defaults={
     Country:{key,name:"New Country",statusMaster:"Exist",capacityLimit:0,capacityDistribution:{domesticLimit:null,overseasLimit:null},productAllocations:{},dataQuality:"Normal"},
-    CCL:{key,name:"New Counterparty",category:"Asing",country:"",countryRating:"—",bobot:null,rating:"—",position:"—",ratingIndex:null,inhouse:0,tier1:0,capacity:0,adjusted:0,globalParent:"—",top200:"—",ccl:0,contractual:0,dataQuality:"Normal"},
+    CCL:{key,name:"New Counterparty",category:"Asing",country:"",countryRating:"—",bobot:null,rating:"—",position:"—",ratingIndex:null,inhouse:0,tier1:0,capacity:0,adjusted:0,globalParent:"—",top200:"—",ccl:0,contractual:0,bankLoanLimit:0,commercialDnLimit:0,commercialLnLimit:0,commercialLineLimit:0,treasuryDnLimit:0,treasuryLnLimit:0,treasuryLineLimit:0,creditLineLimit:0,dataQuality:"Normal"},
     MLK:{key,name:"New Debtor",group:"",groupUsahaHolding:"",subGroup:"",entity:"BMRI",unitKerja:null,bumnSwasta:"",tier:"",clLimit:0,nclLimit:0,treasuryLine:0,masterLimitSetting:0,dataQuality:"Normal"},
     CIL:{key,name:"New Insurance Company",type:"Asuransi",ic:0,multiplier:0,cit:0,cil:0,eils:{BMRI:0,"Mandiri Taspen":0,MTF:0,MUF:0},score:null,action:"Monitoring as usual / no specific action",dataQuality:"Normal"},
     LPG:{key,sector:String(input.sector||""),segment:normalizeLpgSegment(input.segment||""),limits:{Bankwide:0,...Object.fromEntries(LPG_REGIONAL_SCOPES.map(scope=>[scope,0])),"KP + OVS":0},dataQuality:"Normal"}
@@ -3396,9 +3397,10 @@ function canonicalExceptions(){
 function productContributionMap(type,key){
   const map={};
   const row=type==="LPG"?lpgDisplayRows().find(r=>String(r.key)===String(key)):null;
-  const apps=type==="LPG"&&row?.segment==="TOTAL SEKTOR"
+  let apps=type==="LPG"&&row?.segment==="TOTAL SEKTOR"
     ? lpgLeafRows().filter(x=>x.sector===row.sector).flatMap(x=>productApplicationsFor("LPG",x.key))
     : productApplicationsFor(type,key);
+  if(type==="CCL")apps=apps.filter(a=>String(a.cclLimitType||"DIRECT")==="DIRECT");
   apps.forEach(a=>{
     if(type==="CCL"&&a.productId==="CREDIT LINE"){
       const d=a.sourceData||{};
