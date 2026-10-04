@@ -480,6 +480,18 @@ function recordLimit(type,row){
   return Number(row.limit)||0;
 }
 function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposure(type,row);return limit?exp/limit:0}
+function masterLevelDataIssue(type,row){
+  // Master status must reflect master/reference integrity only.
+  // Product-source and mapping issues are tracked separately in Data Quality.
+  if(String(row.dataQuality||"Normal").startsWith("Missing"))return true;
+  return masterCanonicalQualityIssues().some(x=>x.domain===type&&String(x.key)===String(row.key));
+}
+function sourceRecordIssues(type,recordId){
+  return reconciliationIssues().filter(x=>x.status==="Data Issue"&&x.limitType===type&&String(x.recordId)===String(recordId));
+}
+function sourceRecordStatus(type,recordId){
+  return sourceRecordIssues(type,recordId).length?"Data Issue":"Normal";
+}
 function recordStatus(type,row){
   if(String(row.dataQuality||"Normal").startsWith("Missing"))return "Data Issue";
   const u=recordUtil(type,row);
@@ -514,7 +526,7 @@ function recordStatus(type,row){
     maxUtil=lpgMaxUtilization(row);
   }
 
-  if(reconciliationIssues().some(x=>x.status==="Data Issue"&&x.limitType===type&&String(x.key)===String(row.key)))return "Data Issue";
+  if(masterLevelDataIssue(type,row))return "Data Issue";
   return maxUtil>=1?"Breach":maxUtil>=0.8?"Warning":"Normal";
 }
 function cilProjection(key){
@@ -2677,13 +2689,16 @@ function canonicalReadModelRows(){
         apps.forEach(a=>{
           const mappingStatus=!a.masterMatch?"Master Not Found":
             (domain==="Country"&&a.bookingOfficeType==="Needs Mapping"?"Needs Booking Mapping":"Mapped");
+          const sourceStatus=sourceRecordStatus(domain,a.recordId);
+          const masterStatus=recordStatus(domain,master);
           rows.push({
             domain,masterKey:master.key,masterObject:master.name||master.sector||master.key,
             product:demoProductLabel(a.productId),recordId:a.recordId,sourceSystem:a.sourceSystem,
             sourceField:a.exposureField,sourceAmount:a.amount,sourceUnit:a.sourceUnit,
             targetUnit:a.targetUnit,normalizedExposure:a.normalizedAmount,
             bookingOffice:a.bookingOffice,bookingOfficeType:a.bookingOfficeType,scope:a.scope||"—",
-            mappingStatus,utilization:recordUtil(domain,master),status:recordStatus(domain,master)
+            mappingStatus,masterStatus,sourceStatus,
+            utilization:recordUtil(domain,master),status:sourceStatus==="Data Issue"?"Data Issue":masterStatus
           });
         });
       }
@@ -3897,7 +3912,6 @@ function Products({nav}){
         </div>
       </section>}
     </div>
-    <CanonicalReadModelPreview/>
   </Layout>;
 }
 
