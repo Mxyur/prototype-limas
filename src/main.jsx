@@ -2990,7 +2990,7 @@ function buildProductIntegrationMappings(){
       const limitType=r.meta?.cclLimitType||"DIRECT";
       const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>
         /^CL-CCL-/i.test(String(x.recordId||"")) &&
-        String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
         (String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()) ||
          String(x.data?.no_cus||"").toUpperCase()===("CCL-"+String(swift)).toUpperCase())
