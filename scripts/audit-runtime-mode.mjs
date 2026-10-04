@@ -4,8 +4,8 @@ const source=fs.readFileSync(new URL("../src/main.jsx",import.meta.url),"utf8");
 
 const required=[
   'import.meta.env?.VITE_LIMAS_RUNTIME_MODE',
-  'import.meta.env?.DEV ? "E2E" : "PRODUCTION"',
-  'if(IS_E2E_RUNTIME){',
+  'import.meta.env?.DEV ? "E2E" : "PRODUCTION_SAMPLE"',
+  'if(ACTIVE_SAMPLE_RUNTIME){',
   'Object.entries(E2E_MASTER_DATA).forEach',
   'Object.entries(E2E_DUMMY_PRODUCT_DATA).forEach',
   'initializeRuntimeDataset();',
@@ -33,4 +33,5 @@ for(const token of fixtureAliases){
   if(!source.includes(token))throw new Error("Missing fixture alias: "+token);
 }
 
-console.log("PASS: production runtime fixture isolation guards are present.");
+if(!source.includes('PRODUCTION_SAMPLE'))throw new Error("Production sample runtime mode is missing.");
+console.log("PASS: production runtime fixture isolation + sample guards are present.");
