@@ -92,12 +92,12 @@ export const E2E_CCL_ENTITY_SCOPE=[
 ];
 
 export const E2E_CCL_LIMIT_SCOPE=[
-  {counterpartyId:"ANZBAU3M",entityCode:"BMRI",limitType:"DIRECT",ccl:45,contractual:43,facility:13.5,bankLoan:12,commercialLine:10,treasuryLine:3.5},
+  {counterpartyId:"ANZBAU3M",entityCode:"BMRI",limitType:"DIRECT",ccl:45,contractual:43,facility:25.5,bankLoan:12,commercialLine:10,treasuryLine:3.5},
   {counterpartyId:"ANZBAU3M",entityCode:"MTF",limitType:"DIRECT",ccl:5,contractual:5,facility:1.5,bankLoan:1,commercialLine:0.5,treasuryLine:0},
   {counterpartyId:"ANZBAU3M",entityCode:"MMI",limitType:"INDIRECT",ccl:2,contractual:1.8,facility:0.5,bankLoan:0,commercialLine:0.5,treasuryLine:0},
-  {counterpartyId:"DBSSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:26,contractual:24,facility:13,bankLoan:10,commercialLine:9,treasuryLine:4},
+  {counterpartyId:"DBSSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:26,contractual:24,facility:23,bankLoan:10,commercialLine:9,treasuryLine:4},
   {counterpartyId:"DBSSGSG",entityCode:"MANTAP",limitType:"DIRECT",ccl:4,contractual:4,facility:3,bankLoan:2,commercialLine:1,treasuryLine:0},
-  {counterpartyId:"MUFGJPJT",entityCode:"BMRI",limitType:"DIRECT",ccl:70,contractual:65,facility:8,bankLoan:4,commercialLine:5,treasuryLine:3},
+  {counterpartyId:"MUFGJPJT",entityCode:"BMRI",limitType:"DIRECT",ccl:70,contractual:65,facility:12,bankLoan:4,commercialLine:5,treasuryLine:3},
   {counterpartyId:"MUFGJPJT",entityCode:"MCI",limitType:"DIRECT",ccl:10,contractual:10,facility:2,bankLoan:1,commercialLine:1,treasuryLine:0},
   {counterpartyId:"MUFGJPJT",entityCode:"AMFS",limitType:"INDIRECT",ccl:2,contractual:1.8,facility:0.5,bankLoan:0,commercialLine:0,treasuryLine:0.5},
   {counterpartyId:"OCBCSGSG",entityCode:"BMRI",limitType:"DIRECT",ccl:17,contractual:15,facility:4.25,bankLoan:2,commercialLine:2,treasuryLine:0.25},
@@ -147,17 +147,17 @@ mlkRows.forEach(([cif,name,clAmt,nclAmt,tlAmt],i)=>{
 
 // MLK extended entity/source coverage. These are distinct source records, not duplicates.
 const mlkExtendedSourceRows=[
-  ["5000000005","BMEL","TIMAH GROUP","500",250,100,214],
-  ["5000000006","BMRI","TIMAH GROUP","600",262,0,862],
-  ["5000000007","BMEL","INALUM GROUP","450",0,0,217],
-  ["5000000008","BMRI","INALUM GROUP","7800",1069,0,8869],
-  ["5000000009","BMEL","PERTAMINA GROUP","180",34,0,214],
-  ["5000000010","BMRI","PERTAMINA GROUP","42000",6000,265,48265],
-  ["5000000011","MTF","PERTAMINA GROUP","250",62,30,342],
+  ["5000000005","BMEL","TIMAH GROUP","150",30,20,214],
+  ["5000000006","BMRI","TIMAH GROUP","600",180,40,862],
+  ["5000000007","BMEL","INALUM GROUP","150",20,20,217],
+  ["5000000008","BMRI","INALUM GROUP","7800",700,0,8869],
+  ["5000000009","BMEL","PERTAMINA GROUP","180",20,0,214],
+  ["5000000010","BMRI","PERTAMINA GROUP","42000",5000,500,48265],
+  ["5000000011","MTF","PERTAMINA GROUP","250",40,20,342],
   ["5000000012","MUF","PERTAMINA GROUP","0",0,0,0],
-  ["5000000013","BMRI","PGN GROUP","5500",817,0,6317],
-  ["5000000014","MTF","PGN GROUP","60",20,0,80],
-  ["5000000015","MANSEK","PGN GROUP","65",15,10,90]
+  ["5000000013","BMRI","PGN GROUP","5500",700,0,6317],
+  ["5000000014","MTF","PGN GROUP","60",15,0,80],
+  ["5000000015","MANSEK","PGN GROUP","65",10,5,90]
 ];
 mlkExtendedSourceRows.forEach(([cif,entity,group,clAmt,nclAmt,tlAmt,master])=>{
   p.CASHLOAN.push(cl({no_cus:cif,nm_cus:cif+" / "+entity,no_rek:"MLK-CL-"+cif,total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,Number(clAmt),"MLK",{recordId:"CL-MLK-EXT-"+cif,sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:entity,groupId:group}));
