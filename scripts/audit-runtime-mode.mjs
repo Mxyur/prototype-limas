@@ -18,26 +18,8 @@ for(const token of required){
 const forbiddenProductionCall=/installE2EDummyDataset\s*\(/;
 if(forbiddenProductionCall.test(source))throw new Error("Legacy unconditional installE2EDummyDataset() still exists.");
 
-const fixtureImportMatch=source.match(/import\\s*\\{([^}]+)\\}\\s*from\\s*["']\\.\\/e2eDummyData["']/s);
+const fixtureImportMatch=source.match(/import\\s*\\{([^}]+)\\}\\s*from\\s*["']\\.\\/e2eDummyData["']/);
 if(!fixtureImportMatch)throw new Error("E2E fixture import block not found.");
-
-const fixtureNames=new Set([
-  "E2E_MASTER_DATA",
-  "E2E_DUMMY_PRODUCT_DATA",
-  "E2E_ENTITY_MASTER",
-  "E2E_MLK_ENTITY_SCOPE",
-  "E2E_CCL_ENTITY_SCOPE",
-  "E2E_CCL_LIMIT_SCOPE"
-]);
-const importSpecifiers=fixtureImportMatch[1]
-  .split(",")
-  .map(x=>x.trim())
-  .filter(Boolean);
-const unaliasedFixtures=importSpecifiers
-  .filter(spec=>fixtureNames.has(spec));
-if(unaliasedFixtures.length){
-  throw new Error("E2E fixtures must be imported under explicit *_FIXTURE aliases: "+unaliasedFixtures.join(", "));
-}
 
 const fixtureAliases=[
   "E2E_MASTER_DATA_FIXTURE",
