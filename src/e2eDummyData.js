@@ -117,12 +117,17 @@ cilSpecs.forEach(([key,insurer,ents])=>ents.forEach(([entity,amount],i)=>p["Nomi
 // LPG source records are ordinary debtor-level Cash Loan/NCL rows with explicit LPG classification.
 // LPG monitoring aggregates these raw source records.
 const lpgDebtors=[
+  // BATUBARA — Commercial: Bankwide reaches 100%, while regional caps intentionally demonstrate breaches.
   ["16000000201","PT Borneo Prima Energi",10000,3000000000,"Region I","Commercial"],
+
   ["16000000202","PT Kaltara Mineral Abadi",7000,3000000000,"Region II","Commercial"],
   ["16000000203","PT Bara Nusantara Makmur",5000,2000000000,"Region III","Commercial"],
   ["16000000204","PT Kalimantan Coal Trading",16000,2000000000,"KP + OVS","Corporate"],
   ["16000000205","PT Arunika Energi Resources",14000,2000000000,"Region IV","Corporate"],
-  ["16000000206","PT Mandala Tambang Sejahtera",7000,1000000000,"Region V","Corporate"]
+  ["16000000206","PT Mandala Tambang Sejahtera",7000,1000000000,"Region V","Corporate"],
+  // ENERGI & AIR — Corporate: populated intentionally to demonstrate a healthy/warning master.
+  ["16000000207","PT Tirta Energi Nusantara",12000,4000000000,"KP + OVS","Corporate"],
+  ["16000000208","PT Cakrawala Power Resources",11000,7000000000,"KP + OVS","Corporate"]
 ];
 lpgDebtors.forEach(([cif,name,clAmt,nclIdr,region,segment],i)=>{
   const baseId=String(i+1).padStart(3,"0");
