@@ -17,4 +17,27 @@ for(const r of E2E_MASTER_DATA.LPG||[]){ for(const scope of lpgScopes) assert.ok
 const lpgKeys=new Set((E2E_MASTER_DATA.LPG||[]).map(r=>r.key));
 let lpgRecords=0;
 for(const productId of ["CASHLOAN","NON CASH LOAN"]){ for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){ const d=r.data||{}; if(d.ecosystem_lpg||d.segmen_lpg||d.region_lpg){ assert.ok(d.ecosystem_lpg&&d.segmen_lpg&&d.region_lpg,"Incomplete LPG classification on "+productId+"/"+(r.meta?.recordId||"unknown")); assert.ok(lpgKeys.has(d.ecosystem_lpg+"|"+d.segmen_lpg),"LPG source classification has no matching master: "+d.ecosystem_lpg+"|"+d.segmen_lpg); lpgRecords++; } } }
-console.log("[LIMAS AUDIT] PASS • Country="+(E2E_MASTER_DATA.Country||[]).length+" • CCL="+(E2E_MASTER_DATA.CCL||[]).length+" • MLK="+(E2E_MASTER_DATA.MLK||[]).length+" • CIL="+(E2E_MASTER_DATA.CIL||[]).length+" • LPG="+(E2E_MASTER_DATA.LPG||[]).length+" • LPG classified source records="+lpgRecords);
+
+let numericChecks=0;
+const numericNear=(a,b,msg,tol=1)=>{ numericChecks++; assert.ok(Number.isFinite(Number(a))&&Number.isFinite(Number(b)),msg+" must be numeric"); assert.ok(Math.abs(Number(a)-Number(b))<=tol,msg+" (actual="+a+", expected="+b+")"); };
+
+// Product-level numeric reconciliation.
+for(const r of E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]){
+  const d=r.data||{}, amount=Number(d.AMOUNT), fx=Number(d.EXCHANGERT), eq=Number(d.EQVIDR);
+  if(amount>0&&fx>0&&eq>0) numericNear(amount*fx,eq,"NCL AMOUNT × EXCHANGERT = EQVIDR",1.01);
+}
+for(const r of E2E_DUMMY_PRODUCT_DATA.BONDS||[]){
+  const d=r.data||{}, amount=Number(d.Amount), eq=Number(d["Amount Eq. IDR Juta"]);
+  if(amount>0&&eq>0) numericNear(amount/1000000,eq,"Bonds Amount / 1,000,000 = Amount Eq. IDR Juta",0.01);
+}
+for(const r of E2E_DUMMY_PRODUCT_DATA.NOSTRO||[]){
+  const d=r.data||{}, bal=Number(d.Balance), fx=Number(d["FX Rate to IDR"]), idr=Number(d["Balance IDR"]);
+  if(bal>0&&fx>0&&idr>0) numericNear(bal*fx,idr,"Nostro Balance × FX = Balance IDR",0.01);
+}
+for(const r of E2E_DUMMY_PRODUCT_DATA["Nominal Pertanggungan"]||[]){
+  const d=r.data||{}, amount=Number(d["Nominal Pertanggungan 2025 (Rp Juta)"]), eil=Number(d["EIL Entitas (Rp Juta)"]);
+  const u=String(d["Utilisasi EIL (%)"]||"").replace("%","");
+  if(amount>=0&&eil>0&&u!=="") numericNear(Number(u),amount/eil*100,"CIL Utilisasi EIL",0.01);
+}
+
+console.log("[LIMAS AUDIT] PASS • Country="+(E2E_MASTER_DATA.Country||[]).length+" • CCL="+(E2E_MASTER_DATA.CCL||[]).length+" • MLK="+(E2E_MASTER_DATA.MLK||[]).length+" • CIL="+(E2E_MASTER_DATA.CIL||[]).length+" • LPG="+(E2E_MASTER_DATA.LPG||[]).length+" • LPG classified source records="+lpgRecords+" • numeric checks="+numericChecks);
