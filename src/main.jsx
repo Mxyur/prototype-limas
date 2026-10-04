@@ -2677,6 +2677,7 @@ function reconciliationIssues(){
           }else if(productId!=="CREDIT LINE"&&mappings.some(a=>a.bookingOfficeType==="Needs Mapping")){
           const a=mappings.find(x=>x.bookingOfficeType==="Needs Mapping")||mappings[0];
           issues.push({status:"Data Issue",issueType:"MISSING_BOOKING_MAPPING",productId,recordId:row.recordId,limitType:"Country",key,object:a.masterObject||"—",detail:"Country mapping needs Booking Office Type from reference/enrichment; source record does not provide the classification.",amount:0});
+          }
         }
       }
     });
