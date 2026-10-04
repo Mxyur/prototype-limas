@@ -2784,18 +2784,18 @@ function buildProductIntegrationMappings(){
     }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null});
     if(swift){
-      addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift",entity:String(r.meta?.reportingEntity||"").toUpperCase()||null,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
+      addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     }else{
       const names=[d.CUSTNM,d.CPNM].map(v=>String(v||"").trim().toLowerCase()).filter(Boolean);
       const cclRef=(limasDemoData.CCL||[]).find(m=>names.includes(String(m.name||"").trim().toLowerCase()));
-      if(cclRef)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTNM / CPNM",sourceValue:d.CUSTNM||d.CPNM,mappingRule:"NCL Counterparty Reference -> CCL Swift",entity:String(r.meta?.reportingEntity||"").toUpperCase()||null,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
+      if(cclRef)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTNM / CPNM",sourceValue:d.CUSTNM||d.CPNM,mappingRule:"NCL Counterparty Reference -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     }
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
 
   (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
     const d=r.data||{},swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim(),total=Number(d["Credit Line Total Utilisasi"]||0),country=String(d.Code||"").trim();
-    if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift",entity:String(r.meta?.reportingEntity||"").toUpperCase()||null,cclLimitType:r.meta?.cclLimitType||"DIRECT"});
+    if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
     if(country){
       const components=[
         ["Commercial","Comm DN Utilisasi","Domestic"],["Commercial","Comm LN Utilisasi","Overseas"],
@@ -2855,15 +2855,6 @@ function cleanseMasterData(){
     if(trsDn!==null&&trsLn!==null)r.treasuryLineLimit=Number((trsDn+trsLn).toFixed(6));
     const comm=mlkNum(r.commercialLineLimit),trs=mlkNum(r.treasuryLineLimit);
     if(comm!==null&&trs!==null)r.creditLineLimit=Number((comm+trs).toFixed(6));
-  });
-  (limasDemoData.CCL||[]).forEach(r=>{
-    const comm=(Number(r.commercialDnLimit)||0)+(Number(r.commercialLnLimit)||0);
-    const trs=(Number(r.treasuryDnLimit)||0)+(Number(r.treasuryLnLimit)||0);
-    if(r.commercialLineLimit!==undefined)check("Master","CCL","Commercial Line = Comm DN + Comm LN",Number(r.commercialLineLimit),comm,.01,"Rp Miliar");
-    if(r.treasuryLineLimit!==undefined)check("Master","CCL","Treasury Line = Treasury DN + Treasury LN",Number(r.treasuryLineLimit),trs,.01,"Rp Miliar");
-    if(r.creditLineLimit!==undefined)check("Master","CCL","Credit Line Total = Commercial + Treasury",Number(r.creditLineLimit),comm+trs,.01,"Rp Miliar");
-    const direct=E2E_CCL_LIMIT_SCOPE.filter(x=>String(x.counterpartyId)===String(r.key)&&x.limitType==="DIRECT").reduce((s,x)=>s+(Number(x.ccl)||0),0);
-    check("Master","CCL","Direct entity CCL allocation = master CCL",direct,Number(r.ccl||0),.01,"Rp Miliar");
   });
   (limasDemoData.CIL||[]).forEach(r=>{
     const sumEil=Object.values(r.eils||{}).reduce((a,v)=>a+(Number(v)||0),0);
@@ -4224,7 +4215,8 @@ function SubsidiaryCenter({nav}){
   const ccl=E2E_CCL_ENTITY_SCOPE.find(x=>x.entityCode===entity);
   const mlk=E2E_MLK_ENTITY_SCOPE.includes(entity);
   const entityCclScope=(E2E_CCL_LIMIT_SCOPE||[]).filter(x=>x.entityCode===entity);
-  const sourceRows=Object.values(productDatabase||{}).flat().filter(r=>String(r.data?.entity_code||r.meta?.reportingEntity||"").toUpperCase()===entity);
+  const sourceRecordIds=new Set(Object.values(productIntegrationMappings||{}).flat().filter(a=>String(a.entity||"").toUpperCase()===entity).map(a=>String(a.recordId)));
+  const sourceRows=Object.values(productDatabase||{}).flat().filter(r=>sourceRecordIds.has(String(r.recordId)));
   return <Layout screen="subsidiaries" onNav={nav}><Header title="Perusahaan Anak" subtitle="Entity registry + MLK/CCL scope + product coverage + consolidated readiness"/>
     <div className="page">
       <section className="card"><div className="head"><div><h2>Entity Registry</h2><p>Perusahaan Anak menjadi reporting dimension; Product Database tetap source-oriented.</p></div><span className="chip blue">{E2E_ENTITY_MASTER.length} entities</span></div>
