@@ -177,7 +177,7 @@ const cclEntitySourceRows=[
 ];
 cclEntitySourceRows.forEach(([swift,entity,limitType,clAmt,nclEq,creditAmt],i)=>{
   const recKey=String(i+1).padStart(3,"0");
-  p.CASHLOAN.push(cl({no_cus:"CCL-"+limitType+"-"+entity+"-"+swift,nm_cus:entity+" allocation / "+swift,no_rek:"CCL-PA-CL-"+recKey,total_limit:"",total_bade:String(clAmt),project_location:"Mapped",code:""},swift,Number(clAmt),"CCL",{recordId:"CL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
+  p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:entity+" allocation / "+swift,no_rek:"CCL-PA-CL-"+recKey,total_limit:"",total_bade:String(clAmt),project_location:"Mapped",code:""},swift,Number(clAmt),"CCL",{recordId:"CL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
   p["NON CASH LOAN"].push(ncl({NO:"PA-"+recKey,MODULE:"EPLC",TRXREF:"NCL-CCL-PA-"+recKey,CUSTID:"NCL-CCL-PA-"+recKey,CUSTNM:entity+" allocation",CPNM:swift,"Country Code":"", "Country Name":"—",CCY:"USD",AMOUNT:String(Number(nclEq)/17310),BALANCE:String(Number(nclEq)/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},swift,Number(nclEq),"CCL",{recordId:"NCL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType}));
   p["CREDIT LINE"].push(credit({No:"PA-"+recKey,Nama:entity+" / "+swift,"Swift Code":swift,"Swift Code Vlookup":swift,Code:"",Negara:"Mapped","Bank":"Foreign",
     "Comm DN":String(creditAmt*.75),"Comm DN Utilisasi":String(creditAmt*.75),"Comm LN":String(creditAmt*.25),"Comm LN Utilisasi":String(creditAmt*.25),
