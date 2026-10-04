@@ -3049,15 +3049,13 @@ function buildProductIntegrationMappings(){
     if(swift){
       const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
       const limitType=r.meta?.cclLimitType||"DIRECT";
-      const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>
-        /^CL-CCL-/i.test(String(x.recordId||"")) &&
+      const clUpstream=(productDatabase.CASHLOAN||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
         (String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()) ||
          String(x.data?.no_cus||"").toUpperCase()===("CCL-"+String(swift)).toUpperCase())
       ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
-      const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
-        /^NCL-CCL-/i.test(String(x.recordId||"")) &&
+      const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
         String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
         (String(x.data?.CPNM||"").toUpperCase()===String(swift).toUpperCase() ||
@@ -4364,12 +4362,12 @@ function cclCreditLineLineageAuditRows(){
     if(!swift)return;
     const entity=String(r.meta?.reportingEntity||"BMRI").toUpperCase();
     const limitType=r.meta?.cclLimitType||"DIRECT";
-    const cl=(productDatabase.CASHLOAN||[]).filter(x=>/^CL-CCL-/i.test(String(x.recordId||"")) &&
+    const cl=(productDatabase.CASHLOAN||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.cclLimitType||"DIRECT")===limitType &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
       (String(x.recordId||"").toUpperCase().includes(swift.toUpperCase()) || String(x.data?.no_cus||"").toUpperCase()===("CCL-"+swift).toUpperCase()))
       .reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
-    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>/^NCL-CCL-/i.test(String(x.recordId||"")) &&
+    const ncl=(productDatabase["NON CASH LOAN"]||[]).filter(x=>String(x.meta?.creditLineLimitType||"DIRECT").toUpperCase()===String(limitType).toUpperCase() &&
       String(x.meta?.cclLimitType||"DIRECT")===limitType &&
       String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
       (String(x.data?.CPNM||"").toUpperCase()===swift.toUpperCase() || String(x.recordId||"").toUpperCase().includes(swift.toUpperCase())))
