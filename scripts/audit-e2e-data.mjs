@@ -5,6 +5,13 @@ const near=(a,b,msg)=>assert.ok(Math.abs(Number(a)-Number(b))<=EPS,msg+" (actual
 const entityCodes=new Set(E2E_ENTITY_MASTER.map(x=>x.entityCode));
 assert.deepEqual(E2E_MLK_ENTITY_SCOPE,["BMEL","BMRI","MANSEK","MTF","MUF"],"MLK scope must follow the confirmed entity universe: BMEL + BMRI + MANSEK + MTF + MUF");
 const cclScope=new Map(E2E_CCL_ENTITY_SCOPE.map(x=>[x.entityCode,x]));
+const fs=await import("node:fs");
+const path=await import("node:path");
+const mainSource=fs.readFileSync(path.resolve(process.cwd(),"src/main.jsx"),"utf8");
+assert.ok(!/r\\.limits\\[\\s*["']KP \\+ OVS["']\\s*\\]\\s*=/.test(mainSource),"LPG cleanse must never overwrite explicit KP + OVS master values");
+assert.ok(mainSource.includes("const regionalValues=LPG_REGION_ONLY_SCOPES"),"LPG cleanse must calculate regional reconciliation from Region I–XII only");
+assert.ok(mainSource.includes("legacyCorruption"),"LPG persisted-master migration guard must exist for legacy zero snapshots");
+
 console.log("[LIMAS AUDIT] starting E2E invariant audit");
 for(const code of E2E_COUNTRY_MONITORING_POLICY.excludedCountryCodes){ assert.ok(!(E2E_MASTER_DATA.Country||[]).some(r=>String(r.key).toUpperCase()===String(code).toUpperCase()),"Excluded Country Code "+code+" must not exist in Country Master"); }
 for(const r of E2E_MASTER_DATA.Country||[]){ const d=r.capacityDistribution||{}; if(d.domesticLimit!==null&&d.overseasLimit!==null) near(r.capacityLimit,Number(d.domesticLimit)+Number(d.overseasLimit),"Country capacity split must reconcile for "+r.key); const p=r.productAllocations||{}; const allocated=Object.values(p).reduce((s,x)=>s+(Number(x?.total)||0),0); near(r.capacityLimit,allocated,"Country product allocation must reconcile for "+r.key); for(const [product,x] of Object.entries(p)){ if(x.domesticLimit!==null&&x.overseasLimit!==null) near(x.total,Number(x.domesticLimit)+Number(x.overseasLimit),"Country product split must reconcile for "+r.key+"/"+product); }}
