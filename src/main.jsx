@@ -2492,11 +2492,7 @@ function buildProductIntegrationMappings(){
     }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF"});
     if(swift)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code -> CCL Swift"});
-    const sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
-    if(sector&&segment){
-      const scope=String(d.region_lpg||"").trim();
-      addIntegrationMapping("NON CASH LOAN",r,{limitType:"LPG",key:sector+"|"+segment,amount:d.EQVIDR,label:"Non Cash Loan",scope:scope||null,sourceField:"ecosystem_lpg / segmen_lpg",sourceValue:sector+" / "+segment,mappingRule:"NCL debtor attributes -> LPG Ecosystem x Segment x Scope"});
-    }
+    // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
 
   (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
