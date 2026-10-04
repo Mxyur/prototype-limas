@@ -2505,7 +2505,13 @@ function buildProductIntegrationMappings(){
       });
     }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF"});
-    if(swift)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift"});
+    if(swift){
+      addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift"});
+    }else{
+      const names=[d.CUSTNM,d.CPNM].map(v=>String(v||"").trim().toLowerCase()).filter(Boolean);
+      const cclRef=(limasDemoData.CCL||[]).find(m=>names.includes(String(m.name||"").trim().toLowerCase()));
+      if(cclRef)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:String(cclRef.key),amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTNM / CPNM",sourceValue:d.CUSTNM||d.CPNM,mappingRule:"NCL Counterparty Reference -> CCL Swift"});
+    }
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
 
