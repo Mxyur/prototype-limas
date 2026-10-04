@@ -242,7 +242,7 @@ lpgDebtors.forEach(([cif,name,clAmt,nclIdr,region,segment,sector],i)=>{
       CPNM:segment==="Commercial"?"Pacific Commodities Pte Ltd":"Global Coal Trading Pte Ltd",
       "Country Code":"ID","Country Name":"Indonesia",CCY:"IDR",
       AMOUNT:String(nclIdr),BALANCE:String(nclIdr),EXCHANGERT:"1",EQVIDR:String(nclIdr),
-      FINTYPE:"GUARANTEE",TRXTYPE:"BG",ecosystem_lpg:"BATUBARA",segmen_lpg:segment,region_lpg:region},
+      FINTYPE:"GUARANTEE",TRXTYPE:"BG",ecosystem_lpg:sector,segmen_lpg:segment,region_lpg:region},
     "ID",nclIdr,"Country",
     {recordId:"NCL-LPG-DEBTOR-"+baseId,sourceSystem:"DWH",countryExposure:"ID"}
   ));
