@@ -3,7 +3,7 @@ import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY,
 const EPS=0.01;
 const near=(a,b,msg)=>assert.ok(Math.abs(Number(a)-Number(b))<=EPS,msg+" (actual="+a+", expected="+b+")");
 const entityCodes=new Set(E2E_ENTITY_MASTER.map(x=>x.entityCode));
-assert.deepEqual(E2E_MLK_ENTITY_SCOPE,["BMEL","BMRI"],"MLK scope must follow the confirmed entity universe: BMEL + BMRI");
+assert.deepEqual(E2E_MLK_ENTITY_SCOPE,["BMEL","BMRI","MANSEK","MTF","MUF"],"MLK scope must follow the confirmed entity universe: BMEL + BMRI + MANSEK + MTF + MUF");
 const cclScope=new Map(E2E_CCL_ENTITY_SCOPE.map(x=>[x.entityCode,x]));
 console.log("[LIMAS AUDIT] starting E2E invariant audit");
 for(const code of E2E_COUNTRY_MONITORING_POLICY.excludedCountryCodes){ assert.ok(!(E2E_MASTER_DATA.Country||[]).some(r=>String(r.key).toUpperCase()===String(code).toUpperCase()),"Excluded Country Code "+code+" must not exist in Country Master"); }
