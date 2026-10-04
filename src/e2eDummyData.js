@@ -150,9 +150,8 @@ const fillDemoProductData=()=>{
     d.revolv=d.revolv||"N";
     d.bilokj=d.bilokj||"9999";
     d["MatDate/Jatem"]=d["MatDate/Jatem"]||"30-Sep-2027";
-    d.ecosystem_lpg=d.ecosystem_lpg||"GENERAL";
-    d.segmen_lpg=d.segmen_lpg||(mlk?"Commercial":"Corporate");
-    d.region_lpg=d.region_lpg||(office[2]==="Jakarta"?"KP + OVS":office[2]);
+    // LPG classification is populated only by an explicit source LPG fixture.
+    // Do not invent generic LPG attributes for ordinary Cash Loan records.
     r.meta={...r.meta,bookingOffice:r.meta.bookingOffice||d.nm_cab,bookingOfficeType:r.meta.bookingOfficeType||office[1],countryExposure:r.meta.countryExposure||country,asOfDate:r.meta.asOfDate||E2E_DUMMY_META.asOfDate};
   });
   products["NON CASH LOAN"].forEach((r,i)=>{
@@ -336,6 +335,13 @@ const rebuildSourceOnlyProductData=()=>{
     out.CASHLOAN.push(sourceSpec({...r,data:d},"CL-"+String(i+1).padStart(3,"0"),integration));
   });
 
+  // LPG DWH source universe is a genuine product-source fixture and is explicitly
+  // scoped to the LPG monitoring domain. It must not be mistaken for Country/MLK data.
+  p.CASHLOAN.filter(r=>/^CL-LPG-/.test(String(r.meta?.recordId||""))).forEach(r=>{
+    const meta={...(r.meta||{}),integrationDomains:["LPG"]};
+    out.CASHLOAN.push(sourceSpec({...r,meta},String(meta.recordId)));
+  });
+
   // NCL golden sample: keep exactly the source fields/values confirmed by the user.
   // Blank source fields stay blank; no synthetic Swift/LPG/booking values are injected.
   const nclGolden=[
@@ -372,6 +378,13 @@ const rebuildSourceOnlyProductData=()=>{
     const sourceMeta={...nclMeta,recordId:"NCL-EXCO-"+String(i+1).padStart(3,"0"),sourceSystem:nclMeta.sourceSystem||"NTF -> Provided by DWB",asOfDate:E2E_DUMMY_META.asOfDate};
     const integration=[{limitType:"Country",key:data["Country Code"],amount:Number(data.EQVIDR||0),label:"Non Cash Loan"}];
     out["NON CASH LOAN"].push(sourceSpec({data,meta:sourceMeta},sourceMeta.recordId,integration));
+  });
+
+  // LPG DWH NCL rows are source-only rows for LPG aggregation.
+  // Their source semantics are preserved; integration domain is explicit in metadata.
+  p["NON CASH LOAN"].filter(r=>/^NCL-LPG-/.test(String(r.meta?.recordId||""))).forEach(r=>{
+    const meta={...(r.meta||{}),integrationDomains:["LPG"]};
+    out["NON CASH LOAN"].push(sourceSpec({...r,meta},String(meta.recordId)));
   });
 
   // Credit Line source universe: keep actual Commercial/Treasury counterparties only.
