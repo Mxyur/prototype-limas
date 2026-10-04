@@ -2241,19 +2241,19 @@ const creditLineCanonicalFields=[
   {key:"Fitch",label:"Fitch",source:"Fitch",group:"Common"},
   {key:"Moody's",label:"Moody's",source:"Moody's",group:"Common"},
   {key:"S&P",label:"S&P",source:"S&P",group:"Common"},
-  {key:"Commercial Line Domestic Limit",label:"Commercial Line • Domestic Limit",source:"Comm DN",group:"Commercial Line"},
+  {key:"Commercial Line Domestic Source Amount",label:"Commercial Line • Domestic Source Amount",source:"Comm DN",group:"Commercial Line"},
   {key:"Commercial Line Domestic Utilization",label:"Commercial Line • Domestic Utilization",source:"Comm DN Utilisasi",group:"Commercial Line"},
-  {key:"Commercial Line Overseas Limit",label:"Commercial Line • Overseas Limit",source:"Comm LN",group:"Commercial Line"},
+  {key:"Commercial Line Overseas Source Amount",label:"Commercial Line • Overseas Source Amount",source:"Comm LN",group:"Commercial Line"},
   {key:"Commercial Line Overseas Utilization",label:"Commercial Line • Overseas Utilization",source:"Comm LN Utilisasi",group:"Commercial Line"},
-  {key:"Commercial Line Total Limit",label:"Commercial Line • Total Limit",source:"Comm Line Total",group:"Commercial Line"},
+  {key:"Commercial Line Total Source Amount",label:"Commercial Line • Total Source Amount",source:"Comm Line Total",group:"Commercial Line"},
   {key:"Commercial Line Total Utilization",label:"Commercial Line • Total Utilization",source:"Comm Line Total Utilisasi",group:"Commercial Line"},
-  {key:"Treasury Line Domestic Limit",label:"Treasury Line • Domestic Limit",source:"Treasury DN",group:"Treasury Line"},
+  {key:"Treasury Line Domestic Source Amount",label:"Treasury Line • Domestic Source Amount",source:"Treasury DN",group:"Treasury Line"},
   {key:"Treasury Line Domestic Utilization",label:"Treasury Line • Domestic Utilization",source:"Treasury DN Utilisasi",group:"Treasury Line"},
-  {key:"Treasury Line Overseas Limit",label:"Treasury Line • Overseas Limit",source:"Treasury LN",group:"Treasury Line"},
+  {key:"Treasury Line Overseas Source Amount",label:"Treasury Line • Overseas Source Amount",source:"Treasury LN",group:"Treasury Line"},
   {key:"Treasury Line Overseas Utilization",label:"Treasury Line • Overseas Utilization",source:"Treasury LN Utilisasi",group:"Treasury Line"},
-  {key:"Treasury Line Total Limit",label:"Treasury Line • Total Limit",source:"Treasury Line Total",group:"Treasury Line"},
+  {key:"Treasury Line Total Source Amount",label:"Treasury Line • Total Source Amount",source:"Treasury Line Total",group:"Treasury Line"},
   {key:"Treasury Line Total Utilization",label:"Treasury Line • Total Utilization",source:"Treasury Line Total Utilisasi",group:"Treasury Line"},
-  {key:"Credit Line Total Limit",label:"Credit Line • Total Limit",source:"Credit Line Total",group:"Credit Line"},
+  {key:"Credit Line Total Source Amount",label:"Credit Line • Total Source Amount",source:"Credit Line Total",group:"Credit Line"},
   {key:"Credit Line Total Utilization",label:"Credit Line • Total Utilization",source:"Credit Line Total Utilisasi",group:"Credit Line"}
 ];
 const creditLineCanonicalValue=(data,key)=>{
@@ -2481,7 +2481,13 @@ function buildProductIntegrationMappings(){
   (productDatabase.CASHLOAN||[]).forEach(r=>{
     const d=r.data||{},code=String(d.code||"").trim(),cif=String(d.no_cus||"").trim();
     if(code)addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> Country Code"});
-    if(cif)addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF"});
+    if(cif&&E2E_MASTER_DATA.MLK.some(x=>String(x.key)===cif))
+      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF"});
+    if(/^CCL-/i.test(cif)){
+      const cclKey=cif.replace(/^CCL-/i,"");
+      if((limasDemoData.CCL||[]).some(x=>String(x.key).toUpperCase()===cclKey.toUpperCase()))
+        addIntegrationMapping("CASHLOAN",r,{limitType:"CCL",key:cclKey,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan CCL reference -> CCL Swift"});
+    }
   });
 
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
@@ -2499,7 +2505,7 @@ function buildProductIntegrationMappings(){
       });
     }
     if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF"});
-    if(swift)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code -> CCL Swift"});
+    if(swift)addIntegrationMapping("NON CASH LOAN",r,{limitType:"CCL",key:swift,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"Swift Code",sourceValue:swift,mappingRule:"NCL Swift Code enrichment -> CCL Swift"});
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
   });
 
