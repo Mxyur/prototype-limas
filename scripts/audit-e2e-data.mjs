@@ -41,6 +41,13 @@ for(const productId of ["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO
     assert.ok(Number.isFinite(Number(alloc.total)),"Country Product Allocation must be numeric for "+productId+"/"+code);
   }
 }
+for(const r of E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]){
+  const d=r.data||{},code=String(d["Country Code"]||"").toUpperCase(),rid=String(r.meta?.recordId||"");
+  if(!code||code==="ID"||rid.startsWith("NCL-CCL-")||rid.startsWith("NCL-MLK-")||rid.startsWith("NCL-LPG-"))continue;
+  if(!countryMaster.has(code)||!Number.isFinite(n(d.EQVIDR))||n(d.EQVIDR)<=0)continue;
+  const officeRef={"NCL-COUNTRY-SG":"Domestic","NCL-COUNTRY-CN":"Overseas","NCL-COUNTRY-AU":"Domestic"}[rid];
+  assert.ok(officeRef,"NCL Country exposure requires Booking Office Type enrichment for "+rid);
+}
 
 for(const productId of ["CASHLOAN","NON CASH LOAN","CREDIT LINE"]){
   for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){
