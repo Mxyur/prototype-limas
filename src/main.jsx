@@ -2182,13 +2182,41 @@ function removeMasterSnapshot(type,key){
 }
 function applyPersistedMasterValues(){
   const store=loadMasterValueStore();
+  let migratedLegacyLpg=false;
   Object.entries(store).forEach(([type,rows])=>{
     const masters=limasDemoData[type]||[];
     Object.entries(rows||{}).forEach(([key,values])=>{
       const row=masters.find(r=>String(r.key)===String(key));
-      if(row)applyMasterDraftValues(type,row,values);
+      if(!row)return;
+
+      // One-time compatibility guard for snapshots produced by the legacy
+      // LPG cleanse bug. That bug stored KP + OVS = 0 after subtracting
+      // KP + OVS from Bankwide a second time. Only repair the unmistakable
+      // corruption pattern; otherwise persisted approved values remain untouched.
+      if(type==="LPG"&&values&&typeof values==="object"){
+        const kpField="KP + OVS / Limit";
+        const persistedKp=Number(values[kpField]);
+        const sourceKp=Number(row.limits?.["KP + OVS"]);
+        const persistedBankwide=Number(values["Bankwide / Limit"]);
+        const persistedRegions=LPG_REGION_ONLY_SCOPES.map(scope=>Number(values[scope+" / Limit"]));
+        const regionsComplete=persistedRegions.length===LPG_REGION_ONLY_SCOPES.length&&persistedRegions.every(Number.isFinite);
+        const regionalSum=regionsComplete?persistedRegions.reduce((a,v)=>a+v,0):null;
+        const legacyCorruption=Number.isFinite(persistedKp)&&persistedKp===0
+          &&Number.isFinite(sourceKp)&&sourceKp>0
+          &&Number.isFinite(persistedBankwide)&&persistedBankwide>0
+          &&regionsComplete&&Math.abs(persistedBankwide-regionalSum)<0.01;
+
+        if(legacyCorruption){
+          values={...values,[kpField]:sourceKp};
+          store[type][String(key)]=values;
+          migratedLegacyLpg=true;
+        }
+      }
+
+      applyMasterDraftValues(type,row,values);
     });
   });
+  if(migratedLegacyLpg)saveMasterValueStore(store);
   if(store.Country)hydrateCountryPrototypeAllocations();
 }
 function loadMasterAudit(){
