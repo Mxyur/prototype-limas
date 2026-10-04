@@ -2997,7 +2997,7 @@ function buildProductIntegrationMappings(){
       ).reduce((s,x)=>s+(Number(x.data?.total_bade)||0),0);
       const nclUpstream=(productDatabase["NON CASH LOAN"]||[]).filter(x=>
         /^NCL-CCL-/i.test(String(x.recordId||"")) &&
-        String(x.meta?.cclLimitType||"DIRECT")===limitType &&
+        String(x.meta?.creditLineLimitType||"DIRECT")===limitType &&
         String(x.meta?.reportingEntity||"BMRI").toUpperCase()===entity &&
         (String(x.data?.CPNM||"").toUpperCase()===String(swift).toUpperCase() ||
          String(x.meta?.recordId||"").toUpperCase().includes(String(swift).toUpperCase()))
