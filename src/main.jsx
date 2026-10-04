@@ -2798,6 +2798,11 @@ function buildProductIntegrationMappings(){
   (productDatabase["CREDIT LINE"]||[]).forEach(r=>{
     const d=r.data||{},swift=String(d["Swift Code Vlookup"]||d["Swift Code"]||"").trim(),total=Number(d["Credit Line Total Utilisasi"]||0),country=String(d.Code||"").trim();
     if(swift)addIntegrationMapping("CREDIT LINE",r,{limitType:"CCL",key:swift,amount:total,label:"Credit Line",sourceField:"Swift Code Vlookup",sourceValue:swift,mappingRule:"Credit Line Swift Code Vlookup -> CCL Swift",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),cclLimitType:r.meta?.cclLimitType||"DIRECT"});
+    const mlkKey=swift.match(/^TL-(.+)$/i)?.[1]||"";
+    if(mlkKey&&(limasDemoData.MLK||[]).some(x=>String(x.key)===mlkKey)){
+      const treasury=Number(String(d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:d["Bade Treasury Line"]!==undefined?"Bade Treasury Line":"Treasury Line Total Utilisasi",sourceValue:d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:"Credit Line TL-CIF reference -> MLK CIF",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase()});
+    }
     if(country){
       const components=[
         ["Commercial","Comm DN Utilisasi","Domestic"],["Commercial","Comm LN Utilisasi","Overseas"],
@@ -3041,6 +3046,15 @@ function reconciliationIssues(){
     if((limasDemoData.MLK||[]).some(m=>String(m.key)===cif)){
       const entity=String(row.meta?.reportingEntity||"BMRI").toUpperCase();
       if(!mlkEntityEligible(entity))issues.push({status:"Data Issue",issueType:"MLK_ENTITY_SCOPE_MISSING",productId:"CASHLOAN",recordId:row.recordId,limitType:"MLK",key:cif,object:row.data?.nm_cus||"—",detail:"Cash Loan MLK source entity is not in confirmed MLK scope: "+entity,amount:Number(row.data?.total_bade)||0});
+    }
+  });
+  (productDatabase["CREDIT LINE"]||[]).forEach(row=>{
+    const swift=String(row.data?.["Swift Code Vlookup"]||row.data?.["Swift Code"]||"").trim();
+    const mlkKey=swift.match(/^TL-(.+)$/i)?.[1]||"";
+    if(mlkKey&&(limasDemoData.MLK||[]).some(m=>String(m.key)===mlkKey)){
+      const entity=String(row.meta?.reportingEntity||"BMRI").toUpperCase();
+      if(!mlkEntityEligible(entity))
+        issues.push({status:"Data Issue",issueType:"MLK_ENTITY_SCOPE_MISSING",productId:"CREDIT LINE",recordId:row.recordId,limitType:"MLK",key:mlkKey,object:row.data?.Nama||"—",detail:"Treasury Line MLK source entity is not in confirmed MLK scope: "+entity,amount:Number(row.data?.["Bade Treasury Line"]||row.data?.["Credit Line Total Utilisasi"]||0)});
     }
   });
   (productDatabase["NON CASH LOAN"]||[]).forEach(row=>{
