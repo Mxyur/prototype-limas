@@ -486,9 +486,9 @@ function countryProductMonitoring(row){
     const exposure=domestic+overseas;
     return {
       ...item,domesticExposure:domestic,overseasExposure:overseas,exposure,
-      domesticUtil:item.domestic?domestic/item.domestic:null,
-      overseasUtil:item.overseas?overseas/item.overseas:null,
-      productUtil:item.total?exposure/item.total:null
+      domesticUtil:item.domestic===null?null:(Number(item.domestic)===0?(domestic>0?Infinity:0):domestic/item.domestic),
+      overseasUtil:item.overseas===null?null:(Number(item.overseas)===0?(overseas>0?Infinity:0):overseas/item.overseas),
+      productUtil:item.total===null?null:(Number(item.total)===0?(exposure>0?Infinity:0):exposure/item.total)
     };
   });
 }
@@ -591,6 +591,101 @@ function buildCCLIndirectReportRows(){
   });
 }
 
+function isConfiguredLimit(value){
+  return value!==null&&value!==undefined&&value!==""&&Number.isFinite(Number(value));
+}
+function monitoringScopeIntegrityIssues(){
+  const issues=[];
+  const add=(x)=>issues.push({status:"Data Issue",...x});
+
+  const countryMasters=new Map((limasDemoData.Country||[]).map(r=>[String(r.key).toUpperCase(),r]));
+  ["CASHLOAN","NON CASH LOAN","CREDIT LINE","BONDS","NOSTRO"].forEach(productId=>{
+    (productDatabase[productId]||[]).forEach(row=>{
+      if(!integrationDomainAllowed(row,"Country"))return;
+      const d=row.data||{},field=productSourceField(productId,"Country"),key=String(d[field]??"").trim().toUpperCase();
+      if(!key||!countryMonitoringEligible(key)||!countryMasters.has(key))return;
+      const master=countryMasters.get(key);
+      const apps=(productIntegrationMappings[productId]||[]).filter(a=>a.limitType==="Country"&&String(a.recordId)===String(row.recordId));
+      const totalExposure=apps.reduce((s,a)=>s+(Number(a.normalizedAmount??a.amount)||0),0);
+      if(totalExposure<=0)return;
+      const alloc=master.productAllocations?.[productId];
+      if(!isConfiguredLimit(alloc?.total))
+        add({layer:"Monitoring Scope",domain:"Country",key,productId,recordId:row.recordId,issueType:"COUNTRY_PRODUCT_LIMIT_MISSING",object:master.name||key,detail:productId+" has positive mapped exposure but no configured Product Allocation Total.",amount:totalExposure});
+      if(productId==="CREDIT LINE"){
+        const by={Domestic:0,Overseas:0};
+        [["Domestic","Comm DN Utilisasi"],["Domestic","Treasury DN Utilisasi"],["Overseas","Comm LN Utilisasi"],["Overseas","Treasury LN Utilisasi"]].forEach(([bucket,src])=>by[bucket]+=Number(String(d[src]??"").replace(/,/g,""))||0);
+        [["Domestic",alloc?.domesticLimit],["Overseas",alloc?.overseasLimit]].forEach(([bucket,lim])=>{
+          if(by[bucket]>0&&!isConfiguredLimit(lim))
+            add({layer:"Monitoring Scope",domain:"Country",key,productId,recordId:row.recordId,issueType:"COUNTRY_SPLIT_LIMIT_MISSING",object:master.name||key,detail:productId+" has "+bucket+" exposure but "+bucket+" Product Allocation limit is not configured.",amount:by[bucket]});
+        });
+      }
+    });
+  });
+
+  ["CASHLOAN","NON CASH LOAN","CREDIT LINE"].forEach(productId=>{
+    (productDatabase[productId]||[]).forEach(row=>{
+      const meta=row.meta||{},d=row.data||{};
+      if(!meta.cclLimitType)return;
+      const master=resolveCclMaster(productId,row);
+      const raw=productRawExposure(productId,row,"CCL");
+      const normalized=normalizeAppliedAmount("CCL",productId,raw,row).amount;
+      if(normalized<=0)return;
+      const entity=String(meta.reportingEntity||"BMRI").toUpperCase(),limitType=String(meta.cclLimitType).toUpperCase();
+      if(!master){
+        add({layer:"Monitoring Scope",domain:"CCL",key:String(d.CPNM||d.no_cus||"—"),productId,recordId:row.recordId,issueType:"CCL_MASTER_MISSING",object:d.CUSTNM||d.nm_cus||"—",detail:"Positive CCL exposure cannot resolve to a CCL master.",amount:normalized});
+        return;
+      }
+      const scope=cclScopeRecords(master.key,limitType,entity)[0];
+      if(!scope)
+        add({layer:"Monitoring Scope",domain:"CCL",key:master.key,productId,recordId:row.recordId,issueType:"CCL_ENTITY_LIMIT_MISSING",object:master.name||master.key,detail:"Positive CCL exposure has no configured "+limitType+" limit for entity "+entity+".",amount:normalized});
+      else if(!isConfiguredLimit(scope.ccl))
+        add({layer:"Monitoring Scope",domain:"CCL",key:master.key,productId,recordId:row.recordId,issueType:"CCL_LIMIT_NOT_CONFIGURED",object:master.name||master.key,detail:"CCL scope row exists but limit is not configured for "+entity+" / "+limitType+".",amount:normalized});
+    });
+  });
+
+  ["CASHLOAN","NON CASH LOAN","CREDIT LINE"].forEach(productId=>{
+    (productDatabase[productId]||[]).forEach(row=>{
+      const meta=row.meta||{},d=row.data||{},rid=String(row.recordId||""),entity=String(meta.reportingEntity||"BMRI").toUpperCase();
+      if(!mlkEntityEligible(entity))return;
+      const isMlk=productId==="CASHLOAN"?rid.startsWith("CL-MLK-"):
+        productId==="NON CASH LOAN"?rid.startsWith("NCL-MLK-"):
+        rid.startsWith("TL-MLK-")||String(d["Swift Code"]||"").toUpperCase().startsWith("TL-");
+      if(!isMlk)return;
+      const key=productId==="CASHLOAN"?String(d.no_cus||"").trim():
+        productId==="NON CASH LOAN"?String(d.CUSTID||"").trim():
+        String(d["Swift Code"]||"").match(/^TL-(.+)$/i)?.[1]||"";
+      const raw=productId==="CASHLOAN"?Number(d.total_bade)||0:
+        productId==="NON CASH LOAN"?(Number(d.EQVIDR)||0)/1000000:
+        Number(d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??0)||0;
+      if(raw<=0)return;
+      const master=(limasDemoData.MLK||[]).find(m=>String(m.key)===key);
+      if(!master)
+        add({layer:"Monitoring Scope",domain:"MLK",key,productId,recordId:row.recordId,issueType:"MLK_MASTER_MISSING",object:d.nm_cus||d.CUSTNM||d.Nama||key,detail:"Positive MLK source exposure has no corresponding MLK master.",amount:raw});
+      else if(!isConfiguredLimit(master.masterLimit))
+        add({layer:"Monitoring Scope",domain:"MLK",key,productId,recordId:row.recordId,issueType:"MLK_LIMIT_NOT_CONFIGURED",object:master.name||key,detail:"Positive MLK exposure has no configured Master Limit.",amount:raw});
+    });
+  });
+
+  (productDatabase["Nominal Pertanggungan"]||[]).forEach(row=>{
+    const d=row.data||{},insurer=String(d["Perusahaan Asuransi"]||"").trim(),entity=String(d.Entitas||"").trim(),exposure=Number(d["Nominal Pertanggungan 2025 (Rp Juta)"])||0;
+    if(exposure<=0)return;
+    const master=(limasDemoData.CIL||[]).find(m=>String(m.name||"").trim().toLowerCase()===insurer.toLowerCase());
+    if(!master)
+      add({layer:"Monitoring Scope",domain:"CIL",key:insurer,productId:"Nominal Pertanggungan",recordId:row.recordId,issueType:"CIL_MASTER_MISSING",object:insurer,detail:"Positive CIL exposure cannot resolve to insurer master.",amount:exposure});
+    else if(!Object.prototype.hasOwnProperty.call(master.eils||{},entity))
+      add({layer:"Monitoring Scope",domain:"CIL",key:master.key,productId:"Nominal Pertanggungan",recordId:row.recordId,issueType:"CIL_EIL_MISSING",object:master.name||master.key,detail:"Positive CIL exposure has no configured EIL for entity "+entity+".",amount:exposure});
+  });
+
+  (limasDemoData.LPG||[]).forEach(master=>{
+    LPG_SCOPES.forEach(scope=>{
+      const exp=lpgScopeExposure(master,scope),limRaw=master.limits?.[scope];
+      if(exp!==null&&exp>0&&!isConfiguredLimit(limRaw))
+        add({layer:"Monitoring Scope",domain:"LPG",key:master.key,productId:null,recordId:null,issueType:"LPG_SCOPE_LIMIT_MISSING",object:master.sector+" / "+master.segment,detail:scope+" has positive outstanding but no configured scope limit.",amount:exp});
+    });
+  });
+  return issues;
+}
+
 function recordExposure(type,row){
   if(type==="LPG")return Number(lpgScopeExposure(row,LPG_BANK_SCOPE)||0);
   if(type==="CCL") return E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct).reduce((s,x)=>s+cclEntityExposure(row.key,x.entityCode,"DIRECT"),0);
@@ -604,7 +699,11 @@ function recordLimit(type,row){
   if(type==="LPG")return normalizeMasterLimit("LPG",lpgScopeLimit(row,LPG_BANK_SCOPE)).amount;
   return Number(row.limit)||0;
 }
-function recordUtil(type,row){const limit=recordLimit(type,row),exp=recordExposure(type,row);return limit?exp/limit:0}
+function recordUtil(type,row){
+  const limit=recordLimit(type,row),exp=recordExposure(type,row);
+  if(limit===0)return exp>0?Infinity:0;
+  return limit?exp/limit:0;
+}
 function masterLevelDataIssue(type,row){
   // Master status must reflect master/reference integrity only.
   // Product-source and mapping issues are tracked separately in Data Quality.
@@ -637,11 +736,15 @@ function recordStatus(type,row){
     });
     let maxEil=0;
     Object.entries(entityTotals).forEach(([entity,amount])=>{
-      const eil=Number(row.eils?.[entity]||0);
-      if(eil>0)maxEil=Math.max(maxEil,amount/eil);
+      if(amount<=0)return;
+      const hasEil=Object.prototype.hasOwnProperty.call(row.eils||{},entity);
+      if(!hasEil)return;
+      const eil=Number(row.eils?.[entity]??0);
+      maxEil=Math.max(maxEil,eil===0?Infinity:amount/eil);
     });
     const cit=Number(row.cit||0);
-    const citUtil=cit?recordExposure(type,row)/cit:0;
+    const totalCilExposure=recordExposure(type,row);
+    const citUtil=cit?totalCilExposure/cit:(totalCilExposure>0?Infinity:0);
     maxUtil=Math.max(maxUtil,maxEil,citUtil);
   }
 
@@ -651,6 +754,8 @@ function recordStatus(type,row){
     maxUtil=lpgMaxUtilization(row);
   }
 
+  const scopeIssue=monitoringScopeIntegrityIssues().some(x=>x.domain===type&&String(x.key)===String(row.key));
+  if(scopeIssue)return "Data Issue";
   if(masterLevelDataIssue(type,row))return "Data Issue";
   return maxUtil>=1?"Breach":maxUtil>=0.8?"Warning":"Normal";
 }
@@ -709,7 +814,7 @@ function buildReportDummy(data){
     CIL:data.CIL.map((r,i)=>{const rows=productApplicationsFor("CIL",r.key),p=productContributionMap("CIL",r.key),total=recordExposure("CIL",r);const byEntity={};rows.forEach(a=>{byEntity[a.entity||"Entity"]=(byEntity[a.entity||"Entity"]||0)+(Number(a.normalizedAmount??a.amount)||0)});return {no:i+1,insurer:r.name,type:r.type,ic:r.ic,multiplier:(r.multiplier*100).toFixed(2)+"%",cit:r.cit,bmriNominal:byEntity.BMRI||0,bmriEil:r.eils?.BMRI||0,mtNominal:byEntity["Mandiri Taspen"]||0,mtEil:r.eils?.["Mandiri Taspen"]||0,mtfNominal:byEntity.MTF||0,mtfEil:r.eils?.MTF||0,mufNominal:byEntity.MUF||0,mufEil:r.eils?.MUF||0,cil:r.cil,totalNominal:total,projection:cilProjection(r.key),utilCit:r.cit?total/r.cit:0,projectedUtil:r.cit?cilProjection(r.key)/r.cit:0,cilUtil:r.cil?total/r.cil:0,eilUtil:Math.max(...Object.entries(byEntity).map(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil?amount/eil:0}),0),eilBreaches:Object.entries(byEntity).filter(([entity,amount])=>{const eil=Number(r.eils?.[entity]||0);return eil>0&&amount/eil>=1}).map(([entity])=>entity).join(", "),status:recordStatus("CIL",r),score:r.score,action:r.action}}),
     LPG:lpgDisplayRows().map((r,i)=>{
       const p=productContributionMap("LPG",r.key),out={no:i+1,sector:r.sector,segment:r.segment,dataQuality:r.dataQuality,status:recordStatus("LPG",r)};
-      LPG_SCOPES.forEach(scope=>{const k=lpgScopeKey(scope),lim=lpgScopeLimit(r,scope),exp=lpgScopeExposure(r,scope),u=lim&&exp!==null?exp/lim:null;out["limit_"+k]=lim;out["outstanding_"+k]=exp;out["util_"+k]=u;out["source_"+k]=lpgScopeSource(r,scope);});
+      LPG_SCOPES.forEach(scope=>{const k=lpgScopeKey(scope),lim=lpgScopeLimit(r,scope),exp=lpgScopeExposure(r,scope),u=lim===null?null:(Number(lim)===0?(exp>0?Infinity:0):(exp===null?null:exp/lim));out["limit_"+k]=lim;out["outstanding_"+k]=exp;out["util_"+k]=u;out["source_"+k]=lpgScopeSource(r,scope);});
       const recon=lpgCrosscheck(r),bwRecon=lpgBankwideReconciliation(r),coverage=lpgSourceCoverage(r);
       out.crosscheck=recon.status+(recon.variance!==null?" • Δ "+recon.variance.toLocaleString("id-ID",{maximumFractionDigits:2}):"")+(recon.mode?" • "+recon.mode:"");
       out.bankwideReconciliation=bwRecon.status+(bwRecon.variance!==null?" • Δ "+bwRecon.variance.toLocaleString("id-ID",{maximumFractionDigits:2}):"");
@@ -3444,6 +3549,9 @@ function dataQualityIssueRows(){
   reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>out.push({
     layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId,object:x.object||x.productId||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
   }));
+  monitoringScopeIntegrityIssues().forEach(x=>out.push({
+    layer:x.layer,domain:x.domain,key:x.key||x.recordId||"—",object:x.object||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
+  }));
   const seen=new Set();
   return out
     .filter(x=>{const id=exceptionKey(dataQualityActionRef(x));if(seen.has(id))return false;seen.add(id);return true;})
@@ -3635,8 +3743,9 @@ function masterCanonicalQualityIssues(){
       }
       if(type==="LPG"){
         const limits=r.limits||{};
-        const hasAll=LPG_SCOPES.every(scope=>limits[scope]!==undefined&&limits[scope]!==null);
-        if(!hasAll)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_LIMIT_MISSING",detail:"One or more LPG scopes are not configured in master."});
+        const usedScopes=LPG_SCOPES.filter(scope=>lpgScopeExposure(r,scope)!==null&&lpgScopeExposure(r,scope)>0);
+        const hasAll=usedScopes.every(scope=>limits[scope]!==undefined&&limits[scope]!==null);
+        if(!hasAll)issues.push({layer:"Master Limit",domain:type,key:r.key,type:"LPG_SCOPE_LIMIT_MISSING",detail:"A scope with positive LPG exposure is not configured in master."});
         if(limits["Bankwide"]!==undefined&&limits["KP + OVS"]!==undefined){
           const regional=LPG_REGION_ONLY_SCOPES.reduce((a,scope)=>a+(Number(limits[scope])||0),0);
           const total=regional+(Number(limits["KP + OVS"])||0);
@@ -3670,7 +3779,7 @@ function releaseGate(){
 function canonicalPipelineControls(){
   const masterIssues=masterCanonicalQualityIssues();
   const productIssues=canonicalProductQualityIssues();
-  const mappingIssues=reconciliationIssues().filter(x=>x.status==="Data Issue");
+  const mappingIssues=[...reconciliationIssues().filter(x=>x.status==="Data Issue"),...monitoringScopeIntegrityIssues()];
   const numericIssues=numericReconciliationAudit().filter(x=>x.status==="FAIL");
   const dictionaryIssues=productMasterCatalog.filter(p=>!p.id||!p.exposure||!p.canonicalUnit).length;
   const report=buildReportDummy(limasDemoData);
