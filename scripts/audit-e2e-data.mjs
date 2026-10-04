@@ -77,8 +77,9 @@ for(const r of E2E_DUMMY_PRODUCT_DATA["Nominal Pertanggungan"]||[]){
   assert.ok(Object.prototype.hasOwnProperty.call(master.eils||{},String(d.Entitas||"").trim()),"CIL EIL missing for positive exposure "+r.meta?.recordId);
 }
 
+const universalLpgScopes=["Bankwide","Region I","Region II","Region III","Region IV","Region V","Region VI","Region VII","Region VIII","Region IX","Region X","Region XI","Region XII","KP + OVS"];
 for(const master of E2E_MASTER_DATA.LPG||[]){
-  for(const scope of lpgScopes){
+  for(const scope of universalLpgScopes){
     const limit=master.limits?.[scope], exposureRecords=[];
     for(const productId of ["CASHLOAN","NON CASH LOAN"]){
       for(const r of E2E_DUMMY_PRODUCT_DATA[productId]||[]){
