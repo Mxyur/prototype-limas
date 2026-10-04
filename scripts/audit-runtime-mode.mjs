@@ -13,6 +13,8 @@ const required=[
   'MASTER_VALUE_STORE_KEY="limas_master_values_v6_"+RUNTIME_STORAGE_NAMESPACE',
   'SOURCE_INGESTION_STORE_KEY="limas_source_ingestion_batches_v1_"+RUNTIME_STORAGE_NAMESPACE',
   'function effectiveCclMasterLimit(row)',
+  'sourceCreditLineTotal=Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0',
+  'CCL_OS_ZERO_AFTER_MAPPING',
   'runtimeSampleInvariantAudit()',
   'if(IS_PRODUCTION_RUNTIME&&RUNTIME_FIXTURE_LEAKS.length)'
 ];
