@@ -817,7 +817,7 @@ function DataRemediation({nav,initialIssueId=""}){
     const map=r.productId&&r.recordId?getMappingRemediation(r.productId,r.recordId,r.domain,r.key):null;
     if(map){setBookingOffice(map.bookingOffice||"");setBookingType(map.bookingOfficeType||"");}
   };
-  const canEdit=selected&&(currentAction?.status==="Open"||currentAction?.status==="In Progress");
+  const canEdit=selected&&canLimas("remediationEdit")&&(currentAction?.status==="Open"||currentAction?.status==="In Progress");
   const apply=()=>{
     if(!selected||!canEdit) return;
     try{
@@ -930,9 +930,9 @@ function DataRemediation({nav,initialIssueId=""}){
             <textarea className="textarea compact-area" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Jelaskan koreksi / evidence / reference"></textarea>
             <div className="toolbar" style={{marginTop:10}}>
               {canEdit&&<button className="btn primary" onClick={apply}>{isBookingMapping?"Apply Enrichment Fix":"Apply Source Correction"}</button>}
-              {currentAction?.status==="In Progress"&&<button className="btn secondary" onClick={resolve}>Resolve After Recheck</button>}
-              {currentAction?.status==="Resolved"&&<button className="btn secondary" onClick={close}>Close</button>}
-              {currentAction?.status==="Open"&&<button className="btn secondary" onClick={()=>{
+              {currentAction?.status==="In Progress"&&canLimas("remediationResolve")&&<button className="btn secondary" onClick={resolve}>Resolve After Recheck</button>}
+              {currentAction?.status==="Resolved"&&canLimas("remediationClose")&&<button className="btn secondary" onClick={close}>Close</button>}
+              {currentAction?.status==="Open"&&canLimas("remediationStart")&&<button className="btn secondary" onClick={()=>{
                 try{setExceptionAction(effectiveDataQualityActionRef(selected),"In Progress","",{requireClear:false});setRefresh(x=>x+1);}catch(e){alert(e?.message||String(e));}
               }}>Start Action</button>}
             </div>
@@ -1025,7 +1025,7 @@ function DataIngestion({nav}){
             </select>
             <input className="input" value={sourceSystem} onChange={e=>setSourceSystem(e.target.value)} placeholder="Source System / Feed"/>
             <input className="input" type="date" value={asOfDate} onChange={e=>setAsOfDate(e.target.value)}/>
-            <label className="btn primary" style={{display:"inline-flex",alignItems:"center",cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={upload} style={{display:"none"}}/></label>
+            <label className={"btn "+(canLimas("ingestionUpload")?"primary":"ghost")} style={{display:"inline-flex",alignItems:"center",cursor:canLimas("ingestionUpload")?"pointer":"not-allowed",opacity:canLimas("ingestionUpload")?1:.55}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={upload} style={{display:"none"}}/></label>
           </div>
           <div className="field-help"><b>Control:</b> Source field names mengikuti schema product apa adanya. Unknown header menjadi warning; required field, duplicate record, invalid exposure, dan reconciliation failure menjadi blocking error.</div>
         </div>
@@ -1044,9 +1044,9 @@ function DataIngestion({nav}){
         <div className="head">
           <div><h2>3. Batch Validation & Promotion</h2><p><span className="key">{selected.batchId}</span> • {integrationLabel(selected.productId)} • {selected.status}</p></div>
           <div className="toolbar">
-            {selected.status!=="Promoted"&&selected.status!=="Rejected"&&<button className="btn ghost" onClick={runValidation}>Run Validation</button>}
-            {selected.status==="Validated"&&<button className="btn primary" onClick={promote}>Approve & Promote</button>}
-            {selected.status!=="Promoted"&&selected.status!=="Rejected"&&<button className="btn secondary" onClick={reject}>Reject Batch</button>}
+            {selected.status!=="Promoted"&&selected.status!=="Rejected"&&canLimas("ingestionValidate")&&<button className="btn ghost" onClick={runValidation}>Run Validation</button>}
+            {selected.status==="Validated"&&canLimas("ingestionPromote")&&<button className="btn primary" onClick={promote}>Approve & Promote</button>}
+            {selected.status!=="Promoted"&&selected.status!=="Rejected"&&canLimas("ingestionReject")&&<button className="btn secondary" onClick={reject}>Reject Batch</button>}
           </div>
         </div>
         <div className="body">
@@ -1321,6 +1321,7 @@ function parseNumberOrKeep(v){
   return Number.isFinite(n)?n:v;
 }
 function applyMasterCsv(type,records){
+  requireLimasPermission("masterApprove");
   const target=limasDemoData[type]||[];
   const byKey=new Map(target.map(r=>[String(r.key),r]));
   let updated=0;
@@ -1428,7 +1429,7 @@ function MasterCreateForm({type,onCreated,onCancel}){
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10}}>
         {fields.map(([key,label])=><div key={key}><label className="muted-small">{label}</label><input className="input compact" value={draft[key]||""} onChange={e=>update(key,e.target.value)} /></div>)}
       </div>
-      <div className="toolbar" style={{marginTop:12}}><button className="btn primary" onClick={create}>Simpan & Approve</button></div>
+      <div className="toolbar" style={{marginTop:12}}><button className="btn primary" disabled={!canLimas("masterCreate")} onClick={create}>Simpan & Approve</button></div>
     </div>
   </section>;
 }
@@ -1468,8 +1469,8 @@ function Setup({nav,setSel}){
           <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • approved master limit, lifecycle, version dan audit disimpan terpisah dari Product Database.</p></div>
           <div className="toolbar">
             <button className="btn secondary" onClick={doDownload}>Download Template</button>
-            <label className="btn primary" style={{display:"inline-flex",alignItems:"center",cursor:"pointer"}}>Bulk Update (Approved)<input type="file" accept=".csv,text/csv" onChange={doUpload} style={{display:"none"}}/></label>
-            <button className="btn ghost" onClick={()=>setCreating(x=>!x)}>{creating?"Tutup Form":"Tambah Master"}</button>
+            <label className={"btn "+(canLimas("masterApprove")?"primary":"ghost")} style={{display:"inline-flex",alignItems:"center",cursor:canLimas("masterApprove")?"pointer":"not-allowed",opacity:canLimas("masterApprove")?1:.55}}>Bulk Update (Approved)<input type="file" accept=".csv,text/csv" onChange={doUpload} style={{display:"none"}}/></label>
+            <button className="btn ghost" disabled={!canLimas("masterCreate")} onClick={()=>setCreating(x=>!x)}>{creating?"Tutup Form":"Tambah Master"}</button>
           </div>
         </div>
         <div className="body">
@@ -2068,9 +2069,9 @@ function Detail({nav,type="Country",recordKey=""}){
   const [savedAt,setSavedAt]=useState("");
   const [,refresh]=useState(0);
   const updateField=(section,field,key,value)=>setFieldMeta(m=>({...m,[`${section}||${field}`]:{...(m[`${section}||${field}`]||{}),[key]:value}}));
-  const startEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
+  const startEdit=()=>{requireLimasPermission("metadataEdit");setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(true);setSavedAt("");};
   const cancelEdit=()=>{setMeta(loadMasterMeta(safeType));setRecordMeta(loadRecordMeta(safeType,recordKey));setFieldMeta(loadFieldMeta(safeType));setEditing(false);setSavedAt("");};
-  const startMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setLifecycleDraft(gov.pendingLifecycle||{status:gov.status||"Active",effectiveDate:dateOnlyValue(gov.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(gov.expiryDate)||""});setEditingMaster(true);};
+  const startMasterEdit=()=>{requireLimasPermission("masterDraft");const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setLifecycleDraft(gov.pendingLifecycle||{status:gov.status||"Active",effectiveDate:dateOnlyValue(gov.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(gov.expiryDate)||""});setEditingMaster(true);};
   const cancelMasterEdit=()=>{const gov=loadRecordMeta(safeType,recordKey);setRecordMeta(gov);setMasterDraft(gov.pendingValues||masterDraftFromRow(safeType,selectedRecord||{}));setLifecycleDraft(gov.pendingLifecycle||{status:gov.status||"Active",effectiveDate:dateOnlyValue(gov.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(gov.expiryDate)||""});setEditingMaster(false);};
   const saveMasterDraftChanges=()=>{try{if(lifecycleDraft.expiryDate&&lifecycleDraft.effectiveDate&&lifecycleDraft.expiryDate<lifecycleDraft.effectiveDate)throw new Error("Expiry Date tidak boleh sebelum Effective Date.");const next=saveMasterDraft(safeType,recordKey,masterDraft,lifecycleDraft);setRecordMeta(next);setEditingMaster(false);setSavedAt(next.lastUpdated);refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
   const approvePending=()=>{if(window.confirm("Approve perubahan master ini? Perubahan akan menjadi approved dan mempengaruhi monitoring.")){const next=approveMasterDraft(safeType,recordKey);setRecordMeta(next||loadRecordMeta(safeType,recordKey));setMasterDraft(masterDraftFromRow(safeType,selectedRecord));setLifecycleDraft({status:next?.status||"Active",effectiveDate:dateOnlyValue(next?.effectiveDate)||todayIso(),expiryDate:dateOnlyValue(next?.expiryDate)||""});setSavedAt(next?.lastUpdated||nowLabel());refresh(x=>x+1);}};
@@ -2085,10 +2086,10 @@ function Detail({nav,type="Country",recordKey=""}){
         <div className="head">
           <div><h2>{safeType==="LPG"?(selectedRecord?.sector+" / "+selectedRecord?.segment):(selectedRecord?.name||selectedRecord?.sector||sampleName(safeType))}</h2><p>Unique Key: <span className="key">{selectedRecord?.key||sampleKey(safeType)}</span> <span className="chip blue" style={{marginLeft:6}}>v{recordMeta.version||1}</span> <span className="chip blue" style={{marginLeft:6}}>{recordMeta.approvalStatus||"Approved"}</span> <span className="chip blue" style={{marginLeft:6}}>{lifecycleStatus(recordMeta)}</span></p></div>
           <div className="toolbar">
-            {!editing&&!editingMaster&&<><button className="btn primary" onClick={startMasterEdit}>Edit Master Limit</button><button className="btn secondary" onClick={startEdit}>Edit Provenance Metadata</button><button className="btn ghost" onClick={deleteRecord}>Hapus Master</button></>}
-            {editingMaster&&<><button className="btn ghost" onClick={cancelMasterEdit}>Batal</button><button className="btn primary" onClick={saveMasterDraftChanges}>Simpan Draft</button></>}
-            {editing&&<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" onClick={saveChanges}>Simpan Metadata</button></>}
-            {!editing&&!editingMaster&&recordMeta.pendingValues&&<><button className="btn secondary" onClick={approvePending}>Approve Draft</button><button className="btn ghost" onClick={rejectPending}>Reject</button></>}
+            {!editing&&!editingMaster&&<><button className="btn primary" disabled={!canLimas("masterDraft")} onClick={startMasterEdit}>Edit Master Limit</button><button className="btn secondary" disabled={!canLimas("metadataEdit")} onClick={startEdit}>Edit Provenance Metadata</button><button className="btn ghost" disabled={!canLimas("masterDelete")} onClick={deleteRecord}>Hapus Master</button></>}
+            {editingMaster&&<><button className="btn ghost" onClick={cancelMasterEdit}>Batal</button><button className="btn primary" disabled={!canLimas("masterDraft")} onClick={saveMasterDraftChanges}>Simpan Draft</button></>}
+            {editing&&<><button className="btn ghost" onClick={cancelEdit}>Batal</button><button className="btn primary" disabled={!canLimas("metadataEdit")} onClick={saveChanges}>Simpan Metadata</button></>}
+            {!editing&&!editingMaster&&recordMeta.pendingValues&&<>{canLimas("masterApprove")&&<button className="btn secondary" onClick={approvePending}>Approve Draft</button>}{canLimas("masterReject")&&<button className="btn ghost" onClick={rejectPending}>Reject</button>}</>}
           </div>
         </div>
         <div className="body">
