@@ -26,7 +26,9 @@ for(const r of E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]){
   const swift=String(d["Swift Code"]||"").trim(),cpnm=String(d.CPNM||"").trim();
   const master=(E2E_MASTER_DATA.CCL||[]).find(m=>String(m.key).toUpperCase()===String(swift||cpnm).toUpperCase());
   assert.ok(master,"CCL NCL source reference must resolve to CCL master for "+(r.meta?.recordId||"unknown"));
+  assert.equal(r.meta?.cclExposureRole,"LINEAGE_ONLY","NCL CCL rows must be lineage-only and cannot independently contribute to CCL utilization: "+(r.meta?.recordId||"unknown"));
 }
+
 
 // Universal monitoring integrity: positive source exposure must never enter monitoring without an applicable limit scope.
 const countryMaster=new Map((E2E_MASTER_DATA.Country||[]).map(r=>[String(r.key).toUpperCase(),r]));
