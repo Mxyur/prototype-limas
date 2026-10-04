@@ -1080,6 +1080,8 @@ function DataIngestion({nav}){
 function DataQuality({nav}){
   const [filter,setFilter]=useState("All"),[layer,setLayer]=useState("All Layers"),[action,setAction]=useState("All Actions"),[refresh,setRefresh]=useState(0);
   const summary=dataQualitySummary();
+  const numericAudit=numericReconciliationAudit();
+  const numericFailures=numericAudit.filter(x=>x.status==="FAIL");
   const rows=summary.registerRows.filter(r=>(filter==="All"||r.issueType===filter)&&(layer==="All Layers"||r.layer===layer)&&(action==="All Actions"||r.action.status===action));
   const issueTypes=[...new Set(summary.registerRows.map(r=>r.issueType))].sort();
   const exportIssues=()=>downloadCsv("LIMAS_Data_Quality_Issues.csv",["Layer","Domain","Key","Object","Issue Type","Detail","Action Status","Owner","Notes","Updated At"],rows.map(r=>({Layer:r.layer,Domain:r.domain,Key:r.key,Object:r.object,"Issue Type":r.issueType,Detail:r.detail,"Action Status":r.action.status,Owner:r.action.owner,Notes:r.action.notes,"Updated At":r.action.updatedAt})));
@@ -1108,6 +1110,12 @@ function DataQuality({nav}){
     </section>
     <div className="dash-grid">
       <section className="card"><div className="head"><div><h2>Issues by Layer</h2><p>Jumlah issue hasil validator aktif.</p></div></div><div className="body">{["Master Limit","Product Database","Integration / Mapping"].map(x=><div className="mini" style={{marginBottom:8}} key={x}><b>{x}</b><span style={{float:"right"}}>{summary.byLayer[x]||0}</span></div>)}</div></section>
+      <section className="card"><div className="head"><div><h2>Numerical Reconciliation</h2><p>Crosscheck angka dari master → product source → normalization → monitoring.</p></div><Status v={numericFailures.length?"Data Issue":"Normal"}/></div><div className="body">
+        <div className="metric-grid"><DomainKpi label="Checks" value={numericAudit.length} sub="Numeric controls executed"/><DomainKpi label="Failures" value={numericFailures.length} sub="Must be corrected before release" accent={numericFailures.length?"red":""}/></div>
+        <div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>Layer</th><th>Domain</th><th>Control</th><th>Actual</th><th>Expected</th><th>Difference</th><th>Status</th></tr></thead>
+          <tbody>{(numericFailures.length?numericFailures:numericAudit.slice(0,12)).map((x,i)=><tr key={"numeric-"+i}><td>{x.layer}</td><td>{x.domain}</td><td className="muted-small">{x.rule}</td><td>{typeof x.actual==="number"?fmtReport(x.actual):x.actual}</td><td>{typeof x.expected==="number"?fmtReport(x.expected):x.expected}</td><td>{x.diff===null?"—":fmtReport(x.diff)+" "+x.unit}</td><td><Status v={x.status==="PASS"?"Normal":"Data Issue"}/></td></tr>)}</tbody>
+        </table></div>
+      </div></section>
       <section className="card"><div className="head"><div><h2>Issue Type</h2><p>Fokus issue yang paling sering muncul.</p></div></div><div className="body">{Object.entries(summary.byType).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=><div className="mini" style={{marginBottom:8}} key={k}><b>{k}</b><span style={{float:"right"}}>{v}</span></div>)}{!summary.rows.length&&<div className="mini">No data quality issue.</div>}</div></section>
     </div>
     <section className="card"><div className="head"><div><h2>Data Quality Register</h2><p>Register mencakup issue aktif dan history Resolved/Closed. Resolution tidak mengubah source tanpa explicit remediation.</p></div><span className="chip blue">{rows.length} visible</span></div>
@@ -3116,6 +3124,7 @@ function canonicalPipelineControls(){
   const masterIssues=masterCanonicalQualityIssues();
   const productIssues=canonicalProductQualityIssues();
   const mappingIssues=reconciliationIssues().filter(x=>x.status==="Data Issue");
+  const numericIssues=numericReconciliationAudit().filter(x=>x.status==="FAIL");
   const dictionaryIssues=productMasterCatalog.filter(p=>!p.id||!p.exposure||!p.canonicalUnit).length;
   const report=buildReportDummy(limasDemoData);
   const readModelMismatches=[];
@@ -3133,7 +3142,8 @@ function canonicalPipelineControls(){
     {layer:"2. Product Dictionary",status:dictionaryIssues?"Data Issue":"Normal",count:dictionaryIssues,detail:dictionaryIssues?"Product registry still has incomplete definitions.":"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
     {layer:"3. Product Database",status:productIssues.length?"Data Issue":"Normal",count:productIssues.length,detail:productIssues.length?productIssues.slice(0,3).map(x=>x.productId+" • "+x.type).join(" ; "):"Required identifiers and source hierarchy checks pass."},
     {layer:"4. Integration / Read Model",status:mappingIssues.length?"Data Issue":"Normal",count:mappingIssues.length,detail:mappingIssues.length?mappingIssues.slice(0,3).map(x=>x.issueType+" • "+x.productId).join(" ; "):"Source key → normalized exposure → master aggregation reconciles."},
-    {layer:"5. Report & Monitoring",status:readModelMismatches.length?"Data Issue":"Normal",count:readModelMismatches.length,detail:readModelMismatches.length?readModelMismatches.slice(0,3).join(" ; "):"Report, Dashboard, Monitoring dan EWS membaca canonical functions yang sama."}
+    {layer:"5. Report & Monitoring",status:readModelMismatches.length?"Data Issue":"Normal",count:readModelMismatches.length,detail:readModelMismatches.length?readModelMismatches.slice(0,3).join(" ; "):"Report, Dashboard, Monitoring dan EWS membaca canonical functions yang sama."},
+    {layer:"6. Numeric Reconciliation",status:numericIssues.length?"Data Issue":"Normal",count:numericIssues.length,detail:numericIssues.length?numericIssues.slice(0,3).map(x=>x.domain+" • "+x.rule+" • Δ "+x.diff).join(" ; "):"Master formula, source conversion, product hierarchy, dan monitoring contribution checks pass."}
   ];
 }
 
