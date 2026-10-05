@@ -97,12 +97,21 @@ export function auditBusinessEnrichmentCoverage({
         }
       }
 
-      const cclRelevant=Boolean(meta.cclLimitType)||Boolean(meta.cclCounterpartyId);
-      if(cclRelevant&&["CASHLOAN","NON CASH LOAN","CREDIT LINE"].includes(productId)){
+      const cclUpstreamRelevant=Boolean(meta.cclCounterpartyId)&&(["CASHLOAN","NON CASH LOAN"].includes(productId));
+      const cclDirectRelevant=Boolean(meta.cclLimitType)&&productId==="CREDIT LINE";
+      if(cclUpstreamRelevant){
         if(blank(meta.cclCounterpartyId))
-          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL",key:"—",detail:"CCL source row requires stable cclCounterpartyId enrichment."});
+          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:"—",detail:"CCL upstream source row requires stable cclCounterpartyId enrichment."});
+        if(blank(meta.creditLineLimitType))
+          add({issueType:"CCL_UPSTREAM_LIMIT_TYPE_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:meta.cclCounterpartyId||"—",detail:"CCL upstream Cash/NCL row requires DIRECT/INDIRECT creditLineLimitType enrichment; cclLimitType belongs only to the canonical Credit Line CCL mapping."});
+        if(blank(meta.reportingEntity))
+          add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:meta.cclCounterpartyId||"—",detail:"CCL upstream reporting requires explicit reportingEntity enrichment."});
+      }
+      if(cclDirectRelevant){
+        if(blank(meta.cclCounterpartyId))
+          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL",key:"—",detail:"CCL Credit Line row requires stable cclCounterpartyId enrichment."});
         if(blank(meta.cclLimitType))
-          add({issueType:"CCL_LIMIT_TYPE_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||"—",detail:"CCL source row requires DIRECT/INDIRECT limit-type enrichment."});
+          add({issueType:"CCL_LIMIT_TYPE_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||"—",detail:"CCL Credit Line row requires DIRECT/INDIRECT cclLimitType enrichment."});
         if(blank(meta.reportingEntity))
           add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||"—",detail:"CCL consolidated reporting requires explicit reportingEntity enrichment."});
       }
