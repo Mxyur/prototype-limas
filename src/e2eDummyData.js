@@ -108,6 +108,374 @@ export const E2E_CCL_LIMIT_SCOPE=[
   {counterpartyId:"OCBCSGSG",entityCode:"MMI",limitType:"DIRECT",ccl:3,contractual:3,facility:0.75,bankLoan:0.5,commercialLine:0.25,treasuryLine:0}
 ];
 
+
+// LPG Phase 1 — Master Industry & Grouping.
+// Source of truth for the supplied Sector → Grouping mapping.
+const LPG_INDUSTRY_MASTER_ROWS=[
+  [
+    "INDUSTRI BATUBARA",
+    "BATUBARA"
+  ],
+  [
+    "ENERGI & AIR",
+    "ENERGI & AIR"
+  ],
+  [
+    "INDUSTRI FARMASI",
+    "FARMASI & KESEHATAN"
+  ],
+  [
+    "JASA KESEHATAN",
+    "FARMASI & KESEHATAN"
+  ],
+  [
+    "PERDAGANGAN BESAR FARMASI",
+    "FARMASI & KESEHATAN"
+  ],
+  [
+    "PERDAGANGAN ECERAN FARMASI",
+    "FARMASI & KESEHATAN"
+  ],
+  [
+    "INDUSTRI MAKANAN & MINUMAN",
+    "FMCG"
+  ],
+  [
+    "INDUSTRI ROKOK",
+    "FMCG"
+  ],
+  [
+    "PERDAGANGAN BESAR MAKANAN, MINUMAN & ROKOK",
+    "FMCG"
+  ],
+  [
+    "PERDAGANGAN ECERAN MAKANAN, MINUMAN & ROKOK",
+    "FMCG"
+  ],
+  [
+    "INDUSTRI FURNITURE",
+    "FURNITUR"
+  ],
+  [
+    "HOTEL & AKOMODASI",
+    "HOTEL, RESTORAN, & AKOMODASI"
+  ],
+  [
+    "RESTORAN",
+    "HOTEL, RESTORAN, & AKOMODASI"
+  ],
+  [
+    "INDUSTRI PENGOLAHAN YANG TIDAK DIKLASIFIKASIKAN DI TEMPAT LAIN",
+    "INDUSTRI & PERDAGANGAN LAINNYA"
+  ],
+  [
+    "PERDAGANGAN BESAR YANG TIDAK DIKLASIFIKASIKAN DI TEMPAT LAIN",
+    "INDUSTRI & PERDAGANGAN LAINNYA"
+  ],
+  [
+    "INDUSTRI PERKAPALAN",
+    "INDUSTRI ALAT ANGKUTAN LAINNYA"
+  ],
+  [
+    "INDUSTRI ELEKTRONIKA",
+    "INDUSTRI ELEKTRONIKA"
+  ],
+  [
+    "INDUSTRI OTOMOTIF",
+    "INDUSTRI OTOMOTIF"
+  ],
+  [
+    "PERDAGANGAN OTOMOTIF",
+    "INDUSTRI OTOMOTIF"
+  ],
+  [
+    "INDUSTRI PERCETAKAN & PENERBITAN",
+    "JASA"
+  ],
+  [
+    "JASA PENDIDIKAN",
+    "JASA"
+  ],
+  [
+    "JASA SOSIAL & LEMBAGA",
+    "JASA"
+  ],
+  [
+    "JASA USAHA NON KEUANGAN",
+    "JASA"
+  ],
+  [
+    "JASA KEUANGAN",
+    "JASA KEUANGAN"
+  ],
+  [
+    "PERKEBUNAN & INDUSTRI KARET",
+    "KARET"
+  ],
+  [
+    "INDUSTRI PULP & PAPER",
+    "KERTAS"
+  ],
+  [
+    "INDUSTRI KIMIA",
+    "KIMIA"
+  ],
+  [
+    "JASA KONSTRUKSI INFRASTRUKTUR",
+    "KONSTRUKSI"
+  ],
+  [
+    "JASA KONSTRUKSI NON INFRASTRUKTUR",
+    "KONSTRUKSI"
+  ],
+  [
+    "INDUSTRI & PERDAGANGAN BESAR LOGAM",
+    "LOGAM"
+  ],
+  [
+    "INDUSTRI MESIN & PERALATAN",
+    "MESIN & PERALATAN"
+  ],
+  [
+    "PERDAGANGAN BESAR MESIN & PERALATAN",
+    "MESIN & PERALATAN"
+  ],
+  [
+    "INDUSTRI MIGAS",
+    "MIGAS"
+  ],
+  [
+    "JASA PERTAMBANGAN MIGAS",
+    "MIGAS"
+  ],
+  [
+    "PERDAGANGAN BESAR MIGAS",
+    "MIGAS"
+  ],
+  [
+    "PERDAGANGAN ECERAN MIGAS",
+    "MIGAS"
+  ],
+  [
+    "PERDAGANGAN HASIL PERKEBUNAN NON SAWIT",
+    "NON SAWIT"
+  ],
+  [
+    "PERDAGANGAN BESAR PERALATAN RUMAH TANGGA",
+    "PERALATAN RUMAH TANGGA"
+  ],
+  [
+    "PERDAGANGAN ECERAN PERALATAN RUMAH TANGGA",
+    "PERALATAN RUMAH TANGGA"
+  ],
+  [
+    "JASA PERTAMBANGAN LOGAM & NON LOGAM",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTAMBANGAN NIKEL",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTAMBANGAN TEMBAGA",
+    "PERTAMBANGAN"
+  ],
+  [
+    "KEHUTANAN",
+    "PERTANIAN & KEHUTANAN"
+  ],
+  [
+    "PERDAGANGAN BESAR HASIL PERTANIAN & KEHUTANAN",
+    "PERTANIAN & KEHUTANAN"
+  ],
+  [
+    "PETERNAKAN & PAKAN TERNAK",
+    "PETERNAKAN & PERIKANAN"
+  ],
+  [
+    "INDUSTRI PLASTIK & SERAT BUATAN",
+    "PLASTIK"
+  ],
+  [
+    "INDUSTRI PUPUK & OBAT HAMA",
+    "PUPUK & OBAT HAMA"
+  ],
+  [
+    "PERDAGANGAN PUPUK & OBAT HAMA",
+    "PUPUK & OBAT HAMA"
+  ],
+  [
+    "PERKEBUNAN SAWIT & CPO",
+    "SAWIT & CPO"
+  ],
+  [
+    "INDUSTRI BAHAN BANGUNAN",
+    "SEMEN & BAHAN BANGUNAN"
+  ],
+  [
+    "INDUSTRI SEMEN",
+    "SEMEN & BAHAN BANGUNAN"
+  ],
+  [
+    "PERDAGANGAN BESAR BAHAN BANGUNAN",
+    "SEMEN & BAHAN BANGUNAN"
+  ],
+  [
+    "PERDAGANGAN ECERAN SEMEN & BAHAN BANGUNAN",
+    "SEMEN & BAHAN BANGUNAN"
+  ],
+  [
+    "INDUSTRI KULIT & ALAS KAKI",
+    "TEKSTIL & PRODUK TEKSTIL"
+  ],
+  [
+    "INDUSTRI TEKSTIL",
+    "TEKSTIL & PRODUK TEKSTIL"
+  ],
+  [
+    "PERDAGANGAN BESAR TEKSTIL & PRODUK TEKSTIL",
+    "TEKSTIL & PRODUK TEKSTIL"
+  ],
+  [
+    "TELEKOMUNIKASI",
+    "TELEKOMUNIKASI"
+  ],
+  [
+    "JASA PENUNJANG TRANSPORTASI",
+    "TRANSPORTASI"
+  ],
+  [
+    "JASA TRANSPORTASI AIR - BARANG",
+    "TRANSPORTASI"
+  ],
+  [
+    "JASA TRANSPORTASI AIR - PENUMPANG",
+    "TRANSPORTASI"
+  ],
+  [
+    "JASA TRANSPORTASI DARAT",
+    "TRANSPORTASI"
+  ],
+  [
+    "JASA TRANSPORTASI UDARA",
+    "TRANSPORTASI"
+  ],
+  [
+    "INDUSTRI ALAT ANGKUTAN LAINNYA",
+    "INDUSTRI ALAT ANGKUTAN LAINNYA"
+  ],
+  [
+    "INDUSTRI GARMEN",
+    "TEKSTIL & PRODUK TEKSTIL"
+  ],
+  [
+    "INDUSTRI PERALATAN RUMAH TANGGA",
+    "PERALATAN RUMAH TANGGA"
+  ],
+  [
+    "INDUSTRI TOILLETRIES & KOSMETIK",
+    "FMCG"
+  ],
+  [
+    "KAWASAN INDUSTRI",
+    "PROPERTI"
+  ],
+  [
+    "KONSUMSI",
+    "KONSUMSI"
+  ],
+  [
+    "KONSUMSI-KENDARA",
+    "KONSUMSI"
+  ],
+  [
+    "KONSUMSI-KPR",
+    "KONSUMSI"
+  ],
+  [
+    "PEMERINTAHAN",
+    "PEMERINTAHAN"
+  ],
+  [
+    "PERDAGANGAN ECERAN ALAT TULIS KANTOR (ATK)",
+    "INDUSTRI & PERDAGANGAN LAINNYA"
+  ],
+  [
+    "PERDAGANGAN ECERAN HASIL PERTANIAN & KEHUTANAN",
+    "PERTANIAN & KEHUTANAN"
+  ],
+  [
+    "PERDAGANGAN ECERAN TEKSTIL & PRODUK TEKSTIL",
+    "TEKSTIL & PRODUK TEKSTIL"
+  ],
+  [
+    "PERDAGANGAN HASIL PERIKANAN",
+    "PETERNAKAN & PERIKANAN"
+  ],
+  [
+    "PERDAGANGAN HASIL PERKEBUNAN SAWIT & CPO",
+    "SAWIT & CPO"
+  ],
+  [
+    "PERDAGANGAN HASIL PETERNAKAN & PAKAN TERNAK",
+    "PETERNAKAN & PERIKANAN"
+  ],
+  [
+    "PERDAGANGAN KARET",
+    "KARET"
+  ],
+  [
+    "PERDAGANGAN PULP & PAPER",
+    "KERTAS"
+  ],
+  [
+    "PERIKANAN",
+    "PETERNAKAN & PERIKANAN"
+  ],
+  [
+    "PERKEBUNAN & INDUSTRI HASIL PERKEBUNAN NON SAWIT",
+    "NON SAWIT"
+  ],
+  [
+    "PERTAMBANGAN BAUKSIT/ALUMINIUM",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTAMBANGAN EMAS",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTAMBANGAN LOGAM LAINNYA",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTAMBANGAN NON LOGAM",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTAMBANGAN TIMAH",
+    "PERTAMBANGAN"
+  ],
+  [
+    "PERTANIAN",
+    "PERTANIAN & KEHUTANAN"
+  ],
+  [
+    "PROPERTI-APARTMENT",
+    "PROPERTI"
+  ],
+  [
+    "PROPERTI-INVESTASI",
+    "PROPERTI"
+  ],
+  [
+    "PROPERTI-LANDED HOUSE",
+    "PROPERTI"
+  ]
+];
+const lpgMasterCode=value=>String(value||"").trim().toUpperCase().normalize("NFKD").replace(/[^\w\s-]/g,"").replace(/\s+/g,"_").replace(/-+/g,"_");
+export const E2E_LPG_MASTER_INDUSTRY=LPG_INDUSTRY_MASTER_ROWS.map(([industryName,groupingName],index)=>({no:index+1,industryCode:lpgMasterCode(industryName),industryName,groupingCode:lpgMasterCode(groupingName),groupingName,activeFlag:true,version:1}));
+
 const p={CASHLOAN:[], "NON CASH LOAN":[], "CREDIT LINE":[], "Investment Line":[], BONDS:[], NOSTRO:[], "Nominal Pertanggungan":[]};
 
 // Country CL / NCL source records

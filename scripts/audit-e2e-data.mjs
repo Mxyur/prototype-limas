@@ -1,8 +1,23 @@
 import assert from "node:assert/strict";
-import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY, E2E_ENTITY_MASTER, E2E_MLK_ENTITY_SCOPE, E2E_CCL_ENTITY_SCOPE, E2E_CCL_LIMIT_SCOPE } from "../src/e2eDummyData.js";
+import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY, E2E_ENTITY_MASTER, E2E_MLK_ENTITY_SCOPE, E2E_CCL_ENTITY_SCOPE, E2E_CCL_LIMIT_SCOPE, E2E_LPG_MASTER_INDUSTRY } from "../src/e2eDummyData.js";
 const EPS=0.01;
 const near=(a,b,msg)=>assert.ok(Math.abs(Number(a)-Number(b))<=EPS,msg+" (actual="+a+", expected="+b+")");
 const entityCodes=new Set(E2E_ENTITY_MASTER.map(x=>x.entityCode));
+
+assert.ok(E2E_LPG_MASTER_INDUSTRY.length>=80,"LPG Master Industry must contain the full supplied Sector → Grouping list.");
+const lpgIndustryCodes=new Set();
+const lpgPairKeys=new Set();
+for(const r of E2E_LPG_MASTER_INDUSTRY){
+  assert.ok(r.industryCode&&r.industryName&&r.groupingCode&&r.groupingName,"LPG Master Industry row must have code/name for both Industry and Grouping.");
+  assert.ok(!lpgIndustryCodes.has(r.industryCode),"Duplicate LPG industryCode "+r.industryCode);
+  lpgIndustryCodes.add(r.industryCode);
+  const pair=String(r.industryCode)+"|"+String(r.groupingCode);
+  assert.ok(!lpgPairKeys.has(pair),"Duplicate LPG Sector→Grouping mapping "+pair);
+  lpgPairKeys.add(pair);
+}
+assert.ok(E2E_LPG_MASTER_INDUSTRY.some(r=>r.industryName==="INDUSTRI BATUBARA"&&r.groupingName==="BATUBARA"),"LPG Master Industry must include INDUSTRI BATUBARA → BATUBARA.");
+assert.ok(E2E_LPG_MASTER_INDUSTRY.some(r=>r.industryName==="INDUSTRI PLASTIK & SERAT BUATAN"&&r.groupingName==="PLASTIK"),"LPG Master Industry must include INDUSTRI PLASTIK & SERAT BUATAN → PLASTIK.");
+assert.ok(E2E_LPG_MASTER_INDUSTRY.some(r=>r.industryName==="ENERGI & AIR"&&r.groupingName==="ENERGI & AIR"),"LPG Master Industry must include ENERGI & AIR → ENERGI & AIR.");
 assert.deepEqual(E2E_MLK_ENTITY_SCOPE,["BMEL","BMRI","MANSEK","MTF","MUF"],"MLK scope must follow the confirmed entity universe: BMEL + BMRI + MANSEK + MTF + MUF");
 const cclScope=new Map(E2E_CCL_ENTITY_SCOPE.map(x=>[x.entityCode,x]));
 const fs=await import("node:fs");

@@ -2,7 +2,7 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
-import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE} from './e2eDummyData';
+import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE} from './e2eDummyData';
 import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE} from './productionSampleData';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
@@ -33,6 +33,7 @@ const E2E_ENTITY_MASTER=IS_E2E_RUNTIME?E2E_ENTITY_MASTER_FIXTURE:IS_PRODUCTION_S
 const E2E_MLK_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_MLK_ENTITY_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE:[];
 const E2E_CCL_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_CCL_ENTITY_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE:[];
 const E2E_CCL_LIMIT_SCOPE=IS_E2E_RUNTIME?E2E_CCL_LIMIT_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE:[];
+const E2E_LPG_MASTER_INDUSTRY=IS_E2E_RUNTIME?E2E_LPG_MASTER_INDUSTRY_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY||[]):[];
 if(!IS_E2E_RUNTIME&&!IS_PRODUCTION_RUNTIME){
   throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E, PRODUCTION_SAMPLE or PRODUCTION.");
 }
@@ -42,6 +43,24 @@ const LPG_REGIONAL_SCOPES=["Region I","Region II","Region III","Region IV","Regi
 const LPG_SCOPES=[LPG_BANK_SCOPE,...LPG_REGIONAL_SCOPES];
 const LPG_REGION_ONLY_SCOPES=LPG_REGIONAL_SCOPES.filter(scope=>scope!=="KP + OVS");
 const lpgScopeKey=(scope)=>String(scope).replace(/[^A-Za-z0-9]+/g,"_");
+
+const lpgIndustryByName=Object.fromEntries((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>[String(x.industryName).trim().toUpperCase(),x]));
+const lpgGroupingByName=Object.fromEntries((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>[String(x.groupingName).trim().toUpperCase(),x.groupingName]));
+function lpgIndustryMasterQualityIssues(){
+  const issues=[],industryKeys=new Set(),pairKeys=new Set();
+  (E2E_LPG_MASTER_INDUSTRY||[]).forEach(r=>{
+    const industry=String(r.industryName||"").trim().toUpperCase(),grouping=String(r.groupingName||"").trim().toUpperCase();
+    if(!industry)issues.push({type:"LPG_INDUSTRY_NAME_MISSING",detail:"Industry name is missing."});
+    if(!grouping)issues.push({type:"LPG_GROUPING_NAME_MISSING",detail:"Grouping is missing for "+industry+"."});
+    const key=String(r.industryCode||"").trim().toUpperCase();
+    if(industryKeys.has(key))issues.push({type:"LPG_INDUSTRY_DUPLICATE",detail:"Duplicate active industryCode "+key+"."});
+    industryKeys.add(key);
+    const pair=industry+"|"+grouping;
+    if(pairKeys.has(pair))issues.push({type:"LPG_INDUSTRY_GROUPING_DUPLICATE",detail:"Duplicate Sector→Grouping mapping "+pair+"."});
+    pairKeys.add(pair);
+  });
+  return issues;
+}
 const HOME_COUNTRY_CODE=E2E_COUNTRY_MONITORING_POLICY.homeCountryCode||"ID";
 const countryMonitoringEligible=(code)=>!E2E_COUNTRY_MONITORING_POLICY.excludedCountryCodes.includes(String(code||"").trim().toUpperCase());
 const entityMasterByCode=Object.fromEntries((E2E_ENTITY_MASTER||[]).map(x=>[x.entityCode,x]));
@@ -1528,6 +1547,8 @@ function LPGMonitor({nav}){
         <DomainKpi label="Early Warning" value={warning} sub="80%–<100%" accent="yellow"/>
         <DomainKpi label="Breach" value={breach} sub="≥100%" accent="red"/>
       </div>
+      <section className="card"><div className="head"><div><h2>Master Industry & Grouping</h2><p>Phase 1: Sector → Grouping reference. Ini adalah master klasifikasi, bukan utilization dan bukan limit.</p></div><span className="chip blue">{(E2E_LPG_MASTER_INDUSTRY||[]).length} industry</span></div>
+        <div className="body"><div className="toolbar"><span className="chip blue">Grouping: {[...new Set((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>x.groupingName))].length}</span><span className="muted-small">Source of LPG debtor classification akan direkonsiliasi pada Phase 6 melalui CIF/MLK.</span></div><div className="table-wrap" style={{marginTop:12,maxHeight:320,overflow:"auto"}}><table className="table"><thead><tr><th>No</th><th>Master Industry / Sector</th><th>Grouping</th><th>Status</th></tr></thead><tbody>{(E2E_LPG_MASTER_INDUSTRY||[]).map(r=><tr key={r.industryCode}><td>{r.no}</td><td className="key">{r.industryName}</td><td>{r.groupingName}</td><td><Status v={r.activeFlag?"Normal":"Data Issue"}/></td></tr>)}</tbody></table></div></div></section>
       <section className="card"><div className="head"><div><h2>LPG Control Model</h2><p>Bankwide adalah aggregate dari Region I–XII + KP + OVS. Bankwide source bukan additional exposure.</p></div><span className="chip blue">CL + NCL → LPG</span></div>
         <div className="body"><div className="integration-chip-grid">
           <div className="mini integration-chip"><b>1. Debtor Source</b><div className="muted-small">CIF/CUSTID + outstanding dari Cash Loan dan Non Cash Loan.</div></div>
@@ -4204,6 +4225,8 @@ function canonicalProductQualityIssues(){
   });
   return issues;
 }
+
+function lpgReferenceQualityIssues(){return lpgIndustryMasterQualityIssues();}
 
 function masterCanonicalQualityIssues(){
   const issues=[];
