@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY, E2E_ENTITY_MASTER, E2E_MLK_ENTITY_SCOPE, E2E_CCL_ENTITY_SCOPE, E2E_CCL_LIMIT_SCOPE, E2E_LPG_MASTER_INDUSTRY } from "../src/e2eDummyData.js";
+import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY, E2E_ENTITY_MASTER, E2E_MLK_ENTITY_SCOPE, E2E_CCL_ENTITY_SCOPE, E2E_CCL_LIMIT_SCOPE, E2E_LPG_MASTER_INDUSTRY, E2E_LPG_MASTER_IC_NATIONAL, E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE } from "../src/e2eDummyData.js";
 const EPS=0.01;
 const near=(a,b,msg)=>assert.ok(Math.abs(Number(a)-Number(b))<=EPS,msg+" (actual="+a+", expected="+b+")");
 const entityCodes=new Set(E2E_ENTITY_MASTER.map(x=>x.entityCode));
@@ -18,6 +18,22 @@ for(const r of E2E_LPG_MASTER_INDUSTRY){
 assert.ok(E2E_LPG_MASTER_INDUSTRY.some(r=>r.industryName==="INDUSTRI BATUBARA"&&r.groupingName==="BATUBARA"),"LPG Master Industry must include INDUSTRI BATUBARA → BATUBARA.");
 assert.ok(E2E_LPG_MASTER_INDUSTRY.some(r=>r.industryName==="INDUSTRI PLASTIK & SERAT BUATAN"&&r.groupingName==="PLASTIK"),"LPG Master Industry must include INDUSTRI PLASTIK & SERAT BUATAN → PLASTIK.");
 assert.ok(E2E_LPG_MASTER_INDUSTRY.some(r=>r.industryName==="ENERGI & AIR"&&r.groupingName==="ENERGI & AIR"),"LPG Master Industry must include ENERGI & AIR → ENERGI & AIR.");
+
+const icCodes=new Set();
+for(const ic of E2E_LPG_MASTER_IC_NATIONAL){
+  assert.ok(ic.icCode&&ic.icName,"LPG IC Nasional must have code and name.");
+  assert.ok(!icCodes.has(ic.icCode),"Duplicate LPG IC Nasional "+ic.icCode);
+  icCodes.add(ic.icCode);
+}
+assert.deepEqual([...icCodes],["NETRAL","SELEKTIF","MENARIK","WASPADA"],"LPG IC Nasional master must contain the four confirmed classifications.");
+const nationalMapByIndustry=new Set();
+for(const m of E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE){
+  assert.ok(icCodes.has(m.icCode),"LPG Industry→IC Nasional mapping points to unknown IC "+m.icCode);
+  assert.ok(!nationalMapByIndustry.has(m.industryCode),"Duplicate LPG Industry→IC Nasional mapping "+m.industryCode);
+  nationalMapByIndustry.add(m.industryCode);
+}
+const waspada=E2E_LPG_MASTER_IC_NATIONAL.find(x=>x.icCode==="WASPADA");
+assert.equal(waspada?.ruleCode,"PLASTIK_ONLY","WASPADA must be configured as PLASTIK_ONLY.");
 assert.deepEqual(E2E_MLK_ENTITY_SCOPE,["BMEL","BMRI","MANSEK","MTF","MUF"],"MLK scope must follow the confirmed entity universe: BMEL + BMRI + MANSEK + MTF + MUF");
 const cclScope=new Map(E2E_CCL_ENTITY_SCOPE.map(x=>[x.entityCode,x]));
 const fs=await import("node:fs");
