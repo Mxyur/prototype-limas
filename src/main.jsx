@@ -4,6 +4,7 @@ import {createRoot} from 'react-dom/client';
 import './styles.css';
 import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE,E2E_LPG_IC_SEGWIL_MAPPING as E2E_LPG_IC_SEGWIL_MAPPING_FIXTURE,E2E_LPG_SEGWIL_MAPPING_META as E2E_LPG_SEGWIL_MAPPING_META_FIXTURE} from './e2eDummyData';
 import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE,PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY,PRODUCTION_SAMPLE_LPG_MASTER_IC_NATIONAL,PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE,PRODUCTION_SAMPLE_LPG_MASTER_REGION,PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT,PRODUCTION_SAMPLE_LPG_IC_SEGWIL_MAPPING,PRODUCTION_SAMPLE_LPG_SEGWIL_MAPPING_META} from './productionSampleData';
+import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage} from './reportTraceability';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
@@ -5178,6 +5179,46 @@ function CanonicalReadModelPreview(){
         </table>
       </div>
       <div className="field-help"><b>Lineage:</b> Source Record → Source Field → Source Amount / Unit → Normalized Exposure → Target Master Key → Monitoring Grain → Utilization → Status. This is a generated demo read model, not a persistent production database.</div>
+    </div>
+  </section>;
+}
+
+
+function ProductReportCoverage(){
+  const audit=auditProductReportCoverage(productSchemaFields);
+  const summary=summarizeProductReportCoverage(audit);
+  const status=summary.sourceIncomplete===0 ? "Normal" : "Data Issue";
+  return <section className="card" style={{marginTop:16}}>
+    <div className="head">
+      <div><h2>Report Data Contract — Product Coverage</h2><p>Validasi apakah Product Database menyediakan source fields yang dibutuhkan untuk membentuk report. Source fields tidak diubah; business enrichment ditampilkan sebagai dependency terpisah.</p></div>
+      <Status v={status}/>
+    </div>
+    <div className="body">
+      <div className="metric-grid">
+        <DomainKpi label="Coverage Contracts" value={summary.totalContracts} sub="Product × Report dependencies"/>
+        <DomainKpi label="Source Complete" value={summary.sourceComplete} sub="All declared source fields available"/>
+        <DomainKpi label="Source Incomplete" value={summary.sourceIncomplete} sub="Missing source field(s)" accent={summary.sourceIncomplete?"red":""}/>
+        <DomainKpi label="Enrichment Required" value={summary.enrichmentRequired} sub="Business mapping/reference dependency"/>
+      </div>
+      <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table">
+          <thead><tr><th>Product</th><th>Report / Limit</th><th>Source Field Dependency</th><th>Source Coverage</th><th>Business Enrichment</th><th>Purpose</th></tr></thead>
+          <tbody>
+            {audit.map((r,i)=><tr key={r.productId+"-"+r.report+"-"+i}>
+              <td><b>{integrationLabel(r.productId)}</b></td>
+              <td>{r.report}</td>
+              <td className="muted-small">{r.sourceFields.join(", ")||"—"}{r.missingSourceFields.length>0&&<div style={{marginTop:4}}><b>Missing:</b> {r.missingSourceFields.join(", ")}</div>}</td>
+              <td><Status v={r.sourceCoverage==="AVAILABLE"?"Normal":"Data Issue"}/></td>
+              <td>{r.enrichmentFields.length?<>
+                <span className="chip blue">Required</span>
+                <div className="muted-small" style={{marginTop:4}}>{r.enrichmentFields.join(", ")}</div>
+              </>:"Not Required"}</td>
+              <td className="muted-small">{r.note}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className="field-help"><b>Interpretation:</b> Source Complete berarti field fisik sudah tersedia di Product Database. Enrichment Required berarti report membutuhkan identity/classification/business reference yang belum boleh dianggap sebagai source-native field. Control ini adalah baseline Phase 2; mapping/enrichment implementation akan dikunci pada Phase 3.</div>
     </div>
   </section>;
 }
