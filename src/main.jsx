@@ -4412,50 +4412,118 @@ function masterCanonicalQualityIssues(){
   });
   return issues;
 }
+function governancePhaseAudit(){
+  const report=buildReportDummy(limasDemoData);
+  const reportRowsByType={
+    CCL_DIRECT:buildCCLDirectReportRows(),
+    CCL_INDIRECT:buildCCLIndirectReportRows(),
+    MLK_CONSOLIDATED:report.MLK||[],
+    Country:report.Country||[],
+    CCL:report.CCL||[],
+    MLK:report.MLK||[],
+    CIL:report.CIL||[],
+    LPG:report.LPG||[]
+  };
+  const fieldAliases={"CREDIT LINE":[...new Set((creditLineCanonicalFields||[]).map(x=>x.source).filter(Boolean))]};
+  const phase1Raw=auditMasterLimitGovernance({
+    masters:limasDemoData,
+    masterIssues:masterCanonicalQualityIssues(),
+    entityMaster:E2E_ENTITY_MASTER,
+    cclLimitScope:E2E_CCL_LIMIT_SCOPE,
+    lpgScopes:LPG_REGIONAL_SCOPES,
+    homeCountryCode:HOME_COUNTRY_CODE
+  });
+  const reportCoverage=auditProductReportCoverage(productSchemaFields,fieldAliases);
+  const productIssues=canonicalProductQualityIssues();
+  const dictionaryIssues=productMasterCatalog.filter(p=>!p.id||!p.exposure||!p.canonicalUnit);
+  const phase2Issues=[
+    ...productIssues.map(x=>({phase:2,layer:"Product Database",issueType:x.type,productId:x.productId,recordId:x.recordId,key:x.key||"—",detail:x.detail})),
+    ...reportCoverage.filter(x=>x.sourceCoverage!=="AVAILABLE").map(x=>({phase:2,layer:"Product Database",issueType:x.sourceCoverage,productId:x.productId,recordId:null,key:x.report,detail:x.missingSourceFields?.length?"Missing source field(s): "+x.missingSourceFields.join(", "):"Report dependency is not source-complete."})),
+    ...dictionaryIssues.map(x=>({phase:2,layer:"Product Universe",issueType:"PRODUCT_DICTIONARY_INCOMPLETE",productId:x.id,recordId:null,key:x.id,detail:"Product registry is missing required definition metadata."}))
+  ];
+  const phase3Raw=auditBusinessEnrichmentCoverage({
+    productDatabase,
+    integrationMappings:productIntegrationMappings,
+    countryMonitoringEligible,
+    integrationDomainAllowed,
+    lpgClassifier:lpgProductClassification,
+    explicitCclSource:isExplicitCclSource
+  });
+  const phase3Issues=[
+    ...reconciliationIssues().filter(x=>x.status==="Data Issue").map(x=>({phase:3,layer:"Integration / Mapping",issueType:x.issueType,productId:x.productId,recordId:x.recordId,key:x.key||"—",detail:x.detail})),
+    ...monitoringScopeIntegrityIssues().map(x=>({phase:3,layer:x.layer||"Integration / Mapping",issueType:x.issueType,productId:x.productId,recordId:x.recordId,key:x.key||"—",detail:x.detail,domain:x.domain})),
+    ...(phase3Raw.issues||[])
+  ];
+  const expectedExposureByMaster={};
+  ["Country","CCL","MLK","CIL"].forEach(domain=>{
+    (limasDemoData[domain]||[]).forEach(master=>{
+      expectedExposureByMaster[domain+"::"+master.key]=recordExposure(domain,master);
+    });
+  });
+  (lpgLeafRows()||[]).forEach(master=>{
+    expectedExposureByMaster["LPG::"+master.key]=recordExposure("LPG",master);
+  });
+  const phase4Raw=auditCanonicalReadModel({
+    mappings:Object.values(productIntegrationMappings||{}).flat(),
+    readModelRows:canonicalReadModelRows(),
+    expectedExposureByMaster,
+    reportRowsByDomain:{Country:report.Country||[],CCL:report.CCL||[],MLK:report.MLK||[],CIL:report.CIL||[],LPG:report.LPG||[]}
+  });
+  const phase4Issues=[
+    ...(phase4Raw.issues||[]),
+    ...numericReconciliationAudit().filter(x=>x.status==="FAIL").map(x=>({phase:4,layer:"Canonical Read Model",issueType:"NUMERIC_RECONCILIATION_FAIL",domain:x.domain,detail:x.rule+" • Δ "+x.diff+" "+x.unit}))
+  ];
+  const phase5Raw=auditReportRuntime({
+    reportConfig,
+    reportRowsByType,
+    auditFieldTraceability:auditReportFieldTraceability,
+    auditFieldSummary:summarizeReportFieldTraceability
+  });
+  const phases=[
+    {phase:1,title:"Master Limit Governance",issues:phase1Raw.issues||[],status:(phase1Raw.issues||[]).length?"Data Issue":"Normal"},
+    {phase:2,title:"Product Universe & Product Database",issues:phase2Issues,status:phase2Issues.length?"Data Issue":"Normal"},
+    {phase:3,title:"Integration & Business Mapping",issues:phase3Issues,status:phase3Issues.length?"Data Issue":"Normal"},
+    {phase:4,title:"Canonical Read Model & Monitoring",issues:phase4Issues,status:phase4Issues.length?"Data Issue":"Normal"},
+    {phase:5,title:"Reporting & End-to-End Lineage",issues:phase5Raw.issues||[],status:(phase5Raw.issues||[]).length?"Data Issue":"Normal"}
+  ];
+  return {
+    phases,
+    reportFieldAudit:phase5Raw,
+    reportCoverage,
+    readModelAudit:phase4Raw,
+    phase3EnrichmentAudit:phase3Raw
+  };
+}
+
 function releaseGate(){
-  const controls=canonicalPipelineControls();
+  const governance=governancePhaseAudit();
   const numeric=numericReconciliationAudit().filter(x=>x.status==="FAIL");
   const activeDq=dataQualityIssueRows().length;
-  const blockingLayers=controls.filter(x=>x.status==="Data Issue");
-  const status=blockingLayers.length||numeric.length||activeDq?"BLOCKED":"READY";
+  const blockingPhases=governance.phases.filter(x=>x.status==="Data Issue");
+  const status=blockingPhases.length||numeric.length||activeDq?"BLOCKED":"READY";
   return {
     status,
-    blockingLayers,
+    blockingLayers:blockingPhases,
+    blockingPhases,
     numericFailures:numeric,
     activeDq,
     detail:status==="READY"
-      ?((IS_PRODUCTION_RUNTIME?"[PRODUCTION] ":"[E2E] ")+"Master, Product Dictionary, Product Database, Integration, Report/Monitoring dan Numeric Reconciliation pass.")
-      :"Release ditahan sampai seluruh blocking Data Quality / reconciliation issue cleared."
+      ?((IS_PRODUCTION_RUNTIME?"[PRODUCTION] ":"[E2E] ")+"Five LIMAS phases pass: Master → Product DB → Mapping → Canonical Monitoring → Reporting/Lineage.")
+      :"Release ditahan sampai seluruh blocking Phase 1–5 / Data Quality / reconciliation issue cleared."
   };
 }
+
 function canonicalPipelineControls(){
-  const masterIssues=masterCanonicalQualityIssues();
-  const productIssues=canonicalProductQualityIssues();
-  const mappingIssues=[...reconciliationIssues().filter(x=>x.status==="Data Issue"),...monitoringScopeIntegrityIssues()];
-  const numericIssues=numericReconciliationAudit().filter(x=>x.status==="FAIL");
-  const dictionaryIssues=productMasterCatalog.filter(p=>!p.id||!p.exposure||!p.canonicalUnit).length;
-  const report=buildReportDummy(limasDemoData);
-  const readModelMismatches=[];
-  ["Country","CCL","MLK","CIL","LPG"].forEach(domain=>{
-    const masters=domain==="LPG"?lpgLeafRows():(limasDemoData[domain]||[]);
-    const reportRows=domain==="LPG"?(report[domain]||[]).filter(r=>r.segment!=="TOTAL SEKTOR"):(report[domain]||[]);
-    if(masters.length!==reportRows.length)readModelMismatches.push(domain+" row-count");
-    masters.forEach(master=>{
-      const rr=reportRows.find(r=>String(r.key)===String(master.key));
-      if(rr&&statusForReport(rr)!==recordStatus(domain,master))readModelMismatches.push(domain+" "+String(master.key)+" status");
-    });
-  });
-  return [
-    {layer:"1. Master Limit",status:masterIssues.length?"Data Issue":"Normal",count:masterIssues.length,detail:masterIssues.length?masterIssues.slice(0,3).map(x=>x.type+" • "+(x.domain||"")).join(" ; "):"Master keys, capacity/product allocation and master formulas reconcile."},
-    {layer:"2. Product Dictionary",status:dictionaryIssues?"Data Issue":"Normal",count:dictionaryIssues,detail:dictionaryIssues?"Product registry still has incomplete definitions.":"Canonical vocabulary is mapped without renaming source fields or creating semantic duplicates."},
-    {layer:"3. Product Database",status:productIssues.length?"Data Issue":"Normal",count:productIssues.length,detail:productIssues.length?productIssues.slice(0,3).map(x=>x.productId+" • "+x.type).join(" ; "):"Required identifiers and source hierarchy checks pass."},
-    {layer:"4. Integration / Read Model",status:mappingIssues.length?"Data Issue":"Normal",count:mappingIssues.length,detail:mappingIssues.length?mappingIssues.slice(0,3).map(x=>x.issueType+" • "+x.productId).join(" ; "):"Source key → normalized exposure → master aggregation reconciles."},
-    {layer:"5. Report & Monitoring",status:readModelMismatches.length?"Data Issue":"Normal",count:readModelMismatches.length,detail:readModelMismatches.length?readModelMismatches.slice(0,3).join(" ; "):"Report, Dashboard, Monitoring dan EWS membaca canonical functions yang sama."},
-    {layer:"6. Numeric Reconciliation",status:numericIssues.length?"Data Issue":"Normal",count:numericIssues.length,detail:numericIssues.length?numericIssues.slice(0,3).map(x=>x.domain+" • "+x.rule+" • Δ "+x.diff).join(" ; "):"Master formula, source conversion, product hierarchy, dan monitoring contribution checks pass."}
-  ];
+  const governance=governancePhaseAudit();
+  return governance.phases.map(p=>({
+    layer:"Phase "+p.phase+" • "+p.title,
+    status:p.status,
+    count:p.issues.length,
+    detail:p.issues.length
+      ?p.issues.slice(0,3).map(x=>(x.issueType||x.type||"ISSUE")+" • "+(x.productId||x.domain||"")).join(" ; ")
+      :"Phase pass — seluruh control utama pada layer ini reconcile."
+  }));
 }
-
-
 
 // Canonical naming policy: source field names remain unchanged; business labels are standardized in the LIMAS mapping layer.
 initializeRuntimeDataset();
@@ -5200,10 +5268,13 @@ function ProductReportCoverage(){
   const fieldAliases={"CREDIT LINE":[...new Set((creditLineCanonicalFields||[]).map(x=>x.source).filter(Boolean))]};
   const audit=auditProductReportCoverage(productSchemaFields,fieldAliases);
   const summary=summarizeProductReportCoverage(audit);
-  const status=summary.sourceIncomplete===0 ? "Normal" : "Data Issue";
+  const governance=governancePhaseAudit();
+  const fieldSummary=governance.reportFieldAudit.summary;
+  const fieldRows=governance.reportFieldAudit.rows;
+  const status=(summary.sourceIncomplete===0&&fieldSummary.ready) ? "Normal" : "Data Issue";
   return <section className="card" style={{marginTop:16}}>
     <div className="head">
-      <div><h2>Report Data Contract — Product Coverage</h2><p>Validasi apakah Product Database menyediakan source fields yang dibutuhkan untuk membentuk report. Source fields tidak diubah; business enrichment ditampilkan sebagai dependency terpisah.</p></div>
+      <div><h2>Report Data Contract — Product Coverage & Field Traceability</h2><p>Validasi dua lapis: Product Database menyediakan source dependency, lalu setiap Report Field harus memiliki Source / Enrichment / Formula lineage yang eksplisit.</p></div>
       <Status v={status}/>
     </div>
     <div className="body">
@@ -5212,6 +5283,12 @@ function ProductReportCoverage(){
         <DomainKpi label="Source Complete" value={summary.sourceComplete} sub="All declared source fields available"/>
         <DomainKpi label="Source Incomplete" value={summary.sourceIncomplete} sub="Missing source field(s)" accent={summary.sourceIncomplete?"red":""}/>
         <DomainKpi label="Enrichment Required" value={summary.enrichmentRequired} sub="Business mapping/reference dependency"/>
+      </div>
+      <div className="metric-grid" style={{marginTop:12}}>
+        <DomainKpi label="Report Fields" value={fieldSummary.totalFields} sub="All configured report columns"/>
+        <DomainKpi label="Traceable" value={fieldSummary.traceable} sub="Source / master / formula lineage defined"/>
+        <DomainKpi label="Traceability Gaps" value={fieldSummary.missingContract+fieldSummary.runtimeMissing} sub="Must be cleared before release" accent={(fieldSummary.missingContract+fieldSummary.runtimeMissing)?"red":""}/>
+        <DomainKpi label="Phase 5 Status" value={fieldSummary.ready?"READY":"BLOCKED"} sub="End-to-end report lineage"/>
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table">
@@ -5231,11 +5308,25 @@ function ProductReportCoverage(){
           </tbody>
         </table>
       </div>
-      <div className="field-help"><b>Interpretation:</b> Source Complete berarti field fisik sudah tersedia di Product Database. Enrichment Required berarti report membutuhkan identity/classification/business reference yang belum boleh dianggap sebagai source-native field. Control ini adalah baseline Phase 2; mapping/enrichment implementation akan dikunci pada Phase 3.</div>
+      <div className="table-wrap" style={{marginTop:16}}>
+        <table className="table">
+          <thead><tr><th>Report</th><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation / Formula</th><th>Status</th></tr></thead>
+          <tbody>
+            {fieldRows.map((r,i)=><tr key={"trace-"+r.reportType+"-"+r.field+"-"+i}>
+              <td><b>{r.reportType}</b></td>
+              <td className="key">{r.field}</td>
+              <td>{r.sourceLayer}</td>
+              <td className="muted-small">{r.sourceReference}</td>
+              <td className="muted-small">{r.transformation}</td>
+              <td><Status v={r.status==="TRACEABLE"?"Normal":"Data Issue"}/></td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className="field-help"><b>Acceptance rule:</b> Source Complete ≠ Report Ready. Report Ready hanya bila seluruh configured report field memiliki traceability contract dan runtime field benar-benar tersedia. Raw Product Database tetap source-only; canonical identity/classification berada di Business Enrichment / Mapping layer.</div>
     </div>
   </section>;
 }
-
 function Products({nav}){
   const [view,setView]=useState("catalog");
   const limitTabs=[
