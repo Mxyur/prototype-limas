@@ -1159,10 +1159,11 @@ function Dashboard({nav}){
       <section className="card">
         <div className="head"><div><h2>Data Lineage</h2><p>Traceability dari Master Limit sampai product utilization dan monitoring output.</p></div></div>
         <div className="body"><div className="integration-chip-grid">
-          <div className="mini integration-chip"><b>1. Master Limit</b><div className="muted-small">Approved limit, parameter, effective period, version dan status.</div></div>
-          <div className="mini integration-chip"><b>2. Product Universe</b><div className="muted-small">Product source registry dan integration mapping.</div></div>
-          <div className="mini integration-chip"><b>3. Product Utilization</b><div className="muted-small">Source record → target key → aggregation → outstanding/exposure.</div></div>
-          <div className="mini integration-chip"><b>4. Monitoring / Report</b><div className="muted-small">Utilisasi → remaining → threshold → EWS/Breach → report.</div></div>
+          <div className="mini integration-chip"><b>Phase 1 • Master Limit</b><div className="muted-small">WHAT is limited: master object, capacity, allocation, effective period, version and status.</div></div>
+          <div className="mini integration-chip"><b>Phase 2 • Product Database</b><div className="muted-small">Source-only product/facility registry; source fields remain unchanged.</div></div>
+          <div className="mini integration-chip"><b>Phase 3 • Mapping / Enrichment</b><div className="muted-small">Source identity → canonical business identity → target master, without duplicating source rows.</div></div>
+          <div className="mini integration-chip"><b>Phase 4 • Canonical Monitoring</b><div className="muted-small">Normalized read model → utilization → remaining → threshold → EWS/Breach.</div></div>
+          <div className="mini integration-chip"><b>Phase 5 • Reporting / Lineage</b><div className="muted-small">Report field → source/master → enrichment → transformation/formula, with release gate.</div></div>
         </div></div>
       </section>
 
