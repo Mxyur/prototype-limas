@@ -3702,12 +3702,16 @@ function buildProductIntegrationMappings(){
       const segment=normalizeLpgSegment(classification.segmentName||d.segmen_lpg);
       const scope=String(classification.regionName||d.region_lpg||"").trim();
       const industry=classification.industryCode?{industryCode:classification.industryCode,groupingCode:classification.groupingCode,groupingName:classification.groupingName,industryName:classification.industryName}:lpgIndustryForSourceValue(sector);
-      const segmentMaster=classification.segmentCode?{segmentCode:classification.segmentCode,segmentName:classification.segmentName}:lpgCanonicalSegment(segment);
-      const regionMaster=classification.regionCode?{regionCode:classification.regionCode,regionName:classification.regionName}:lpgCanonicalRegion(scope);
+      const segmentMaster=classification.segmentCode?{segmentCode:classification.segmentCode,segmentName:classification.segmentName,legacyValues:lpgCanonicalSegment(segment)?.legacyValues||[]}:lpgCanonicalSegment(segment);
+      const regionMaster=classification.regionCode?{regionCode:classification.regionCode,regionName:classification.regionName,legacyScope:lpgCanonicalRegion(scope)?.legacyScope||""}:lpgCanonicalRegion(scope);
       if(!industry||!segmentMaster||!regionMaster)return;
-      const key=(industry.groupingName||sector)+"|"+segmentMaster.segmentName;
+      // Limit-master identity must preserve the approved legacy bucket key (e.g. BATUBARA|Commercial).
+      // Canonical segment/region codes stay in business enrichment; they must not mutate Master Limit keys.
+      const segmentBucket=String(d.segmen_lpg||segmentMaster.legacyValues?.[0]||segmentMaster.segmentName||"").trim();
+      const scopeBucket=String(d.region_lpg||regionMaster.legacyScope||scope).trim();
+      const key=(industry.groupingName||sector)+"|"+segmentBucket;
       const segwil=lpgSegwilMappingFor(industry.industryCode,regionMaster.regionCode,segmentMaster.segmentCode);
-      addIntegrationMapping(productId,r,{limitType:"LPG",key,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:regionMaster.regionName||scope,sourceField:(productId==="CASHLOAN"?"no_cus":"CUSTID")+" + ecosystem_lpg / segmen_lpg / region_lpg",sourceValue:cif+" / "+sector+" / "+segment+" / "+scope,mappingRule:"CIF -> authoritative debtor classification -> Industry -> Grouping -> Segment -> Region -> IC Nasional -> IC Segwil",
+      addIntegrationMapping(productId,r,{limitType:"LPG",key,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:scopeBucket,sourceField:(productId==="CASHLOAN"?"no_cus":"CUSTID")+" + ecosystem_lpg / segmen_lpg / region_lpg",sourceValue:cif+" / "+sector+" / "+segmentBucket+" / "+scopeBucket,mappingRule:"CIF -> authoritative debtor classification -> Industry -> Grouping -> Segment -> Region -> IC Nasional -> IC Segwil",
         businessEnrichment:{cif,industryCode:industry.industryCode||"",industryName:industry.industryName||"",groupingCode:industry.groupingCode||"",groupingName:industry.groupingName||"",masterIndustryCode:industry.industryCode||"",segmentCode:segmentMaster.segmentCode||"",regionCode:regionMaster.regionCode||"",icNasionalCode:segwil?.icNasionalCode||"",icWilayahSegmenCode:segwil?.icWilayahSegmenCode||""}
       });
     });
