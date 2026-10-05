@@ -1614,24 +1614,6 @@ function LPGMonitor({nav}){
         <DomainKpi label="Early Warning" value={warning} sub="80%–<100%" accent="yellow"/>
         <DomainKpi label="Breach" value={breach} sub="≥100%" accent="red"/>
       </div>
-      <section className="card"><div className="head"><div><h2>Master IC Segmen × Wilayah</h2><p>Phase 4: mapping Sector × Wilayah × Segmen → IC Wilayah Segmen. Dataset business yang tersedia saat ini baru berupa sample supplied.</p></div><span className="chip yellow">{(E2E_LPG_IC_SEGWIL_MAPPING||[]).length} mapping</span></div>
-        <div className="body"><div className="toolbar"><span className="chip blue">Status: {E2E_LPG_SEGWIL_MAPPING_META?.status||"—"}</span><span className="muted-small">Segwil key disimpan sebagai logical key komposit; display labels tetap mengikuti master.</span></div><div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>Sector</th><th>IC Nasional</th><th>Wilayah</th><th>Segmen</th><th>Segwil Key</th><th>IC Wilayah Segmen</th></tr></thead><tbody>{(E2E_LPG_IC_SEGWIL_MAPPING||[]).map(r=><tr key={lpgSegwilKey(r.sectorCode,r.regionCode,r.segmentCode)}><td className="key">{r.sectorName}</td><td>{r.icNasionalCode}</td><td>{r.regionName}</td><td>{r.segmentName}</td><td className="muted-small">{r.segwilKey}</td><td>{r.icWilayahSegmenCode}</td></tr>)}</tbody></table></div><div className="field-help">Limit allocation dan monitoring migration tidak dijalankan dari mapping partial ini. Full mapping menjadi prerequisite Phase 5.</div></div></section>
-      
-      <section className="card"><div className="head"><div><h2>Master IC Nasional</h2><p>Phase 2: classification nasional terpisah dari IC Wilayah Segmen. Mapping Sector → IC Nasional baru menampilkan data yang sudah supplied; tidak ada nilai yang diinferensikan.</p></div><span className="chip blue">{(E2E_LPG_MASTER_IC_NATIONAL||[]).length} IC</span></div>
-        <div className="body"><div className="toolbar">{(E2E_LPG_MASTER_IC_NATIONAL||[]).map(ic=><span key={ic.icCode} className="chip blue">{ic.icName} • {ic.visual}</span>)}<span className="muted-small">Industry mapping loaded: {(E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE||[]).length}</span></div><div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>IC Code</th><th>IC Nasional</th><th>Visual</th><th>Business Rule</th></tr></thead><tbody>{(E2E_LPG_MASTER_IC_NATIONAL||[]).map(ic=><tr key={ic.icCode}><td className="key">{ic.icCode}</td><td>{ic.icName}</td><td>{ic.visual}</td><td>{ic.ruleCode||"—"}</td></tr>)}</tbody></table></div></div></section>
-      
-      <section className="card"><div className="head"><div><h2>Master Industry & Grouping</h2><p>Phase 1: Sector → Grouping reference. Ini adalah master klasifikasi, bukan utilization dan bukan limit.</p></div><span className="chip blue">{(E2E_LPG_MASTER_INDUSTRY||[]).length} industry</span></div>
-        <div className="body"><div className="toolbar"><span className="chip blue">Grouping: {[...new Set((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>x.groupingName))].length}</span><span className="muted-small">Source of LPG debtor classification akan direkonsiliasi pada Phase 6 melalui CIF/MLK.</span></div><div className="table-wrap" style={{marginTop:12,maxHeight:320,overflow:"auto"}}><table className="table"><thead><tr><th>No</th><th>Master Industry / Sector</th><th>Grouping</th><th>Status</th></tr></thead><tbody>{(E2E_LPG_MASTER_INDUSTRY||[]).map(r=><tr key={r.industryCode}><td>{r.no}</td><td className="key">{r.industryName}</td><td>{r.groupingName}</td><td><Status v={r.activeFlag?"Normal":"Data Issue"}/></td></tr>)}</tbody></table></div></div></section>
-      <section className="card"><div className="head"><div><h2>LPG Control Model</h2><p>Bankwide adalah aggregate dari Region I–XII + KP + OVS. Bankwide source bukan additional exposure.</p></div><span className="chip blue">CL + NCL → LPG</span></div>
-        <div className="body"><div className="integration-chip-grid">
-          <div className="mini integration-chip"><b>1. Debtor Source</b><div className="muted-small">CIF/CUSTID + outstanding dari Cash Loan dan Non Cash Loan.</div></div>
-          <div className="mini integration-chip"><b>2. LPG Classification</b><div className="muted-small">Ecosystem LPG → Segmen LPG → Bankwide / Region / KP + OVS.</div></div>
-          <div className="mini integration-chip"><b>3. Aggregation</b><div className="muted-small">Bankwide = sum regional scope. Bankwide dan regional tidak dijumlahkan bersama.</div></div>
-          <div className="mini integration-chip"><b>4. Control</b><div className="muted-small">Crosscheck Bankwide vs regional + source coverage sebelum EWS/report.</div></div>
-        </div>
-        <div className="field-help">Regional outstanding hanya ditampilkan apabila ada debtor product record dengan region_lpg yang sesuai. Tidak ada outstanding snapshot yang ditanam ke master limit. Bankwide adalah aggregate seluruh debtor product yang terklasifikasi, bukan record LPG tersendiri.</div>
-        </div>
-      </section>
       <section className="card"><div className="head"><div><h2>Sector × Segment Monitoring</h2><p>Format mengikuti contoh LPG: total sektor + Corporate / Commercial / Sme / Micro.</p></div><span className="chip blue">{leaf.length} segment rows • {statuses.filter(x=>x==="Data Issue").length} data issue</span></div>
         <div className="body"><div className="table-wrap lpg-monitor-wrap"><table className="table lpg-monitor-table">
           <thead><tr><th>Ecosystem LPG</th><th>Segmen LPG</th>{LPG_SCOPES.map(scope=><th colSpan="3" key={scope}>{scope}</th>)}<th>Status</th><th>Crosscheck</th><th>Source Coverage</th></tr>
@@ -1984,6 +1966,30 @@ function MasterCreateForm({type,onCreated,onCancel}){
 }
 
 
+function LPGReferenceSetup(){
+  return <>
+      <section className="card"><div className="head"><div><h2>Master IC Segmen × Wilayah</h2><p>Phase 4: mapping Sector × Wilayah × Segmen → IC Wilayah Segmen. Dataset business yang tersedia saat ini baru berupa sample supplied.</p></div><span className="chip yellow">{(E2E_LPG_IC_SEGWIL_MAPPING||[]).length} mapping</span></div>
+        <div className="body"><div className="toolbar"><span className="chip blue">Status: {E2E_LPG_SEGWIL_MAPPING_META?.status||"—"}</span><span className="muted-small">Segwil key disimpan sebagai logical key komposit; display labels tetap mengikuti master.</span></div><div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>Sector</th><th>IC Nasional</th><th>Wilayah</th><th>Segmen</th><th>Segwil Key</th><th>IC Wilayah Segmen</th></tr></thead><tbody>{(E2E_LPG_IC_SEGWIL_MAPPING||[]).map(r=><tr key={lpgSegwilKey(r.sectorCode,r.regionCode,r.segmentCode)}><td className="key">{r.sectorName}</td><td>{r.icNasionalCode}</td><td>{r.regionName}</td><td>{r.segmentName}</td><td className="muted-small">{r.segwilKey}</td><td>{r.icWilayahSegmenCode}</td></tr>)}</tbody></table></div><div className="field-help">Limit allocation dan monitoring migration tidak dijalankan dari mapping partial ini. Full mapping menjadi prerequisite Phase 5.</div></div></section>
+      
+      <section className="card"><div className="head"><div><h2>Master IC Nasional</h2><p>Phase 2: classification nasional terpisah dari IC Wilayah Segmen. Mapping Sector → IC Nasional baru menampilkan data yang sudah supplied; tidak ada nilai yang diinferensikan.</p></div><span className="chip blue">{(E2E_LPG_MASTER_IC_NATIONAL||[]).length} IC</span></div>
+        <div className="body"><div className="toolbar">{(E2E_LPG_MASTER_IC_NATIONAL||[]).map(ic=><span key={ic.icCode} className="chip blue">{ic.icName} • {ic.visual}</span>)}<span className="muted-small">Industry mapping loaded: {(E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE||[]).length}</span></div><div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>IC Code</th><th>IC Nasional</th><th>Visual</th><th>Business Rule</th></tr></thead><tbody>{(E2E_LPG_MASTER_IC_NATIONAL||[]).map(ic=><tr key={ic.icCode}><td className="key">{ic.icCode}</td><td>{ic.icName}</td><td>{ic.visual}</td><td>{ic.ruleCode||"—"}</td></tr>)}</tbody></table></div></div></section>
+      
+      <section className="card"><div className="head"><div><h2>Master Industry & Grouping</h2><p>Phase 1: Sector → Grouping reference. Ini adalah master klasifikasi, bukan utilization dan bukan limit.</p></div><span className="chip blue">{(E2E_LPG_MASTER_INDUSTRY||[]).length} industry</span></div>
+        <div className="body"><div className="toolbar"><span className="chip blue">Grouping: {[...new Set((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>x.groupingName))].length}</span><span className="muted-small">Source of LPG debtor classification akan direkonsiliasi pada Phase 6 melalui CIF/MLK.</span></div><div className="table-wrap" style={{marginTop:12,maxHeight:320,overflow:"auto"}}><table className="table"><thead><tr><th>No</th><th>Master Industry / Sector</th><th>Grouping</th><th>Status</th></tr></thead><tbody>{(E2E_LPG_MASTER_INDUSTRY||[]).map(r=><tr key={r.industryCode}><td>{r.no}</td><td className="key">{r.industryName}</td><td>{r.groupingName}</td><td><Status v={r.activeFlag?"Normal":"Data Issue"}/></td></tr>)}</tbody></table></div></div></section>
+      <section className="card"><div className="head"><div><h2>LPG Control Model</h2><p>Bankwide adalah aggregate dari Region I–XII + KP + OVS. Bankwide source bukan additional exposure.</p></div><span className="chip blue">CL + NCL → LPG</span></div>
+        <div className="body"><div className="integration-chip-grid">
+          <div className="mini integration-chip"><b>1. Debtor Source</b><div className="muted-small">CIF/CUSTID + outstanding dari Cash Loan dan Non Cash Loan.</div></div>
+          <div className="mini integration-chip"><b>2. LPG Classification</b><div className="muted-small">Ecosystem LPG → Segmen LPG → Bankwide / Region / KP + OVS.</div></div>
+          <div className="mini integration-chip"><b>3. Aggregation</b><div className="muted-small">Bankwide = sum regional scope. Bankwide dan regional tidak dijumlahkan bersama.</div></div>
+          <div className="mini integration-chip"><b>4. Control</b><div className="muted-small">Crosscheck Bankwide vs regional + source coverage sebelum EWS/report.</div></div>
+        </div>
+        <div className="field-help">Regional outstanding hanya ditampilkan apabila ada debtor product record dengan region_lpg yang sesuai. Tidak ada outstanding snapshot yang ditanam ke master limit. Bankwide adalah aggregate seluruh debtor product yang terklasifikasi, bukan record LPG tersendiri.</div>
+        </div>
+      </section>
+
+  </>;
+}
+
 function LimitAllocationSetup({initialType,onTypeChange,nav}){
   const [type,setType]=useState(initialType||"MLK"),[entityFilter,setEntityFilter]=useState("ALL"),[query,setQuery]=useState("");
   const [selectedCcl,setSelectedCcl]=useState(()=>String((limasDemoData.CCL||[])[0]?.key||""));
@@ -2007,6 +2013,22 @@ function LimitAllocationSetup({initialType,onTypeChange,nav}){
   const possibleCcl=E2E_CCL_ENTITY_SCOPE.filter(x=>x.direct||x.indirect).length;
 
   const renderGenericAllocation=()=>{
+    if(type==="LPG"){
+      return <>
+        <LPGReferenceSetup/>
+        <div className="field-help" style={{marginTop:12}}><b>LPG setup boundary:</b> Reference/classification menentukan bucket. Approved limit dikelola di Limit Allocation; utilization berasal dari Product Database / integration layer.</div>
+        <div className="table-wrap" style={{marginTop:12}}>
+          <table className="table"><thead><tr><th>Ecosystem</th><th>Segment</th><th>Scope</th><th>Configured Limit</th><th>Scope Meaning</th><th>Detail</th></tr></thead>
+            <tbody>{(limasDemoData.LPG||[]).flatMap(row=>LPG_SCOPES.map(scope=><tr key={row.key+"|"+scope}>
+              <td className="key">{row.sector}</td><td>{row.segment}</td><td>{scope}</td>
+              <td>{lpgScopeLimitStatus(row,scope)==="NOT_CONFIGURED"?"—":Number(row.limits?.[scope]??0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+              <td>{scope==="Bankwide"?"Parent / Bankwide":scope==="KP + OVS"?"Kantor Pusat + Overseas":"Regional"}</td>
+              <td><button className="btn ghost" onClick={()=>nav("detail",{type:"LPG",key:row.key})}>Open Master Detail</button></td>
+            </tr>))}</tbody>
+          </table>
+        </div>
+      </>;
+    }
     if(type==="Country"){
       return <div className="table-wrap" style={{marginTop:12}}>
         <table className="table"><thead><tr><th>Country</th><th>Allocation Dimension</th><th>Product</th><th>Domestic Limit</th><th>Overseas Limit</th><th>Total Product Limit</th><th>Setup Source</th><th>Detail</th></tr></thead>
