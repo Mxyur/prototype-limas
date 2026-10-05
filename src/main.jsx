@@ -53,6 +53,11 @@ const LPG_REGION_ONLY_SCOPES=LPG_REGIONAL_SCOPES.filter(scope=>scope!=="KP + OVS
 const lpgScopeKey=(scope)=>String(scope).replace(/[^A-Za-z0-9]+/g,"_");
 
 const lpgIndustryByName=Object.fromEntries((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>[String(x.industryName).trim().toUpperCase(),x]));
+const LPG_INDUSTRY_SOURCE_ALIAS={"BATUBARA":"INDUSTRI BATUBARA"};
+const lpgIndustryForSourceValue=(value)=>{
+  const raw=String(value||"").trim().toUpperCase();
+  return lpgIndustryByName[raw]||lpgIndustryByName[LPG_INDUSTRY_SOURCE_ALIAS[raw]||""]||null;
+};
 const lpgGroupingByName=Object.fromEntries((E2E_LPG_MASTER_INDUSTRY||[]).map(x=>[String(x.groupingName).trim().toUpperCase(),x.groupingName]));
 const lpgIcNationalByCode=Object.fromEntries((E2E_LPG_MASTER_IC_NATIONAL||[]).map(x=>[String(x.icCode).trim().toUpperCase(),x]));
 const lpgIndustryIcNationalByIndustry=Object.fromEntries((E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE||[]).map(x=>[String(x.industryCode).trim().toUpperCase(),x]));
@@ -665,7 +670,7 @@ function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
   // Bank Loan = FI Cash Loan upstream; Commercial Line = FI Non Cash Loan upstream;
   // Treasury Line comes from the Treasury component. Raw CL/NCL are never added
   // directly to CCL, preventing double counting across lineage layers.
-  return productApplicationsFor("CCL",counterpartyKey)
+  return productApplicationsFor("CCL",counterpartyKey,{cclLimitType:limitType})
     .filter(a=>
       String(a.entity||"")===String(entityCode) &&
       String(a.cclLimitType||"DIRECT")===String(limitType) &&
@@ -3651,7 +3656,7 @@ function buildProductIntegrationMappings(){
       const d=r.data||{},sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
       if(!sector||!segment)return;
       const scope=String(d.region_lpg||"").trim();
-      const industry=lpgIndustryByName[String(sector||"").trim().toUpperCase()]||null;
+      const industry=lpgIndustryForSourceValue(sector);
       const segmentMaster=lpgCanonicalSegment(segment);
       const regionMaster=lpgCanonicalRegion(scope);
       const segwil=lpgSegwilMappingFor(industry?.industryCode,regionMaster?.regionCode,segmentMaster?.segmentCode);
@@ -3713,9 +3718,10 @@ function cleanseMasterData(){
   Object.values(productDatabase||{}).flat().forEach(canonicalizeProductBusinessValues);
 }
 
-function productApplicationsFor(type,key){
+function productApplicationsFor(type,key,options={}){
   if(type==="LPG")return lpgProductApplicationsForKey(key);
   const out=[];
+  const cclLimitType=type==="CCL"?String(options.cclLimitType||"DIRECT").toUpperCase():null;
   const exposureField=(domain,productId,scope)=>{
     if(productId==="CASHLOAN")return "total_bade";
     if(productId==="NON CASH LOAN")return "EQVIDR / BALANCE";
@@ -3742,6 +3748,7 @@ function productApplicationsFor(type,key){
   Object.entries(productIntegrationMappings).forEach(([productId,mappings])=>{
     (mappings||[]).forEach(a=>{
       if(a.limitType!==type||String(a.key)!==String(key))return;
+      if(type==="CCL"&&String(a.cclLimitType||"DIRECT").toUpperCase()!==cclLimitType)return;
       const r=(productDatabase[productId]||[]).find(x=>String(x.recordId)===String(a.recordId));
       if(!r)return;
       const normalized=normalizeAppliedAmount(type,productId,a.amount,r);
