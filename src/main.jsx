@@ -225,8 +225,7 @@ function getMasterSections(type){
   };
   if(type==="LPG") return {
     "Identitas":s["Identitas"]||[],
-    "Bankwide Limit":[["Bankwide / Limit","—"]],
-    "Regional Limit":LPG_REGIONAL_SCOPES.map(scope=>[scope+" / Limit","—"])
+    "Master Limit":[["Bankwide / Master Limit","—"]]
   };
   return s;
 }
@@ -265,7 +264,7 @@ const domainDataContract={
     masterObject:"Portfolio Guideline",
     linkedProducts:["CASHLOAN","NON CASH LOAN"],
     utilizationGrain:"Ecosystem LPG + Segmen LPG + Scope (Bankwide/Region/KP+OVS) + Periode",
-    masterDescription:"Approved limit per Ecosystem LPG × Segmen LPG, dengan scope Bankwide, Region I–XII dan KP + OVS. Bankwide adalah aggregate monitoring, bukan tambahan exposure terpisah."
+    masterDescription:"Approved parent Master Limit per Ecosystem LPG × Segmen LPG. Bankwide adalah parent/control ceiling; Region I–XII dan KP + OVS dikelola sebagai child allocation scope."
   }
 };
 
@@ -280,7 +279,7 @@ const provenanceDefaults={
   CCL:{description:"Master CCL dan contractual limit untuk monitoring counterparty serta exposure BMRI/PA.",source:"FIB Group + SISM Group",dataset:"CCL_MONITORING",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"FIB / SISM",sourceNote:"BMRI data berasal dari FIB Group; data PA dikompilasi SISM sebelum monitoring."},
   MLK:{description:"Master Limit Kredit untuk monitoring CIF, Group Usaha dan konsolidasi entitas.",source:"CRA / SISM Group",dataset:"MLK_Master + MLK_Monitor",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"CRA / SISM",sourceNote:"Master debtor data dan monitoring hierarchy dipisahkan. Master Limit Setting dan Master Limit Final adalah field berbeda; Limit Fasilitas dan Bade berasal dari facility/utilization aggregation. MLK konsolidasi adalah report-level metric dan tidak disamakan dengan debtor Master Limit."},
   CIL:{description:"Master CIL/EIL/CIT untuk monitoring kapasitas dan nominal pertanggungan asuransi.",source:"Risk Management / SISM",dataset:"CIL_Master",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"Risk Management / SISM",sourceNote:"Insurance capacity, EIL, CIT dan exposure disimpan sebagai reference/provenance untuk monitoring."},
-  LPG:{description:"Master LPG untuk monitoring konsentrasi sektor, segmen dan region.",source:"Risk Management / Business Unit",dataset:"LPG_Loanportfolio",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"Risk Management",sourceNote:"Approved LPG limit disimpan per sektor × segmen dengan Bankwide, Region I–XII dan KP + OVS. Outstanding berasal dari CL/NCL pada level debitur; Bankwide diperlakukan sebagai aggregate/reconciliation value dan tidak dijumlahkan dengan regional."}
+  LPG:{description:"Master LPG untuk monitoring konsentrasi sektor dan segmen.",source:"Risk Management / Business Unit",dataset:"LPG_Loanportfolio",system:"LIMAS Working Data",period:E2E_DUMMY_META.period,owner:"Risk Management",sourceNote:"Parent Master Limit disimpan per sektor × segmen. Region I–XII dan KP + OVS adalah child allocation scope; outstanding berasal dari CL/NCL pada level debitur."}
 };
 function loadMasterMeta(type){
   const key=`limas_master_meta_v1_${type}`;
@@ -297,6 +296,14 @@ function loadRecordMeta(type,recordKey){
   return fallback;
 }
 function saveRecordMeta(type,recordKey,meta){if(!recordKey)return;try{window.localStorage.setItem(recordMetaKey(type,recordKey),JSON.stringify(meta));}catch(e){}}
+function lpgAllocationMetaKey(recordKey){return `limas_lpg_allocation_v1||${recordKey}`;}
+function loadLpgAllocationMeta(recordKey){const fallback={version:1,approvalStatus:"Approved",status:"Active",pending:null,approvedAt:"",lastUpdated:"Belum pernah disimpan"};if(!recordKey)return fallback;try{const saved=window.localStorage.getItem(lpgAllocationMetaKey(recordKey));if(saved)return {...fallback,...JSON.parse(saved)};}catch(e){}return fallback;}
+function saveLpgAllocationMeta(recordKey,meta){if(!recordKey)return;try{window.localStorage.setItem(lpgAllocationMetaKey(recordKey),JSON.stringify(meta));}catch(e){}}
+function lpgAllocationScopeValues(row,values){const out={};LPG_REGION_ONLY_SCOPES.forEach(scope=>{if(Object.prototype.hasOwnProperty.call(values||{},scope)||Object.prototype.hasOwnProperty.call(row?.limits||{},scope))out[scope]=Number(values?.[scope]??row?.limits?.[scope]??0)||0;});if(Object.prototype.hasOwnProperty.call(values||{},"KP + OVS")||Object.prototype.hasOwnProperty.call(row?.limits||{},"KP + OVS"))out["KP + OVS"]=Number(values?.["KP + OVS"]??row?.limits?.["KP + OVS"]??0)||0;return out;}
+function lpgAllocationMetrics(row,values){const parent=lpgScopeLimit(row,LPG_BANK_SCOPE),scopes=lpgAllocationScopeValues(row,values),allocated=Object.values(scopes).reduce((a,v)=>a+(Number(v)||0),0),remaining=parent===null?null:Number((parent-allocated).toFixed(2));return {parent,allocated,remaining,overAllocated:remaining!==null&&remaining<0,configured:Object.keys(scopes).length,scopeCount:LPG_REGION_ONLY_SCOPES.length+1};}
+function saveLpgAllocationDraft(row,values){requireLimasPermission("masterDraft");const current=loadLpgAllocationMeta(row.key);saveLpgAllocationMeta(row.key,{...current,pending:lpgAllocationScopeValues(row,values),approvalStatus:"Pending Approval",status:"Pending Approval",lastUpdated:nowLabel()});}
+function approveLpgAllocationDraft(row){requireLimasPermission("masterApprove");const current=loadLpgAllocationMeta(row.key);if(!current.pending)throw new Error("Tidak ada allocation draft yang menunggu approval.");const metrics=lpgAllocationMetrics(row,current.pending);if(metrics.overAllocated)throw new Error("Total allocation melebihi Master Limit Bankwide. Kurangi allocation sebelum approve.");row.limits={...(row.limits||{}),...current.pending};const next={...current,version:Number(current.version||1)+1,approved:current.pending,pending:null,approvalStatus:"Approved",status:"Active",approvedBy:currentLimasUser(),approvedAt:nowLabel(),lastUpdated:nowLabel()};saveLpgAllocationMeta(row.key,next);saveApprovedMasterSnapshot("LPG",row);appendMasterAudit({type:"LPG",key:row.key,action:"ALLOCATION_APPROVED",version:next.version,approvalStatus:"Approved"});cleanseMasterData();buildProductIntegrationMappings();}
+function rejectLpgAllocationDraft(row){requireLimasPermission("masterReject");const current=loadLpgAllocationMeta(row.key);if(!current.pending)throw new Error("Tidak ada allocation draft yang menunggu approval.");saveLpgAllocationMeta(row.key,{...current,pending:null,approvalStatus:"Approved",status:"Active",lastUpdated:nowLabel()});}
 
 function defaultProductProvenance(type){
   const info=domains[type];
@@ -1822,8 +1829,8 @@ function masterTemplate(type){
     rows:rows.map(r=>({key:r.key,name:r.name,type:r.type,ic:r.ic,multiplier:r.multiplier,cit:r.cit,cil:r.cil}))
   };
   return {
-    headers:["key","sector","segment","Bankwide",...LPG_REGIONAL_SCOPES],
-    rows:rows.map(r=>({key:r.key,sector:r.sector,segment:r.segment,Bankwide:r.limits?.Bankwide??"",...Object.fromEntries(LPG_REGIONAL_SCOPES.map(s=>[s,r.limits?.[s]??""]))}))
+    headers:["key","sector","segment","Bankwide"],
+    rows:rows.map(r=>({key:r.key,sector:r.sector,segment:r.segment,Bankwide:r.limits?.Bankwide??""}))
   };
 }
 function parseCsv(text){
@@ -1877,9 +1884,10 @@ function applyMasterCsv(type,records){
       if(input.ic!=="")row.ic=parseNumberOrKeep(input.ic);
       if(input.multiplier!=="")row.multiplier=parseNumberOrKeep(input.multiplier);
     }else if(type==="LPG"){
-      // LPG master key = sector + segment and is immutable for an update.
+      // LPG Master Limit owns only the parent Bankwide ceiling.
+      // Region/KP+OVS allocation is maintained exclusively in Limit Allocation / Scope.
       row.limits=row.limits||{};
-      ["Bankwide",...LPG_REGIONAL_SCOPES].forEach(f=>{if(input[f]!==undefined&&input[f]!=="")row.limits[f]=parseNumberOrKeep(input[f]);});
+      if(input.Bankwide!==undefined&&input.Bankwide!=="")row.limits.Bankwide=parseNumberOrKeep(input.Bankwide);
     }
     const after=masterValueSnapshot(type,row);
     if(JSON.stringify(before)!==JSON.stringify(after)){
@@ -1993,6 +2001,7 @@ function LPGReferenceSetup(){
 function LimitAllocationSetup({initialType,onTypeChange,nav}){
   const [type,setType]=useState(initialType||"MLK"),[entityFilter,setEntityFilter]=useState("ALL"),[query,setQuery]=useState("");
   const [selectedCcl,setSelectedCcl]=useState(()=>String((limasDemoData.CCL||[])[0]?.key||""));
+  const [selectedLpgKey,setSelectedLpgKey]=useState(()=>String((limasDemoData.LPG||[])[0]?.key||""));
   const [editingKey,setEditingKey]=useState(""),[draft,setDraft]=useState({});
   const [,refresh]=useState(0);
   const productFields=ENTITY_PRODUCT_LIMIT_PRODUCTS(type);
@@ -2014,18 +2023,35 @@ function LimitAllocationSetup({initialType,onTypeChange,nav}){
 
   const renderGenericAllocation=()=>{
     if(type==="LPG"){
+      const lpgRows=limasDemoData.LPG||[];
+      const selected=lpgRows.find(r=>String(r.key)===String(selectedLpgKey))||lpgRows[0];
+      const allocationMeta=selected?loadLpgAllocationMeta(selected.key):null;
+      const values=selected?(allocationMeta?.pending||allocationMeta?.approved||selected.limits||{}):{};
+      const metrics=selected?lpgAllocationMetrics(selected,values):{parent:0,allocated:0,remaining:0,overAllocated:false,configured:0,scopeCount:LPG_REGION_ONLY_SCOPES.length+1};
+      const status=selected?(allocationMeta?.pending?"Pending Approval":metrics.overAllocated?"Data Issue":metrics.remaining===null?"Not Configured":metrics.remaining===0?"Fully Allocated":"Partially Allocated"):"—";
+      const save=()=>{try{saveLpgAllocationDraft(selected,draft);setEditingKey("");refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
+      const approve=()=>{try{approveLpgAllocationDraft(selected);setDraft({});refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
+      const reject=()=>{try{rejectLpgAllocationDraft(selected);setDraft({});refresh(x=>x+1);}catch(e){alert(e?.message||String(e));}};
       return <>
         <LPGReferenceSetup/>
-        <div className="field-help" style={{marginTop:12}}><b>LPG setup boundary:</b> Reference/classification menentukan bucket. Approved limit dikelola di Limit Allocation; utilization berasal dari Product Database / integration layer.</div>
-        <div className="table-wrap" style={{marginTop:12}}>
-          <table className="table"><thead><tr><th>Ecosystem</th><th>Segment</th><th>Scope</th><th>Configured Limit</th><th>Scope Meaning</th><th>Detail</th></tr></thead>
-            <tbody>{(limasDemoData.LPG||[]).flatMap(row=>LPG_SCOPES.map(scope=><tr key={row.key+"|"+scope}>
-              <td className="key">{row.sector}</td><td>{row.segment}</td><td>{scope}</td>
-              <td>{lpgScopeLimitStatus(row,scope)==="NOT_CONFIGURED"?"—":Number(row.limits?.[scope]??0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
-              <td>{scope==="Bankwide"?"Parent / Bankwide":scope==="KP + OVS"?"Kantor Pusat + Overseas":"Regional"}</td>
-              <td><button className="btn ghost" onClick={()=>nav("detail",{type:"LPG",key:row.key})}>Open Master Detail</button></td>
-            </tr>))}</tbody>
-          </table>
+        <div className="field-help" style={{marginTop:12}}><b>LPG allocation boundary:</b> Master Limit menyimpan parent Bankwide ceiling. Region I–XII dan KP + OVS adalah child allocation. Utilization tetap berasal dari Product Database / integration layer.</div>
+        <div className="lpg-allocation-workspace">
+          <section className="card lpg-allocation-list">
+            <div className="head"><div><h2>Master Objects</h2><p>Pilih satu Ecosystem × Segment untuk mengelola allocation scope.</p></div><span className="chip blue">{lpgRows.length} objects</span></div>
+            <div className="body">
+              <div className="toolbar" style={{marginBottom:12}}><input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Cari ecosystem / segment"/></div>
+              <div className="lpg-master-list">{lpgRows.filter(r=>!query.trim()||String(r.sector+" "+r.segment+" "+r.key).toLowerCase().includes(query.trim().toLowerCase())).map(row=>{const meta=loadLpgAllocationMeta(row.key),v=meta.pending||meta.approved||row.limits||{},m=lpgAllocationMetrics(row,v),active=String(row.key)===String(selected?.key);return <button type="button" key={row.key} className={"lpg-master-item "+(active?"active":"")} onClick={()=>{setSelectedLpgKey(row.key);setEditingKey("");setDraft({});}}><div><b>{row.sector}</b><span>{row.segment}</span></div><div className="lpg-master-item-metrics"><span>Master {m.parent===null?"—":fmtReport(m.parent)}</span><span>Allocated {fmtReport(m.allocated)}</span><Status v={meta.pending?"Warning":m.overAllocated?"Data Issue":m.remaining===0?"Normal":"Warning"}/></div></button>})}</div>
+            </div>
+          </section>
+          <section className="card lpg-allocation-detail">
+            <div className="head"><div><h2>{selected?selected.sector+" • "+selected.segment:"LPG Allocation Detail"}</h2><p>{selected?"Child scope allocation untuk satu Master Limit object.":"Tidak ada LPG master object."}</p></div>{selected&&<div className="toolbar"><span className="chip blue">Parent Master {fmtReport(metrics.parent)} Rp Juta</span><Status v={status==="Pending Approval"||status==="Partially Allocated"?"Warning":status==="Data Issue"?"Data Issue":"Normal"}/></div>}</div>
+            {selected&&<div className="body">
+              <div className="metric-grid lpg-allocation-kpis"><DomainKpi label="Parent Master Limit" value={fmtReport(metrics.parent)} sub="Bankwide • Rp Juta"/><DomainKpi label="Allocated" value={fmtReport(metrics.allocated)} sub="Region + KP + OVS • Rp Juta"/><DomainKpi label="Unallocated" value={fmtReport(metrics.remaining)} sub="Parent − allocation" accent={metrics.overAllocated?"red":metrics.remaining===0?"":"yellow"}/><DomainKpi label="Configured Scope" value={metrics.configured+" / "+metrics.scopeCount} sub="Child scopes"/><DomainKpi label="Approval" value={allocationMeta?.pending?"Pending":"Approved"} sub={allocationMeta?.lastUpdated||"—"}/></div>
+              <div className="table-wrap" style={{marginTop:14}}><table className="table lpg-allocation-table"><thead><tr><th>Allocation Scope</th><th>Type</th><th>Approved / Draft Limit</th><th>Utilization</th><th>Utilisasi</th><th>Status</th></tr></thead><tbody>{[...LPG_REGION_ONLY_SCOPES,"KP + OVS"].map(scope=>{const has=Object.prototype.hasOwnProperty.call(values||{},scope),lim=Number(values?.[scope]??0)||0,exp=lpgScopeExposure(selected,scope),util=lim?exp===null?null:exp/lim:(exp>0?Infinity:0);return <tr key={scope}><td><b>{scope}</b></td><td>{scope==="KP + OVS"?"Kantor Pusat + Overseas":"Regional"}</td><td>{editingKey===selected.key?<input className="input compact" type="number" min="0" step="any" value={draft[scope]??(has?lim:"")} onChange={e=>setDraft(d=>({...d,[scope]:e.target.value}))}/>:has?fmtReport(lim):"—"}</td><td>{exp===null?"—":fmtReport(exp)}</td><td>{util===null?"—":util===Infinity?"∞":(util*100).toFixed(2)+"%"}</td><td><Status v={util===Infinity||util>=1?"Breach":util>=.8?"Warning":allocationMeta?.pending?"Warning":has?"Normal":"Data Issue"}/></td></tr>})}</tbody></table></div>
+              <div className="toolbar" style={{marginTop:12}}>{!editingKey&&<button className="btn ghost" disabled={!canLimas("masterDraft")} onClick={()=>{setDraft({...values});setEditingKey(selected.key);}}>Edit Allocation</button>}{editingKey===selected.key&&<><button className="btn primary" disabled={!canLimas("masterDraft")} onClick={save}>Submit Draft</button><button className="btn ghost" onClick={()=>{setEditingKey("");setDraft({});}}>Cancel</button></>}{allocationMeta?.pending&&canLimas("masterApprove")&&<button className="btn secondary" onClick={approve}>Approve</button>}{allocationMeta?.pending&&canLimas("masterReject")&&<button className="btn ghost" onClick={reject}>Reject</button>}<button className="btn ghost" onClick={()=>nav("detail",{type:"LPG",key:selected.key})}>Open Master Detail</button></div>
+              <div className="field-help"><b>Control:</b> Bankwide tidak dihitung sebagai child allocation. Hanya Region I–XII + KP + OVS yang dijumlahkan. Allocation tidak boleh melebihi parent Master Limit. Perbedaan antara parent dan child ditampilkan sebagai unallocated; sistem tidak mengarang nilai.</div>
+            </div>}
+          </section>
         </div>
       </>;
     }
@@ -2054,20 +2080,6 @@ function LimitAllocationSetup({initialType,onTypeChange,nav}){
               <td>{Number(limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
               <td><span className="chip blue">Nominal Pertanggungan</span></td>
               <td><button className="btn ghost" onClick={()=>nav("detail",{type:"CIL",key:row.key})}>Open Master Detail</button></td>
-            </tr>)
-          )}</tbody>
-        </table>
-      </div>;
-    }
-    if(type==="LPG"){
-      return <div className="table-wrap" style={{marginTop:12}}>
-        <table className="table"><thead><tr><th>Ecosystem</th><th>Segment</th><th>Scope</th><th>Configured Limit</th><th>Scope Meaning</th><th>Detail</th></tr></thead>
-          <tbody>{(limasDemoData.LPG||[]).flatMap(row=>
-            LPG_SCOPES.map(scope=><tr key={row.key+"|"+scope}>
-              <td className="key">{row.sector}</td><td>{row.segment}</td><td>{scope}</td>
-              <td>{Number(row.limits?.[scope]||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
-              <td>{scope==="Bankwide"?"Parent / Bankwide":scope==="KP + OVS"?"Kantor Pusat + Overseas":"Regional"}</td>
-              <td><button className="btn ghost" onClick={()=>nav("detail",{type:"LPG",key:row.key})}>Open Master Detail</button></td>
             </tr>)
           )}</tbody>
         </table>
@@ -2252,7 +2264,7 @@ function Setup({nav,setSel}){
       <section className="card">
         <div className="body">
           <div className="table-wrap"><table className="table">
-            <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Lifecycle</th><th>Approval</th><th>Detail</th></tr></thead>
+            <thead><tr><th>Unique Key</th><th>Master Object</th><th>{type==="Country"?"Capacity Limit":type==="LPG"?"Parent Master Limit":"Master Limit"}</th><th>Linked Product</th><th>Version</th><th>Lifecycle</th><th>Approval</th><th>Detail</th></tr></thead>
             <tbody>{filtered.map((r,i)=>{
               const gov=loadRecordMeta(type,r.key);
               return <tr key={String(r.key)+i}>
@@ -2265,7 +2277,7 @@ function Setup({nav,setSel}){
               </tr>;
             })}</tbody>
           </table></div>
-          <div className="field-help">CRUD: Read daftar master, Create record baru, Update melalui Draft → Approval, Delete dibatasi jika master masih direferensikan integration mapping. Bulk CSV diperlakukan sebagai Approved import dan dicatat ke audit.</div>
+          <div className="field-help">CRUD: Read daftar master, Create record baru, Update melalui Draft → Approval, Delete dibatasi jika master masih direferensikan integration mapping. Untuk LPG, Master Limit hanya mengelola parent Bankwide; Region I–XII + KP + OVS dikelola di Limit Allocation / Scope. Bulk CSV mengikuti boundary domain tersebut.</div>
         </div>
       </section>}
     </div>
