@@ -1918,7 +1918,7 @@ function ProductIntegrationTable({view}){
       {mappings.length===0
         ? <div className="mini">Belum ada mapping aktif. Product ini tetap disimpan sebagai source-only/scoped.</div>
         : <div className="table-wrap"><table className="table product-master-table">
-            <thead><tr><th>Domain</th><th>Source Record</th><th>Source Field</th><th>Source Value</th><th>Target Master</th><th>Amount Source</th><th>Normalized</th><th>Scope</th><th>Booking Type</th><th>Mapping Rule</th><th>Status</th></tr></thead>
+            <thead><tr><th>Domain</th><th>Source Record</th><th>Source Field</th><th>Source Value</th><th>Target Master</th><th>Amount Source</th><th>Normalized</th><th>Scope</th><th>Booking Type</th><th>Business Enrichment</th><th>Lineage ID</th><th>Mapping Rule</th><th>Status</th></tr></thead>
             <tbody>{mappings.map((a,i)=>{
               const row=(productDatabase[view]||[]).find(x=>String(x.recordId)===String(a.recordId));
               const normalized=row?normalizeAppliedAmount(a.limitType,view,a.amount,row):{amount:a.amount,targetUnit:"Rp Juta"};
@@ -1928,6 +1928,8 @@ function ProductIntegrationTable({view}){
                 <td>{Number(a.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
                 <td>{Number(normalized.amount||0).toLocaleString("id-ID",{maximumFractionDigits:2})} {normalized.targetUnit}</td>
                 <td>{a.scope||"—"}</td><td>{a.limitType==="Country"?(a.bookingOfficeType||"Needs Mapping"):"—"}</td>
+                <td className="muted-small">{Object.entries(a.businessEnrichment||{}).filter(([,v])=>v!==""&&v!==null&&v!==undefined).map(([k,v])=><div key={k}><b>{k}</b>: {String(v)}</div>)||"—"}</td>
+                <td className="muted-small">{[a.limitType,a.key,a.productId,a.recordId,a.scope||"—"].join("|")}</td>
                 <td className="muted-small">{a.mappingRule||"—"}</td><td><Status v={a.masterMatch?"Normal":"Data Issue"}/></td>
               </tr>;
             })}</tbody>
