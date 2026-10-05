@@ -476,6 +476,17 @@ const LPG_INDUSTRY_MASTER_ROWS=[
 const lpgMasterCode=value=>String(value||"").trim().toUpperCase().normalize("NFKD").replace(/[^\w\s-]/g,"").replace(/\s+/g,"_").replace(/-+/g,"_");
 export const E2E_LPG_MASTER_INDUSTRY=LPG_INDUSTRY_MASTER_ROWS.map(([industryName,groupingName],index)=>({no:index+1,industryCode:lpgMasterCode(industryName),industryName,groupingCode:lpgMasterCode(groupingName),groupingName,activeFlag:true,version:1}));
 
+export const E2E_LPG_MASTER_IC_NATIONAL=[
+  {icCode:"NETRAL",icName:"NETRAL",displayOrder:1,visual:"YELLOW",activeFlag:true,version:1},
+  {icCode:"SELEKTIF",icName:"SELEKTIF",displayOrder:2,visual:"ORANGE",activeFlag:true,version:1},
+  {icCode:"MENARIK",icName:"MENARIK",displayOrder:3,visual:"GREEN",activeFlag:true,version:1},
+  {icCode:"WASPADA",icName:"WASPADA",displayOrder:4,visual:"BLACK",activeFlag:true,version:1,ruleCode:"PLASTIK_ONLY"}
+];
+
+export const E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE=[
+  {industryCode:lpgMasterCode("ENERGI & AIR"),icCode:"NETRAL",effectiveFrom:"2026-01-01",status:"ACTIVE"}
+];
+
 const p={CASHLOAN:[], "NON CASH LOAN":[], "CREDIT LINE":[], "Investment Line":[], BONDS:[], NOSTRO:[], "Nominal Pertanggungan":[]};
 
 // Country CL / NCL source records
