@@ -65,7 +65,8 @@ export function auditBusinessEnrichmentCoverage({
   countryMonitoringEligible=()=>true,
   integrationDomainAllowed=()=>true,
   lpgClassifier=()=>({}),
-  explicitCclSource=()=>false
+  explicitCclSource=()=>false,
+  mlkMasterRows=[]
 }={}){
   const issues=[];
   const add=(x)=>issues.push({phase:3,layer:"Integration / Mapping",status:"Data Issue",...x});
@@ -132,7 +133,7 @@ export function auditBusinessEnrichmentCoverage({
       const cif=String(productId==="CASHLOAN"?d.no_cus:productId==="NON CASH LOAN"?d.CUSTID:"").trim();
       const treasuryCif=String(meta.mlkCif||"").trim()||String(d["Swift Code"]||"").match(/^TL-(.+)$/i)?.[1]||"";
       const mlkCif=productId==="CREDIT LINE"?treasuryCif:cif;
-      const mlkMaster=(productDatabase.__MLK_MASTER__||[]).find(x=>String(x?.key||"").trim()===mlkCif);
+      const mlkMaster=(mlkMasterRows||[]).find(x=>String(x?.key||"").trim()===mlkCif);
       const mlkMapping=mappingByRecord(productId,recordId,"MLK")[0];
       const mlkRelevant=Boolean(mlkMaster)||Boolean(mlkMapping)||Boolean(meta.mlkCif)||(/^TL-/i.test(String(d["Swift Code"]||""))&&positive(positiveSourceExposure(productId,d,row,"MLK")));
       if(mlkRelevant&&positive(positiveSourceExposure(productId,d,row,"MLK"))){
