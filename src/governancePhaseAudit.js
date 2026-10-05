@@ -185,6 +185,7 @@ export function auditCanonicalReadModel({
     const [domain,key]=composite.split("::");
     const actual=(readModelRows||[])
       .filter(r=>String(r.domain)===domain&&String(r.masterKey)===key)
+      .filter(r=>domain!=="CCL"||String(r.cclLimitType||"DIRECT").toUpperCase()==="DIRECT")
       .reduce((s,r)=>s+(Number(r.normalizedExposure)||0),0);
     const delta=Number(actual)-Number(expected);
     if(Math.abs(delta)>0.01)
