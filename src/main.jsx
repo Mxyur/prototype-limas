@@ -3817,7 +3817,7 @@ function reconciliationIssues(){
           if(!masterExists)return;
           if(!mappings.length){
             issues.push({status:"Data Issue",issueType:"COUNTRY_MAPPING_MISSING",productId,recordId:row.recordId,limitType:"Country",key,object:"—",detail:"Source Country key exists but no mapping candidate was created.",amount:0});
-          }else if(productId!=="CREDIT LINE"&&mappings.some(a=>a.bookingOfficeType==="Needs Mapping")){
+          }else if(productId!=="CREDIT LINE"&&!isExplicitCclSource(row)&&mappings.some(a=>a.bookingOfficeType==="Needs Mapping")){
           const a=mappings.find(x=>x.bookingOfficeType==="Needs Mapping")||mappings[0];
           issues.push({status:"Data Issue",issueType:"MISSING_BOOKING_MAPPING",productId,recordId:row.recordId,limitType:"Country",key,object:a.masterObject||"—",detail:"Country mapping needs Booking Office Type from reference/enrichment; source record does not provide the classification.",amount:0});
           }
