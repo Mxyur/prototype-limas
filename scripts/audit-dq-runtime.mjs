@@ -30,9 +30,7 @@ let transformed=(await transform(source,{
 })).code;
 
 transformed=transformed.replace(/import\s+["'][^"']+\.css["'];?\s*/g,"");
-transformed=transformed.replaceAll('from "./e2eDummyData"','from "../src/e2eDummyData.js"');
-transformed=transformed.replaceAll('from "./reportTraceability"','from "../src/reportTraceability.js"');
-transformed=transformed.replaceAll('from "./governancePhaseAudit"','from "../src/governancePhaseAudit.js"');
+transformed=transformed.replace(/from\s+["']\.\/([^"']+)["']/g,'from "../src/$1.js"');
 transformed=transformed.replace(/createRoot\(document\.getElementById\(['"]root['"]\)\)\.render\([\s\S]*?\);\s*$/m,"");
 transformed += `
 globalThis.__LIMAS_DEBUG__={
