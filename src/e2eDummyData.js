@@ -597,8 +597,8 @@ const cclEntitySourceRows=[
 ];
 cclEntitySourceRows.forEach(([swift,entity,limitType,clAmt,nclEq,commAmt,treasuryAmt],i)=>{
   const recKey=String(i+1).padStart(3,"0");
-  p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:entity+" allocation / "+swift,no_rek:"CCL-PA-CL-"+recKey,total_limit:"",total_bade:String(clAmt),project_location:"Mapped",code:""},swift,Number(clAmt),"CCL",{recordId:"CL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,creditLineLimitType:limitType,cclCounterpartyId:swift,reportingEntity:"BMRI"}));
-  p["NON CASH LOAN"].push(ncl({NO:"PA-"+recKey,MODULE:"EPLC",TRXREF:"NCL-CCL-PA-"+recKey,CUSTID:"NCL-CCL-PA-"+recKey,CUSTNM:entity+" allocation",CPNM:swift,"Country Code":"", "Country Name":"—",CCY:"USD",AMOUNT:String(Number(nclEq)/17310),BALANCE:String(Number(nclEq)/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},swift,Number(nclEq),"CCL",{recordId:"NCL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,creditLineLimitType:limitType,cclCounterpartyId:swift,reportingEntity:"BMRI"}));
+  p.CASHLOAN.push(cl({no_cus:"CCL-"+swift,nm_cus:entity+" allocation / "+swift,no_rek:"CCL-PA-CL-"+recKey,total_limit:"",total_bade:String(clAmt),project_location:"Mapped",code:""},swift,Number(clAmt),"CCL",{recordId:"CL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,creditLineLimitType:limitType,cclCounterpartyId:swift}));
+  p["NON CASH LOAN"].push(ncl({NO:"PA-"+recKey,MODULE:"EPLC",TRXREF:"NCL-CCL-PA-"+recKey,CUSTID:"NCL-CCL-PA-"+recKey,CUSTNM:entity+" allocation",CPNM:swift,"Country Code":"", "Country Name":"—",CCY:"USD",AMOUNT:String(Number(nclEq)/17310),BALANCE:String(Number(nclEq)/17310),EXCHANGERT:"17310",EQVIDR:String(nclEq),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},swift,Number(nclEq),"CCL",{recordId:"NCL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,creditLineLimitType:limitType,cclCounterpartyId:swift}));
   p["CREDIT LINE"].push(credit({No:"PA-"+recKey,Nama:entity+" / "+swift,"Swift Code":swift,"Swift Code Vlookup":swift,Code:"",Negara:"Mapped","Bank":"Foreign",
     "Comm DN":String(commAmt),"Comm DN Utilisasi":String(commAmt),"Comm LN":"0","Comm LN Utilisasi":"0",
     "Comm Line Total":String(commAmt),"Comm Line Total Utilisasi":String(commAmt),
@@ -606,7 +606,7 @@ cclEntitySourceRows.forEach(([swift,entity,limitType,clAmt,nclEq,commAmt,treasur
     "Treasury Line Total":String(treasuryAmt),"Treasury Line Total Utilisasi":String(treasuryAmt),
     "Credit Line Total":String(commAmt+treasuryAmt),"Credit Line Total Utilisasi":String(commAmt+treasuryAmt)
   },[apply("CCL",swift,Number(commAmt+treasuryAmt),"Credit Line",{entity,cclLimitType:limitType})],
-  {recordId:"CRL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType,cclCounterpartyId:swift,reportingEntity:"BMRI"}));
+  {recordId:"CRL-CCL-PA-"+recKey,sourceSystem:"Core Banking Limit System",countryExposure:"—",reportingEntity:entity,cclLimitType:limitType,cclCounterpartyId:swift}));
 });
 
 // Investment Line is source-only/ / scoped.
