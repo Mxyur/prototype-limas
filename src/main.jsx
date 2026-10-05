@@ -3323,7 +3323,10 @@ const NCL_BOOKING_REFERENCE={
   "NCL-EXCO-003":{bookingOffice:"Bank Mandiri (Europe) Limited London",bookingOfficeType:"Overseas"},
   "NCL-COUNTRY-SG":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
   "NCL-COUNTRY-CN":{bookingOffice:"Bank Mandiri Shanghai",bookingOfficeType:"Overseas"},
-  "NCL-COUNTRY-AU":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"}
+  "NCL-COUNTRY-AU":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
+  // Legacy source IDs retained for the rebuilt NCL sample rows whose source country is refreshed later.
+  "NCL-COUNTRY-ID":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
+  "NCL-COUNTRY-CN-LEGACY":{bookingOffice:"Bank Mandiri Shanghai",bookingOfficeType:"Overseas"}
 };
 
 function integrationDomainAllowed(row,domain){
