@@ -5240,6 +5240,8 @@ function Products({nav}){
 
       {view==="catalog"&&<ProductCatalog/>}
 
+      {view==="catalog"&&<ProductReportCoverage/>}
+
       {info&&<section className="card">
         <div className="head">
           <div><h2>{info.label}</h2><p>Source sheet: <b>{info.sheet}</b> • Primary Key: <span className="key">{info.key}</span></p></div>
