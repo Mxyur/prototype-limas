@@ -4,7 +4,8 @@ import {createRoot} from 'react-dom/client';
 import './styles.css';
 import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE,E2E_LPG_IC_SEGWIL_MAPPING as E2E_LPG_IC_SEGWIL_MAPPING_FIXTURE,E2E_LPG_SEGWIL_MAPPING_META as E2E_LPG_SEGWIL_MAPPING_META_FIXTURE} from './e2eDummyData';
 import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE,PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY,PRODUCTION_SAMPLE_LPG_MASTER_IC_NATIONAL,PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE,PRODUCTION_SAMPLE_LPG_MASTER_REGION,PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT,PRODUCTION_SAMPLE_LPG_IC_SEGWIL_MAPPING,PRODUCTION_SAMPLE_LPG_SEGWIL_MAPPING_META} from './productionSampleData';
-import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage} from './reportTraceability';
+import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage,auditReportFieldTraceability,summarizeReportFieldTraceability} from './reportTraceability';
+import {auditMasterLimitGovernance,auditBusinessEnrichmentCoverage,auditCanonicalReadModel,auditReportRuntime} from './governancePhaseAudit';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
@@ -3491,6 +3492,7 @@ function addIntegrationMapping(productId,row,config){
     productId,recordId:row.recordId,sourceField:config.sourceField||productSourceField(productId,config.limitType),
     sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
     scope:config.scope||null,entity:config.entity||null,cclLimitType:config.cclLimitType||(config.limitType==="CCL"?"DIRECT":null),masterMatch:Boolean(master),
+    businessEnrichment:{...(config.businessEnrichment||{})},
     masterObject:master?.name||master?.sector||master?.key||"—",
     cclExposureRole:config.cclExposureRole||row.meta?.cclExposureRole||null,
     bookingOffice:(override?.bookingOffice||config.bookingOffice||booking.bookingOffice),
@@ -3510,7 +3512,7 @@ function buildProductIntegrationMappings(){
     if(code&&countryMonitoringEligible(code))addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> eligible foreign Country Code"});
     const entity=String(r.meta?.reportingEntity||"").toUpperCase()||null;
     if(cif&&(limasDemoData.MLK||[]).some(x=>String(x.key)===cif))
-      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF",entity:mlkEntityEligible(entity)?entity:null});
+      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:""}});
   });
 
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
@@ -3520,14 +3522,14 @@ function buildProductIntegrationMappings(){
       addIntegrationMapping("NON CASH LOAN",r,{
         limitType:"Country",key:country,amount:d.EQVIDR,label:"Non Cash Loan",
         sourceField:"Country Code",sourceValue:country,
-        bookingOffice:booking.bookingOffice,
-        bookingOfficeType:booking.bookingOfficeType,
+        bookingOffice:booking.bookingOffice||r.meta?.bookingOffice,
+        bookingOfficeType:booking.bookingOfficeType||r.meta?.bookingOfficeType,
         mappingRule:booking.bookingOffice
           ?"NCL Country Code -> Country Code + explicit Booking Office enrichment"
           :"NCL Country Code -> Country Code"
       });
     }
-    if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null});
+    if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():""}});
     // FI NCL is upstream of Credit Line / Commercial Line.
     // It is intentionally not registered as a direct CCL utilization mapping.
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
@@ -3564,13 +3566,14 @@ function buildProductIntegrationMappings(){
         sourceField:"Credit Line Total Utilisasi",sourceValue:sourceCreditLineTotal,
         mappingRule:"FI CL + FI NCL + Treasury -> Credit Line -> CCL",
         entity,cclLimitType:limitType,
+        businessEnrichment:{cclCounterpartyId:swift,cclLimitType:limitType,reportingEntity:entity},
         cclLineage:{bankLoan:clUpstream,commercialLine:nclUpstream,treasuryLine:treasuryUtil,creditLineTotal:sourceCreditLineTotal,derivedCreditLineTotal}
       });
     }
     const mlkKey=swift.match(/^TL-(.+)$/i)?.[1]||"";
     if(mlkKey&&(limasDemoData.MLK||[]).some(x=>String(x.key)===mlkKey)){
       const treasury=Number(String(d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
-      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:d["Bade Treasury Line"]!==undefined?"Bade Treasury Line":"Treasury Line Total Utilisasi",sourceValue:d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:"Credit Line TL-CIF reference -> MLK CIF",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase()});
+      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:d["Bade Treasury Line"]!==undefined?"Bade Treasury Line":"Treasury Line Total Utilisasi",sourceValue:d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:"Credit Line TL-CIF reference -> MLK CIF",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),businessEnrichment:{mlkCif:mlkKey,reportingEntity:String(r.meta?.reportingEntity||"BMRI").toUpperCase()}});
     }
     if(country){
       const components=[
@@ -3600,7 +3603,8 @@ function buildProductIntegrationMappings(){
     const targetKey=master?.key||insurer;
     if(insurer)addIntegrationMapping("Nominal Pertanggungan",r,{
       limitType:"CIL",key:targetKey,entity,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",
-      sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity -> CIL master key"
+      sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity -> CIL master key",
+      businessEnrichment:{insuranceCompanyId:targetKey,entity}
     });
   });
 
@@ -3609,7 +3613,13 @@ function buildProductIntegrationMappings(){
       const d=r.data||{},sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
       if(!sector||!segment)return;
       const scope=String(d.region_lpg||"").trim();
-      addIntegrationMapping(productId,r,{limitType:"LPG",key:sector+"|"+segment,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:scope||null,sourceField:"ecosystem_lpg / segmen_lpg",sourceValue:sector+" / "+segment,mappingRule:"Product LPG attributes -> Ecosystem x Segment x Scope"});
+      const industry=lpgIndustryByName[String(sector||"").trim().toUpperCase()]||null;
+      const segmentMaster=lpgCanonicalSegment(segment);
+      const regionMaster=lpgCanonicalRegion(scope);
+      const segwil=lpgSegwilMappingFor(industry?.industryCode,regionMaster?.regionCode,segmentMaster?.segmentCode);
+      addIntegrationMapping(productId,r,{limitType:"LPG",key:sector+"|"+segment,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:scope||null,sourceField:"ecosystem_lpg / segmen_lpg",sourceValue:sector+" / "+segment,mappingRule:"Product LPG attributes -> Ecosystem x Segment x Scope",
+        businessEnrichment:{masterIndustryCode:industry?.industryCode||"",groupingCode:industry?.groupingCode||"",segmentCode:segmentMaster?.segmentCode||"",regionCode:regionMaster?.regionCode||"",icNasionalCode:segwil?.icNasionalCode||"",icWilayahSegmenCode:segwil?.icWilayahSegmenCode||""}
+      });
     });
   });
 }
@@ -3702,6 +3712,7 @@ function productApplicationsFor(type,key){
         exposureField:exposureField(type,productId,a.scope),transform:transform(productId,a.scope),
         sourceUnit:normalized.sourceUnit,targetUnit:normalized.targetUnit,normalizationFactor:normalized.factor,
         normalizedAmount:normalized.amount,masterMatch:(limasDemoData[type]||[]).some(m=>String(m.key)===String(a.key)),
+        businessEnrichment:a.businessEnrichment||{},
         bookingOffice:a.bookingOffice||"—",bookingOfficeType:a.bookingOfficeType||"Needs Mapping",
         bookingOfficeStatus:a.bookingOfficeStatus||"Needs Mapping",countryExposure:a.countryExposure||"—"
       });
@@ -3719,7 +3730,7 @@ function canonicalReadModelRows(){
           domain,masterKey:master.key,masterObject:master.name||master.sector||master.key,
           product:"—",recordId:"—",sourceSystem:"—",sourceField:"—",sourceAmount:null,
           sourceUnit:"—",targetUnit:DOMAIN_CANONICAL_UNITS[domain]||"—",normalizedExposure:null,
-          bookingOffice:"—",bookingOfficeType:"—",scope:"—",
+          bookingOffice:"—",bookingOfficeType:"—",scope:"—",businessEnrichment:{},lineageId:[domain,master.key,"—","—","—"].join("|"),
           mappingStatus:"No Product Data",utilization:recordUtil(domain,master),status:recordStatus(domain,master)
         });
       }else{
@@ -3734,6 +3745,7 @@ function canonicalReadModelRows(){
             sourceField:a.exposureField,sourceAmount:a.amount,sourceUnit:a.sourceUnit,
             targetUnit:a.targetUnit,normalizedExposure:a.normalizedAmount,
             bookingOffice:a.bookingOffice,bookingOfficeType:a.bookingOfficeType,scope:a.scope||"—",
+            businessEnrichment:a.businessEnrichment||{},lineageId:[domain,a.key,a.productId,a.recordId,a.scope||"—"].join("|"),
             mappingStatus,masterStatus,sourceStatus,
             utilization:recordUtil(domain,master),status:sourceStatus==="Data Issue"?"Data Issue":masterStatus
           });
