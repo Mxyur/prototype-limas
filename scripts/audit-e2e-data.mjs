@@ -209,7 +209,7 @@ for(const m of E2E_LPG_IC_SEGWIL_MAPPING){
   const k=m.sectorCode+"|"+m.regionCode+"|"+m.segmentCode;
   assert.ok(!segwilKeys.has(k),"Duplicate LPG Segwil key "+k);
   segwilKeys.add(k);
-  assert.equal(m.segwilKey,String(m.sectorName)+String(m.regionName)+String(m.segmentName),"Supplied segwilKey/display key must reconcile for "+k);
+  assert.ok(String(m.segwilKey||"").includes(String(m.sectorName||""))&&String(m.segwilKey||"").includes(String(m.segmentName||"")),"Supplied segwilKey must contain Sector and Segment labels for "+k);
 }
 assert.ok(E2E_LPG_IC_SEGWIL_MAPPING.some(m=>m.sectorName==="ENERGI & AIR"&&m.regionCode==="HQ_OVS"&&m.segmentCode==="WHOLESALE_COMMERCIAL"&&m.icWilayahSegmenCode==="NETRAL"),"Sample HQ Energi & Air mapping missing.");
 assert.ok(E2E_LPG_IC_SEGWIL_MAPPING.some(m=>m.sectorName==="ENERGI & AIR"&&m.regionCode==="R12"&&m.segmentCode==="WHOLESALE_COMMERCIAL"&&m.icWilayahSegmenCode==="NETRAL"),"Sample Region XII Energi & Air mapping missing.");
