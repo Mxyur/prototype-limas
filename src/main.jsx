@@ -5185,7 +5185,8 @@ function CanonicalReadModelPreview(){
 
 
 function ProductReportCoverage(){
-  const audit=auditProductReportCoverage(productSchemaFields);
+  const fieldAliases={"CREDIT LINE":[...new Set((creditLineCanonicalFields||[]).map(x=>x.source).filter(Boolean))]};
+  const audit=auditProductReportCoverage(productSchemaFields,fieldAliases);
   const summary=summarizeProductReportCoverage(audit);
   const status=summary.sourceIncomplete===0 ? "Normal" : "Data Issue";
   return <section className="card" style={{marginTop:16}}>
