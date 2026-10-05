@@ -2,7 +2,7 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
-import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE} from './e2eDummyData';
+import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE} from './e2eDummyData';
 import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE} from './productionSampleData';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
@@ -36,6 +36,8 @@ const E2E_CCL_LIMIT_SCOPE=IS_E2E_RUNTIME?E2E_CCL_LIMIT_SCOPE_FIXTURE:IS_PRODUCTI
 const E2E_LPG_MASTER_INDUSTRY=IS_E2E_RUNTIME?E2E_LPG_MASTER_INDUSTRY_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY||[]):[];
 const E2E_LPG_MASTER_IC_NATIONAL=IS_E2E_RUNTIME?E2E_LPG_MASTER_IC_NATIONAL_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_IC_NATIONAL||[]):[];
 const E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE=IS_E2E_RUNTIME?E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE||[]):[];
+const E2E_LPG_MASTER_REGION=IS_E2E_RUNTIME?E2E_LPG_MASTER_REGION_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_REGION||[]):[];
+const E2E_LPG_MASTER_SEGMENT=IS_E2E_RUNTIME?E2E_LPG_MASTER_SEGMENT_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT||[]):[];
 if(!IS_E2E_RUNTIME&&!IS_PRODUCTION_RUNTIME){
   throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E, PRODUCTION_SAMPLE or PRODUCTION.");
 }
@@ -53,6 +55,27 @@ const lpgIndustryIcNationalByIndustry=Object.fromEntries((E2E_LPG_INDUSTRY_IC_NA
 function lpgNationalIcName(industryCode){
   const m=lpgIndustryIcNationalByIndustry[String(industryCode||"").trim().toUpperCase()];
   return m?(lpgIcNationalByCode[String(m.icCode).trim().toUpperCase()]?.icName||m.icCode):"NOT MAPPED";
+}
+
+const lpgRegionByLegacyScope=Object.fromEntries((E2E_LPG_MASTER_REGION||[]).map(x=>[String(x.legacyScope).trim().toUpperCase(),x]));
+const lpgSegmentByLegacyValue=Object.fromEntries((E2E_LPG_MASTER_SEGMENT||[]).flatMap(x=>x.legacyValues.map(v=>[String(v).trim().toUpperCase(),x])));
+function lpgCanonicalRegion(value){return (E2E_LPG_MASTER_REGION||[]).find(x=>String(x.regionCode).toUpperCase()===String(value||"").trim().toUpperCase())||lpgRegionByLegacyScope[String(value||"").trim().toUpperCase()]||null;}
+function lpgCanonicalSegment(value){return (E2E_LPG_MASTER_SEGMENT||[]).find(x=>String(x.segmentCode).toUpperCase()===String(value||"").trim().toUpperCase())||lpgSegmentByLegacyValue[String(value||"").trim().toUpperCase()]||null;}
+function lpgRegionSegmentQualityIssues(){
+  const issues=[],regions=new Set(),segments=new Set();
+  (E2E_LPG_MASTER_REGION||[]).forEach(r=>{
+    if(!r.regionCode||!r.regionName)issues.push({type:"LPG_REGION_MASTER_INVALID",detail:"Region master row missing code/name."});
+    if(regions.has(r.regionCode))issues.push({type:"LPG_REGION_MASTER_DUPLICATE",detail:"Duplicate regionCode "+r.regionCode+"."});
+    regions.add(r.regionCode);
+    if(!r.legacyScope)issues.push({type:"LPG_REGION_LEGACY_SCOPE_MISSING",detail:"Region "+r.regionCode+" missing legacy scope crosswalk."});
+  });
+  (E2E_LPG_MASTER_SEGMENT||[]).forEach(r=>{
+    if(!r.segmentCode||!r.segmentName)issues.push({type:"LPG_SEGMENT_MASTER_INVALID",detail:"Segment master row missing code/name."});
+    if(segments.has(r.segmentCode))issues.push({type:"LPG_SEGMENT_MASTER_DUPLICATE",detail:"Duplicate segmentCode "+r.segmentCode+"."});
+    segments.add(r.segmentCode);
+    if(!Array.isArray(r.legacyValues)||!r.legacyValues.length)issues.push({type:"LPG_SEGMENT_LEGACY_SCOPE_MISSING",detail:"Segment "+r.segmentCode+" missing legacy values."});
+  });
+  return issues;
 }
 function lpgNationalIcQualityIssues(){
   const issues=[];
