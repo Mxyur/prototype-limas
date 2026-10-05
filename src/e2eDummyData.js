@@ -496,7 +496,13 @@ export const E2E_LPG_MASTER_REGION=[
 
 export const E2E_LPG_IC_SEGWIL_MAPPING=[
   {sectorCode:lpgMasterCode("ENERGI & AIR"),sectorName:"ENERGI & AIR",icNasionalCode:"NETRAL",regionCode:"HQ_OVS",regionName:"KANTOR PUSAT + Overseas",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"ENERGI & AIRKANTOR PUSATWHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
-  {sectorCode:lpgMasterCode("ENERGI & AIR"),sectorName:"ENERGI & AIR",icNasionalCode:"NETRAL",regionCode:"R12",regionName:"WILAYAH XII / JAYAPURA",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"ENERGI & AIRWILAYAH XII / JAYAPURAWHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1}
+  {sectorCode:lpgMasterCode("ENERGI & AIR"),sectorName:"ENERGI & AIR",icNasionalCode:"NETRAL",regionCode:"R12",regionName:"WILAYAH XII / JAYAPURA",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"ENERGI & AIRWILAYAH XII / JAYAPURAWHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("INDUSTRI BATUBARA"),sectorName:"INDUSTRI BATUBARA",icNasionalCode:"NETRAL",regionCode:"R01",regionName:"WILAYAH I",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"INDUSTRI BATUBARAR01WHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("INDUSTRI BATUBARA"),sectorName:"INDUSTRI BATUBARA",icNasionalCode:"NETRAL",regionCode:"R02",regionName:"WILAYAH II",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"INDUSTRI BATUBARAR02WHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("INDUSTRI BATUBARA"),sectorName:"INDUSTRI BATUBARA",icNasionalCode:"NETRAL",regionCode:"R03",regionName:"WILAYAH III",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"INDUSTRI BATUBARAR03WHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("INDUSTRI BATUBARA"),sectorName:"INDUSTRI BATUBARA",icNasionalCode:"NETRAL",regionCode:"R04",regionName:"WILAYAH IV",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"INDUSTRI BATUBARAR04WHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("INDUSTRI BATUBARA"),sectorName:"INDUSTRI BATUBARA",icNasionalCode:"NETRAL",regionCode:"R05",regionName:"WILAYAH V",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"INDUSTRI BATUBARAR05WHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("INDUSTRI BATUBARA"),sectorName:"INDUSTRI BATUBARA",icNasionalCode:"NETRAL",regionCode:"HQ_OVS",regionName:"KANTOR PUSAT + Overseas",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"INDUSTRI BATUBARAHQ_OVSWHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1}
 ];
 
 export const E2E_LPG_SEGWIL_MAPPING_META={
@@ -513,7 +519,8 @@ export const E2E_LPG_MASTER_SEGMENT=[
 ];
 
 export const E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE=[
-  {industryCode:lpgMasterCode("ENERGI & AIR"),icCode:"NETRAL",effectiveFrom:"2026-01-01",status:"ACTIVE"}
+  {industryCode:lpgMasterCode("ENERGI & AIR"),icCode:"NETRAL",effectiveFrom:"2026-01-01",status:"ACTIVE"},
+  {industryCode:lpgMasterCode("INDUSTRI BATUBARA"),icCode:"NETRAL",effectiveFrom:"2026-01-01",status:"ACTIVE"}
 ];
 
 const p={CASHLOAN:[], "NON CASH LOAN":[], "CREDIT LINE":[], "Investment Line":[], BONDS:[], NOSTRO:[], "Nominal Pertanggungan":[]};
