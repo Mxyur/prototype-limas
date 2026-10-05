@@ -2,8 +2,8 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
-import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE} from './e2eDummyData';
-import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE} from './productionSampleData';
+import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE,E2E_LPG_IC_SEGWIL_MAPPING as E2E_LPG_IC_SEGWIL_MAPPING_FIXTURE,E2E_LPG_SEGWIL_MAPPING_META as E2E_LPG_SEGWIL_MAPPING_META_FIXTURE} from './e2eDummyData';
+import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE,PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY,PRODUCTION_SAMPLE_LPG_MASTER_IC_NATIONAL,PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE,PRODUCTION_SAMPLE_LPG_MASTER_REGION,PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT,PRODUCTION_SAMPLE_LPG_IC_SEGWIL_MAPPING,PRODUCTION_SAMPLE_LPG_SEGWIL_MAPPING_META} from './productionSampleData';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
@@ -38,6 +38,8 @@ const E2E_LPG_MASTER_IC_NATIONAL=IS_E2E_RUNTIME?E2E_LPG_MASTER_IC_NATIONAL_FIXTU
 const E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE=IS_E2E_RUNTIME?E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE||[]):[];
 const E2E_LPG_MASTER_REGION=IS_E2E_RUNTIME?E2E_LPG_MASTER_REGION_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_REGION||[]):[];
 const E2E_LPG_MASTER_SEGMENT=IS_E2E_RUNTIME?E2E_LPG_MASTER_SEGMENT_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT||[]):[];
+const E2E_LPG_IC_SEGWIL_MAPPING=IS_E2E_RUNTIME?E2E_LPG_IC_SEGWIL_MAPPING_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_IC_SEGWIL_MAPPING||[]):[];
+const E2E_LPG_SEGWIL_MAPPING_META=IS_E2E_RUNTIME?E2E_LPG_SEGWIL_MAPPING_META_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?(PRODUCTION_SAMPLE_LPG_SEGWIL_MAPPING_META||{}):{status:"EMPTY"};
 if(!IS_E2E_RUNTIME&&!IS_PRODUCTION_RUNTIME){
   throw new Error("Invalid LIMAS runtime mode: "+LIMAS_RUNTIME_MODE+". Use E2E, PRODUCTION_SAMPLE or PRODUCTION.");
 }
@@ -59,6 +61,24 @@ function lpgNationalIcName(industryCode){
 
 const lpgRegionByLegacyScope=Object.fromEntries((E2E_LPG_MASTER_REGION||[]).map(x=>[String(x.legacyScope).trim().toUpperCase(),x]));
 const lpgSegmentByLegacyValue=Object.fromEntries((E2E_LPG_MASTER_SEGMENT||[]).flatMap(x=>x.legacyValues.map(v=>[String(v).trim().toUpperCase(),x])));
+
+function lpgSegwilKey(sectorCode,regionCode,segmentCode){return [sectorCode,regionCode,segmentCode].map(x=>String(x||"").trim().toUpperCase()).join("|");}
+const lpgSegwilByKey=Object.fromEntries((E2E_LPG_IC_SEGWIL_MAPPING||[]).map(x=>[lpgSegwilKey(x.sectorCode,x.regionCode,x.segmentCode),x]));
+function lpgSegwilMappingFor(sectorCode,regionCode,segmentCode){return lpgSegwilByKey[lpgSegwilKey(sectorCode,regionCode,segmentCode)]||null;}
+function lpgSegwilQualityIssues(){
+  const issues=[],keys=new Set();
+  (E2E_LPG_IC_SEGWIL_MAPPING||[]).forEach(x=>{
+    const key=lpgSegwilKey(x.sectorCode,x.regionCode,x.segmentCode);
+    if(keys.has(key))issues.push({type:"LPG_SEGWIL_DUPLICATE",detail:"Duplicate Sector×Region×Segment "+key});
+    keys.add(key);
+    if(!lpgIndustryByName[String(x.sectorName||"").trim().toUpperCase()])issues.push({type:"LPG_SEGWIL_INDUSTRY_INVALID",detail:"Unknown Sector "+x.sectorName});
+    if(!lpgCanonicalRegion(x.regionCode))issues.push({type:"LPG_SEGWIL_REGION_INVALID",detail:"Unknown Region "+x.regionCode});
+    if(!lpgCanonicalSegment(x.segmentCode))issues.push({type:"LPG_SEGWIL_SEGMENT_INVALID",detail:"Unknown Segment "+x.segmentCode});
+    if(!lpgIcNationalByCode[String(x.icNasionalCode||"").trim().toUpperCase()])issues.push({type:"LPG_SEGWIL_IC_NATIONAL_INVALID",detail:"Unknown IC Nasional "+x.icNasionalCode});
+    if(!lpgIcNationalByCode[String(x.icWilayahSegmenCode||"").trim().toUpperCase()])issues.push({type:"LPG_SEGWIL_IC_INVALID",detail:"Unknown IC Wilayah Segmen "+x.icWilayahSegmenCode});
+  });
+  return issues;
+}
 function lpgCanonicalRegion(value){return (E2E_LPG_MASTER_REGION||[]).find(x=>String(x.regionCode).toUpperCase()===String(value||"").trim().toUpperCase())||lpgRegionByLegacyScope[String(value||"").trim().toUpperCase()]||null;}
 function lpgCanonicalSegment(value){return (E2E_LPG_MASTER_SEGMENT||[]).find(x=>String(x.segmentCode).toUpperCase()===String(value||"").trim().toUpperCase())||lpgSegmentByLegacyValue[String(value||"").trim().toUpperCase()]||null;}
 function lpgRegionSegmentQualityIssues(){
@@ -1594,6 +1614,9 @@ function LPGMonitor({nav}){
         <DomainKpi label="Early Warning" value={warning} sub="80%–<100%" accent="yellow"/>
         <DomainKpi label="Breach" value={breach} sub="≥100%" accent="red"/>
       </div>
+      <section className="card"><div className="head"><div><h2>Master IC Segmen × Wilayah</h2><p>Phase 4: mapping Sector × Wilayah × Segmen → IC Wilayah Segmen. Dataset business yang tersedia saat ini baru berupa sample supplied.</p></div><span className="chip yellow">{(E2E_LPG_IC_SEGWIL_MAPPING||[]).length} mapping</span></div>
+        <div className="body"><div className="toolbar"><span className="chip blue">Status: {E2E_LPG_SEGWIL_MAPPING_META?.status||"—"}</span><span className="muted-small">Segwil key disimpan sebagai logical key komposit; display labels tetap mengikuti master.</span></div><div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>Sector</th><th>IC Nasional</th><th>Wilayah</th><th>Segmen</th><th>Segwil Key</th><th>IC Wilayah Segmen</th></tr></thead><tbody>{(E2E_LPG_IC_SEGWIL_MAPPING||[]).map(r=><tr key={lpgSegwilKey(r.sectorCode,r.regionCode,r.segmentCode)}><td className="key">{r.sectorName}</td><td>{r.icNasionalCode}</td><td>{r.regionName}</td><td>{r.segmentName}</td><td className="muted-small">{r.segwilKey}</td><td>{r.icWilayahSegmenCode}</td></tr>)}</tbody></table></div><div className="field-help">Limit allocation dan monitoring migration tidak dijalankan dari mapping partial ini. Full mapping menjadi prerequisite Phase 5.</div></div></section>
+      
       <section className="card"><div className="head"><div><h2>Master IC Nasional</h2><p>Phase 2: classification nasional terpisah dari IC Wilayah Segmen. Mapping Sector → IC Nasional baru menampilkan data yang sudah supplied; tidak ada nilai yang diinferensikan.</p></div><span className="chip blue">{(E2E_LPG_MASTER_IC_NATIONAL||[]).length} IC</span></div>
         <div className="body"><div className="toolbar">{(E2E_LPG_MASTER_IC_NATIONAL||[]).map(ic=><span key={ic.icCode} className="chip blue">{ic.icName} • {ic.visual}</span>)}<span className="muted-small">Industry mapping loaded: {(E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE||[]).length}</span></div><div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>IC Code</th><th>IC Nasional</th><th>Visual</th><th>Business Rule</th></tr></thead><tbody>{(E2E_LPG_MASTER_IC_NATIONAL||[]).map(ic=><tr key={ic.icCode}><td className="key">{ic.icCode}</td><td>{ic.icName}</td><td>{ic.visual}</td><td>{ic.ruleCode||"—"}</td></tr>)}</tbody></table></div></div></section>
       

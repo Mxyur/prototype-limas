@@ -493,6 +493,18 @@ export const E2E_LPG_MASTER_REGION=[
   })
 ];
 
+
+export const E2E_LPG_IC_SEGWIL_MAPPING=[
+  {sectorCode:lpgMasterCode("ENERGI & AIR"),sectorName:"ENERGI & AIR",icNasionalCode:"NETRAL",regionCode:"HQ_OVS",regionName:"KANTOR PUSAT + Overseas",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"ENERGI & AIRKANTOR PUSATWHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1},
+  {sectorCode:lpgMasterCode("ENERGI & AIR"),sectorName:"ENERGI & AIR",icNasionalCode:"NETRAL",regionCode:"R12",regionName:"WILAYAH XII / JAYAPURA",segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",segwilKey:"ENERGI & AIRWILAYAH XII / JAYAPURAWHOLESALE COMMERCIAL",icWilayahSegmenCode:"NETRAL",status:"ACTIVE",version:1}
+];
+
+export const E2E_LPG_SEGWIL_MAPPING_META={
+  status:"PARTIAL_BUSINESS_MAPPING",
+  loadedSampleRows:E2E_LPG_IC_SEGWIL_MAPPING.length,
+  requirement:"Full Sector × Wilayah × Segmen mapping is required before LPG limit allocation is migrated."
+};
+
 export const E2E_LPG_MASTER_SEGMENT=[
   {segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",legacyValues:["Corporate","Commercial"],segmentType:"WHOLESALE",sequence:1,activeFlag:true,version:1},
   {segmentCode:"RETAIL_SME",segmentName:"RETAIL SME",legacyValues:["SME","Sme"],segmentType:"RETAIL",sequence:2,activeFlag:true,version:1},
