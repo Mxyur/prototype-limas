@@ -1,3 +1,4 @@
+// Governance note: source schema and business enrichment contracts are kept independent by design.
 // LIMAS business mapping + source schema governance registry.
 // Raw source fields remain immutable; everything below is a contract/enrichment layer.
 
