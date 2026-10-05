@@ -18,7 +18,7 @@ import {
   E2E_LPG_MASTER_SEGMENT,
   E2E_LPG_IC_SEGWIL_MAPPING,
   E2E_LPG_SEGWIL_MAPPING_META
-} from './e2eDummyData';
+} from './e2eDummyData.js';
 
 const clone=value=>JSON.parse(JSON.stringify(value));
 
