@@ -69,7 +69,6 @@ try{
     dqByLayer:summary.byLayer,
     dqByType:summary.byType,
     dq:dq.map(x=>({id:x.id,layer:x.layer,issueType:x.issueType,domain:x.domain,key:x.key,productId:x.productId,recordId:x.recordId,detail:x.detail})),
-    nclBookingDiagnostics:(d.productIntegrationMappings?.["NON CASH LOAN"]||[]).filter(x=>String(x.limitType)==="Country").map(x=>({recordId:x.recordId,key:x.key,bookingOffice:x.bookingOffice,bookingOfficeType:x.bookingOfficeType,sourceField:x.sourceField})),
     numericFailures:numeric.map(x=>({layer:x.layer,domain:x.domain,rule:x.rule,actual:x.actual,expected:x.expected,diff:x.diff,unit:x.unit})),
     phases:report,
     releaseGate:d.releaseGate()
