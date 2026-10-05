@@ -3241,6 +3241,7 @@ const creditLineCanonicalFields=[
   {key:"Treasury Line Overseas Utilization",label:"Treasury Line • Overseas Utilization",source:"Treasury LN Utilisasi",group:"Treasury Line"},
   {key:"Treasury Line Total Source Amount",label:"Treasury Line • Total Source Amount",source:"Treasury Line Total",group:"Treasury Line"},
   {key:"Treasury Line Total Utilization",label:"Treasury Line • Total Utilization",source:"Treasury Line Total Utilisasi",group:"Treasury Line"},
+  {key:"Bade Treasury Line",label:"Bade Treasury Line",source:"Bade Treasury Line",group:"Treasury Line"},
   {key:"Credit Line Total Source Amount",label:"Credit Line • Total Source Amount",source:"Credit Line Total",group:"Credit Line"},
   {key:"Credit Line Total Utilization",label:"Credit Line • Total Utilization",source:"Credit Line Total Utilisasi",group:"Credit Line"}
 ];
@@ -3332,6 +3333,8 @@ function integrationDomainAllowed(row,domain){
 function isExplicitCclSource(row){
   const d=row?.data||{},meta=row?.meta||{};
   return Boolean(meta.cclLimitType)
+    || Boolean(meta.creditLineLimitType)
+    || Boolean(meta.cclCounterpartyId)
     || /^CCL-/i.test(String(d.no_cus||""))
     || /^CCL-/i.test(String(meta.recordId||""));
 }
@@ -3548,7 +3551,8 @@ function buildProductIntegrationMappings(){
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
     const d=r.data||{},country=String(d["Country Code"]||"").trim(),cif=String(d.CUSTID||"").trim(),swift=String(d["Swift Code"]||"").trim();
     if(country){
-      const booking=NCL_BOOKING_REFERENCE[r.recordId]||{};
+      const stableReferenceId=String(r.recordId||"").replace(/^PRD-NCL-/i,"");
+      const booking=NCL_BOOKING_REFERENCE[r.recordId]||NCL_BOOKING_REFERENCE[stableReferenceId]||{};
       addIntegrationMapping("NON CASH LOAN",r,{
         limitType:"Country",key:country,amount:d.EQVIDR,label:"Non Cash Loan",
         sourceField:"Country Code",sourceValue:country,
