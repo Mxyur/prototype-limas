@@ -119,7 +119,13 @@ for(const r of E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[]){
   const d=r.data||{},code=String(d["Country Code"]||"").toUpperCase(),rid=String(r.meta?.recordId||"");
   if(!code||code==="ID"||rid.startsWith("NCL-CCL-")||rid.startsWith("NCL-MLK-")||rid.startsWith("NCL-LPG-"))continue;
   if(!countryMaster.has(code)||!Number.isFinite(n(d.EQVIDR))||n(d.EQVIDR)<=0)continue;
-  const officeRef={"NCL-COUNTRY-SG":"Domestic","NCL-COUNTRY-CN":"Overseas","NCL-COUNTRY-AU":"Domestic"}[rid];
+  const officeRef={
+    "NCL-COUNTRY-SG":"Domestic",
+    "NCL-COUNTRY-CN":"Overseas",
+    "NCL-COUNTRY-AU":"Domestic",
+    "NCL-COUNTRY-ID":"Domestic",
+    "NCL-COUNTRY-CN-LEGACY":"Overseas"
+  }[rid];
   assert.ok(officeRef,"NCL Country exposure requires Booking Office Type enrichment for "+rid);
 }
 
