@@ -52,7 +52,7 @@ export const BUSINESS_MAPPING_CONTRACTS = {
     CIL:{source:["Perusahaan Asuransi","Entitas","Nominal Pertanggungan 2025 (Rp Juta)"],enrichment:["insuranceCompanyId","entityCode"]}
   },
   "Investment Line":{
-    source:["Nama Bank","Nama Entity (Scope Entity : AKK)","Switftcode","Amount Invesment Line"],enrichment:["investmentClassification"]
+    Product:{source:["Nama Bank","Nama Entity (Scope Entity : AKK)","Switftcode","Amount Invesment Line"],enrichment:["investmentClassification"]}
   }
 };
 
