@@ -1,4 +1,5 @@
 // Governance note: source schema and business enrichment contracts are kept independent by design.
+// Validation marker: PR runtime DQ must remain non-zero until every applicable mapping is resolved.
 // LIMAS business mapping + source schema governance registry.
 // Raw source fields remain immutable; everything below is a contract/enrichment layer.
 
