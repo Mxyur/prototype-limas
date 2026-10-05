@@ -2,7 +2,15 @@ name: LIMAS Vite Build Validation
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    paths:
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "index.html"
+      - ".github/workflows/limas-vite-build.yml"
+  pull_request:
+    branches: [main]
     paths:
       - "src/**"
       - "package.json"
@@ -26,4 +34,3 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-      # Re-validate the current main source snapshot on workflow-file changes.
