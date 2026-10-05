@@ -1,5 +1,9 @@
 name: LIMAS Audit
 
+permissions:
+  contents: read
+  issues: write
+
 on:
   push:
     branches: [main]
@@ -31,13 +35,7 @@ jobs:
       - name: Runtime data quality audit
         id: dq
         continue-on-error: true
-        shell: bash
-        run: |
-          set +e
-          node scripts/audit-dq-runtime.mjs > dq-runtime-output.txt 2>&1
-          rc=$?
-          cat dq-runtime-output.txt
-          exit $rc
+        run: node scripts/audit-dq-runtime.mjs > dq-runtime-output.txt 2>&1; rc=$?; cat dq-runtime-output.txt; exit $rc
 
       - name: Publish DQ diagnostics to PR
         if: steps.dq.outcome == 'failure' && github.event_name == 'pull_request'
@@ -46,15 +44,12 @@ jobs:
           script: |
             const fs = require('fs');
             const raw = fs.readFileSync('dq-runtime-output.txt','utf8');
+            const body = ['### LIMAS DQ diagnostic','', '~~~text', raw.slice(-18000), '~~~'].join('\n');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '### LIMAS DQ diagnostic
-
-~~~text
-'+raw.slice(-18000)+'
-~~~'
+              body
             });
 
       - name: Fail on DQ gate
