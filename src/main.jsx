@@ -3331,7 +3331,9 @@ const NCL_BOOKING_REFERENCE={
   "NCL-COUNTRY-AU":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
   // Legacy source IDs retained for the rebuilt NCL sample rows whose source country is refreshed later.
   "NCL-COUNTRY-ID":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
-  "NCL-COUNTRY-CN-LEGACY":{bookingOffice:"Bank Mandiri Shanghai",bookingOfficeType:"Overseas"}
+  "NCL-COUNTRY-CN-LEGACY":{bookingOffice:"Bank Mandiri Shanghai",bookingOfficeType:"Overseas"},
+  "PRD-NCL-NCL-COUNTRY-ID":{bookingOffice:"Menara Mandiri Jakarta",bookingOfficeType:"Domestic"},
+  "PRD-NCL-NCL-COUNTRY-CN":{bookingOffice:"Bank Mandiri Shanghai",bookingOfficeType:"Overseas"}
 };
 
 function integrationDomainAllowed(row,domain){
@@ -3769,7 +3771,9 @@ function canonicalReadModelRows(){
   const rows=[];
   Object.entries(domainDataContract).forEach(([domain,cfg])=>{
     (limasDemoData[domain]||[]).forEach(master=>{
-      const apps=productApplicationsFor(domain,master.key);
+      const apps=domain==="CCL"
+        ? [...productApplicationsFor(domain,master.key,{cclLimitType:"DIRECT"}),...productApplicationsFor(domain,master.key,{cclLimitType:"INDIRECT"})]
+        : productApplicationsFor(domain,master.key);
       if(!apps.length){
         rows.push({
           domain,masterKey:master.key,masterObject:master.name||master.sector||master.key,
@@ -3790,6 +3794,7 @@ function canonicalReadModelRows(){
             sourceField:a.exposureField,sourceAmount:a.amount,sourceUnit:a.sourceUnit,
             targetUnit:a.targetUnit,normalizedExposure:a.normalizedAmount,
             bookingOffice:a.bookingOffice,bookingOfficeType:a.bookingOfficeType,scope:a.scope||"—",
+            cclLimitType:a.cclLimitType||null,
             businessEnrichment:a.businessEnrichment||{},lineageId:[domain,a.key,a.productId,a.recordId,a.scope||"—"].join("|"),
             mappingStatus,masterStatus,sourceStatus,
             utilization:recordUtil(domain,master),status:sourceStatus==="Data Issue"?"Data Issue":masterStatus
