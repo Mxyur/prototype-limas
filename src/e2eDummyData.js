@@ -473,7 +473,7 @@ const LPG_INDUSTRY_MASTER_ROWS=[
     "PROPERTI"
   ]
 ];
-const lpgMasterCode=value=>String(value||"").trim().toUpperCase().normalize("NFKD").replace(/[^\\w\\s-]/g,"").replace(/\\s+/g,"_").replace(/-+/g,"_");
+const lpgMasterCode=value=>String(value||"").trim().toUpperCase().normalize("NFKD").replace(/[^\w\s-]/g,"").replace(/\s+/g,"_").replace(/-+/g,"_");
 export const E2E_LPG_MASTER_INDUSTRY=LPG_INDUSTRY_MASTER_ROWS.map(([industryName,groupingName],index)=>({no:index+1,industryCode:lpgMasterCode(industryName),industryName,groupingCode:lpgMasterCode(groupingName),groupingName,activeFlag:true,version:1}));
 
 const p={CASHLOAN:[], "NON CASH LOAN":[], "CREDIT LINE":[], "Investment Line":[], BONDS:[], NOSTRO:[], "Nominal Pertanggungan":[]};
