@@ -1103,6 +1103,7 @@ function Report({nav}){
         </div>)}
       </div></div>
     </section>
+    <ReportFieldLineage type={type} cfg={cfg} rows={rows}/>
     {generated&&<section className="card"><div className="head"><div><h2>{cfg.title}</h2><p>{cfg.subtitle}</p><div className="report-meta"><span>{cfg.source}</span><span>Periode: {period}</span><span>Generated: {nowLabel()}</span></div></div><button className="btn ghost" onClick={()=>window.print()}>Print / PDF</button></div><div className="body">
       <div className="report-note">{cfg.note}</div>
       <div className="metric-grid report-kpi"><DomainKpi label="Total Data" value={summary.total} sub="Canonical master/report objects"/><DomainKpi label="Normal" value={summary.normal} sub="Within monitoring threshold"/><DomainKpi label="Warning" value={summary.warning} sub="Early warning condition" accent="yellow"/><DomainKpi label="Breach" value={summary.breach} sub="Above monitoring limit" accent="red"/><DomainKpi label="Data Issue" value={summary.issue} sub="Needs review"/></div>
