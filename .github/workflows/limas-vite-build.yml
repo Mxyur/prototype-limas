@@ -26,3 +26,4 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      # Re-validate the current main source snapshot on workflow-file changes.
