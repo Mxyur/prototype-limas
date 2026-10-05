@@ -1046,6 +1046,33 @@ function downloadReportCsv(type,rows){
   a.click();
   setTimeout(()=>URL.revokeObjectURL(url),500);
 }
+function ReportFieldLineage({type,cfg,rows}){
+  const lineage=auditReportFieldTraceability({[type]:cfg},{[type]:rows});
+  const summary=summarizeReportFieldTraceability(lineage);
+  return <section className="card">
+    <div className="head"><div><h2>Report Field Lineage</h2><p>Traceability field report {type} dari source/master sampai transformation atau formula.</p></div><Status v={summary.ready?"Normal":"Data Issue"}/></div>
+    <div className="body">
+      <div className="metric-grid">
+        <DomainKpi label="Fields" value={summary.totalFields} sub="Configured report columns"/>
+        <DomainKpi label="Traceable" value={summary.traceable} sub="Explicit lineage contract"/>
+        <DomainKpi label="Gaps" value={summary.missingContract+summary.runtimeMissing} sub="Must be cleared before release" accent={(summary.missingContract+summary.runtimeMissing)?"red":""}/>
+      </div>
+      <div className="table-wrap" style={{marginTop:12}}>
+        <table className="table">
+          <thead><tr><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation / Formula</th><th>Status</th></tr></thead>
+          <tbody>{lineage.map((r,i)=><tr key={"lineage-"+type+"-"+r.field+"-"+i}>
+            <td><b>{r.label}</b><div className="muted-small key">{r.field}</div></td>
+            <td>{r.sourceLayer}</td>
+            <td className="muted-small">{r.sourceReference}</td>
+            <td className="muted-small">{r.transformation}</td>
+            <td><Status v={r.status==="TRACEABLE"?"Normal":"Data Issue"}/></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  </section>;
+}
+
 function Report({nav}){
   const [type,setType]=useState("Country"),[period,setPeriod]=useState(E2E_DUMMY_META.period),[status,setStatus]=useState("All"),[generated,setGenerated]=useState(false);
   const reportData=buildReportDummy(limasDemoData);
