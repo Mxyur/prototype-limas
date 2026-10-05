@@ -3296,9 +3296,8 @@ const productTabFields={
 };
 
 const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
-  p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
-  p.id==='CREDIT LINE'?creditLineCanonicalFields.map(x=>x.key):
-  (productTabFields[p.id]||productFields[p.id]||[])
+  PRODUCT_SOURCE_SCHEMA_OVERRIDES[p.id]||((productTabFields[p.id]||productFields[p.id]||[])
+    .filter(f=>!(PRODUCT_DERIVED_FIELDS_FORBIDDEN[p.id]||[]).includes(f)))
 )]]));
 
 const bookingOfficeReference=[
