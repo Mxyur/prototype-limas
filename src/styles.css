@@ -213,5 +213,8 @@
 }
 
 
+/* LPG Limit Allocation — master/detail workspace */
+.lpg-allocation-workspace{display:grid;grid-template-columns:minmax(280px,.72fr) minmax(520px,1.55fr);gap:15px;align-items:start}.lpg-allocation-list,.lpg-allocation-detail{min-width:0}.lpg-master-list{display:flex;flex-direction:column;gap:7px;max-height:560px;overflow:auto;padding-right:2px}.lpg-master-item{width:100%;border:1px solid #e4e9f0;background:#fff;border-radius:11px;padding:11px;text-align:left;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:7px}.lpg-master-item:hover{background:#f8fbff;border-color:#cbd9ea}.lpg-master-item.active{background:#eef6ff;border-color:#7db3ee;box-shadow:inset 3px 0 0 var(--blue)}.lpg-master-item>div:first-child{display:flex;justify-content:space-between;gap:8px;align-items:center}.lpg-master-item>div:first-child b{font-size:11px}.lpg-master-item>div:first-child span{font-size:10px;color:var(--muted)}.lpg-master-item-metrics{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:9px;color:#6f7d91}.lpg-master-item-metrics .badge{margin-left:auto}.lpg-allocation-kpis{grid-template-columns:repeat(5,minmax(120px,1fr))}.lpg-allocation-table th,.lpg-allocation-table td{vertical-align:middle}.lpg-allocation-table td:nth-child(3){min-width:180px}.lpg-allocation-table td:nth-child(4),.lpg-allocation-table td:nth-child(5){white-space:nowrap}@media(max-width:1100px){.lpg-allocation-workspace{grid-template-columns:1fr}.lpg-master-list{max-height:360px}.lpg-allocation-kpis{grid-template-columns:repeat(3,minmax(120px,1fr))}}@media(max-width:700px){.lpg-allocation-kpis{grid-template-columns:1fr 1fr}}
+
 /* Status semantic fix */
 .dataissue{background:#e8edf3;color:#4c596b}
