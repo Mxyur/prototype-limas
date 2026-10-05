@@ -31,10 +31,10 @@ export const PRODUCT_REPORT_REQUIREMENTS = {
   ]
 };
 
-export function auditProductReportCoverage(productSchemaFields={}){
+export function auditProductReportCoverage(productSchemaFields={},fieldAliases={}){
   const rows=[];
   Object.entries(PRODUCT_REPORT_REQUIREMENTS).forEach(([productId,requirements])=>{
-    const available=new Set(productSchemaFields[productId]||[]);
+    const available=new Set([...(productSchemaFields[productId]||[]),...(fieldAliases[productId]||[])]);
     requirements.forEach(req=>{
       const missingSourceFields=req.sourceFields.filter(f=>!available.has(f));
       rows.push({
