@@ -483,6 +483,23 @@ export const E2E_LPG_MASTER_IC_NATIONAL=[
   {icCode:"WASPADA",icName:"WASPADA",displayOrder:4,visual:"BLACK",activeFlag:true,version:1,ruleCode:"PLASTIK_ONLY"}
 ];
 
+
+export const E2E_LPG_MASTER_REGION=[
+  {regionCode:"HQ_OVS",regionName:"KANTOR PUSAT + Overseas",legacyScope:"KP + OVS",regionType:"HQ_OVS",sequence:0,activeFlag:true,version:1},
+  ...Array.from({length:12},(_,i)=>{
+    const n=i+1;
+    const names=["MEDAN","PALEMBANG","JAKARTA KOTA","JAKARTA THAMRIN","JAKARTA SUDIRMAN","BANDUNG","SEMARANG","SURABAYA","BANJARMASIN","MAKASSAR","DENPASAR","JAYAPURA"];
+    return {regionCode:"R"+String(n).padStart(2,"0"),regionName:"WILAYAH "+["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][i]+" / "+names[i],legacyScope:"Region "+["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][i],regionType:"REGION",sequence:n,activeFlag:true,version:1};
+  })
+];
+
+export const E2E_LPG_MASTER_SEGMENT=[
+  {segmentCode:"WHOLESALE_COMMERCIAL",segmentName:"WHOLESALE COMMERCIAL",legacyValues:["Corporate","Commercial"],segmentType:"WHOLESALE",sequence:1,activeFlag:true,version:1},
+  {segmentCode:"RETAIL_SME",segmentName:"RETAIL SME",legacyValues:["SME","Sme"],segmentType:"RETAIL",sequence:2,activeFlag:true,version:1},
+  {segmentCode:"RETAIL_MICRO",segmentName:"RETAIL MICRO",legacyValues:["Micro","MICRO"],segmentType:"RETAIL",sequence:3,activeFlag:true,version:1},
+  {segmentCode:"WHOLESALE_CIB",segmentName:"WHOLESALE CIB",legacyValues:["Wholesale CIB","CIB"],segmentType:"WHOLESALE",sequence:4,activeFlag:true,version:1}
+];
+
 export const E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE=[
   {industryCode:lpgMasterCode("ENERGI & AIR"),icCode:"NETRAL",effectiveFrom:"2026-01-01",status:"ACTIVE"}
 ];
