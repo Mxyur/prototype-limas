@@ -275,7 +275,7 @@ export function auditReportFieldTraceability(reportConfig={},reportRowsByType={}
     const runtimeRows=Array.isArray(reportRowsByType?.[reportType])?reportRowsByType[reportType]:[];
     columns.forEach(([label,key])=>{
       const contract=resolveReportFieldTraceability(reportType,key);
-      const runtimeColumnPresent=runtimeRows.length===0||runtimeRows.every(row=>Object.prototype.hasOwnProperty.call(row,key));
+      const runtimeColumnPresent=runtimeRows.length>0&&runtimeRows.every(row=>Object.prototype.hasOwnProperty.call(row,key));
       rows.push({
         reportType,
         field:key,
