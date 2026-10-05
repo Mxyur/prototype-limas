@@ -571,7 +571,7 @@ mlkRows.forEach(([cif,name,clAmt,nclAmt,tlAmt],i)=>{
   const m=E2E_MASTER_DATA.MLK[i];
   p.CASHLOAN.push(cl({no_cus:cif,nm_cus:name,no_rek:"MLK-CL-"+cif,total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,clAmt,"MLK",{recordId:"CL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:"BMRI"}));
   p["NON CASH LOAN"].push(ncl({NO:String(50+i),MODULE:"EPLC",TRXREF:"NCL-MLK-"+cif,CUSTID:cif,CUSTNM:name,CPNM:(name+" Trade Services"),"Country Code":"ID","Country Name":"Indonesia",CCY:"USD",AMOUNT:String(nclAmt*1000000/17310),BALANCE:String(nclAmt*1000000/17310),EXCHANGERT:"17310",EQVIDR:String(nclAmt*1000000),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},cif,nclAmt*1000000,"MLK",{recordId:"NCL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:"BMRI"}));
-  p["CREDIT LINE"].push(credit({No:String(70+i),Nama:name+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,tlAmt,"Bade Treasury Line",{scope:"Treasury"})],{recordId:"TL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",reportingEntity:"BMRI"}));
+  p["CREDIT LINE"].push(credit({No:String(70+i),Nama:name+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,tlAmt,"Bade Treasury Line",{scope:"Treasury"})],{recordId:"TL-MLK-"+name.replaceAll(" ","-"),sourceSystem:"LIMAST",reportingEntity:"BMRI",mlkCif:cif}));
 });
 
 // MLK extended entity/source coverage. These are distinct source records, not duplicates.
@@ -591,7 +591,7 @@ const mlkExtendedSourceRows=[
 mlkExtendedSourceRows.forEach(([cif,entity,group,clAmt,nclAmt,tlAmt,master])=>{
   p.CASHLOAN.push(cl({no_cus:cif,nm_cus:cif+" / "+entity,no_rek:"MLK-CL-"+cif,total_limit:"",total_bade:String(clAmt),project_location:"Indonesia",code:"ID"},cif,Number(clAmt),"MLK",{recordId:"CL-MLK-EXT-"+cif,sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:entity,groupId:group}));
   p["NON CASH LOAN"].push(ncl({NO:"EXT-"+cif,MODULE:"EPLC",TRXREF:"NCL-MLK-EXT-"+cif,CUSTID:cif,CUSTNM:cif+" / "+entity,CPNM:cif+" Trade Services","Country Code":"ID","Country Name":"Indonesia",CCY:"USD",AMOUNT:String(Number(nclAmt)*1000000/17310),BALANCE:String(Number(nclAmt)*1000000/17310),EXCHANGERT:"17310",EQVIDR:String(Number(nclAmt)*1000000),FINTYPE:"GUARANTEE",TRXTYPE:"BG"},cif,Number(nclAmt)*1000000,"MLK",{recordId:"NCL-MLK-EXT-"+cif,sourceSystem:"LIMAST",countryExposure:"ID",reportingEntity:entity,groupId:group}));
-  p["CREDIT LINE"].push(credit({No:"EXT-"+cif,Nama:cif+" "+entity+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,Number(tlAmt),"Bade Treasury Line",{scope:"Treasury",entity})],{recordId:"TL-MLK-EXT-"+cif,sourceSystem:"LIMAST",reportingEntity:entity,groupId:group}));
+  p["CREDIT LINE"].push(credit({No:"EXT-"+cif,Nama:cif+" "+entity+" Treasury","Swift Code":"TL-"+cif,Code:"ID",Negara:"Indonesia","Bade Treasury Line":String(tlAmt),"Treasury Line Total Utilisasi":String(tlAmt),"Credit Line Total Utilisasi":String(tlAmt)},[apply("MLK",cif,Number(tlAmt),"Bade Treasury Line",{scope:"Treasury",entity})],{recordId:"TL-MLK-EXT-"+cif,sourceSystem:"LIMAST",reportingEntity:entity,groupId:group,mlkCif:cif}));
 });
 
 // CCL entity-scoped source records. Entity/type are explicit enrichment metadata.
@@ -854,6 +854,15 @@ const enrichProductData=()=>{
 };
 enrichProductData();
 
+const SOURCE_ONLY_DERIVED_FIELDS={
+  "CREDIT LINE":new Set(["Bade Treasury Line"]),
+  "Nominal Pertanggungan":new Set([
+    "EIL Entitas (Rp Juta)","Proyeksi Total Nominal Pertanggungan 2026 (10% BMRI, 7.5% PA) (Rp Juta)",
+    "Utilisasi EIL (%)","CIL (Rp Juta)","CIT (Rp Juta)","Utilisasi CIL (%)",
+    "% Utilisasi (Nominal Pertanggungan/CIL)","% Utilisasi Proyeksi (Nominal Pertanggungan/CIL)",
+    "Skor Akreditasi (PCP)","Klasifikasi EWS (PCP)","Status / Rekomendasi Action Plan"
+  ])
+};
 const sourceSpec=(r,recordId)=>{
   const meta={...(r.meta||{}),recordId};
   // Product Database stores only source data and provenance metadata.
@@ -888,13 +897,13 @@ const rebuildSourceOnlyProductData=()=>{
   p.CASHLOAN.forEach((r,i)=>{
     const meta={...(r.meta||{}),recordId:r.meta?.recordId||"CL-"+String(i+1).padStart(3,"0")};
     if(meta.sourceSystem==="DWH"&&/^CL-LPG-/.test(String(meta.recordId))) meta.integrationDomains=["LPG"];
-    out.CASHLOAN.push(sourceSpec({...r,meta},meta.recordId));
+    out.CASHLOAN.push(sourceSpec({...r,meta,productId:"CASHLOAN"},meta.recordId));
   });
 
   p["NON CASH LOAN"].forEach((r,i)=>{
     const meta={...(r.meta||{}),recordId:r.meta?.recordId||"NCL-"+String(i+1).padStart(3,"0")};
     if(meta.sourceSystem==="DWH"&&/^NCL-LPG-/.test(String(meta.recordId))) meta.integrationDomains=["LPG"];
-    out["NON CASH LOAN"].push(sourceSpec({...r,meta},meta.recordId));
+    out["NON CASH LOAN"].push(sourceSpec({...r,meta,productId:"NON CASH LOAN"},meta.recordId));
   });
 
   // Credit Line source universe: raw counterparty records only.
@@ -904,7 +913,7 @@ const rebuildSourceOnlyProductData=()=>{
     .filter(r=>/^CRL-CCL-/.test(String(r.meta?.recordId||"")))
     .forEach((r,i)=>{
       const meta={...(r.meta||{}),recordId:"CLINE-"+String(i+1).padStart(3,"0")};
-      out["CREDIT LINE"].push(sourceSpec({...r,meta},meta.recordId));
+      out["CREDIT LINE"].push(sourceSpec({...r,meta,productId:"CREDIT LINE"},meta.recordId));
     });
 
   p["Investment Line"].forEach((r,i)=>
@@ -920,7 +929,7 @@ const rebuildSourceOnlyProductData=()=>{
   );
 
   p["Nominal Pertanggungan"].forEach((r,i)=>
-    out["Nominal Pertanggungan"].push(sourceSpec(r,r.meta?.recordId||"CIL-"+String(i+1).padStart(3,"0")))
+    out["Nominal Pertanggungan"].push(sourceSpec({...r,productId:"Nominal Pertanggungan"},r.meta?.recordId||"CIL-"+String(i+1).padStart(3,"0")))
   );
 
   return out;
