@@ -52,7 +52,7 @@ globalThis.__LIMAS_DEBUG__={
 };
 `;
 
-const tmp=path.join(os.tmpdir(),"limas-main-dq-audit-"+process.pid+".mjs");
+const tmp=path.resolve("scripts",".tmp-limas-main-dq-audit-"+process.pid+".mjs");
 fs.writeFileSync(tmp,transformed,"utf8");
 try{
   await import(pathToFileURL(tmp).href+"?run="+Date.now());
