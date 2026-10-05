@@ -4540,7 +4540,8 @@ function governancePhaseAudit(){
     countryMonitoringEligible,
     integrationDomainAllowed,
     lpgClassifier:lpgProductClassification,
-    explicitCclSource:isExplicitCclSource
+    explicitCclSource:isExplicitCclSource,
+    mlkMasterRows:limasDemoData.MLK||[]
   });
   const phase3Issues=[
     ...reconciliationIssues().filter(x=>x.status==="Data Issue").map(x=>({phase:3,layer:"Integration / Mapping",issueType:x.issueType,productId:x.productId,recordId:x.recordId,key:x.key||"—",detail:x.detail})),
