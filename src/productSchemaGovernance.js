@@ -1,3 +1,4 @@
+// Temporary DQ diagnostic trigger; removed after gate analysis.
 // LIMAS business mapping + source schema governance registry.
 // Raw source fields remain immutable; everything below is a contract/enrichment layer.
 
