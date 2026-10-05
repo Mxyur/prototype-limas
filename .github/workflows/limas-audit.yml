@@ -27,3 +27,6 @@ jobs:
 
       - name: Runtime isolation audit
         run: npm run audit:runtime
+
+      - name: Runtime data quality audit
+        run: node scripts/audit-dq-runtime.mjs
