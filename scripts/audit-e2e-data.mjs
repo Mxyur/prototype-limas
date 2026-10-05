@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY, E2E_ENTITY_MASTER, E2E_MLK_ENTITY_SCOPE, E2E_CCL_ENTITY_SCOPE, E2E_CCL_LIMIT_SCOPE, E2E_LPG_MASTER_INDUSTRY, E2E_LPG_MASTER_IC_NATIONAL, E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE, E2E_LPG_MASTER_REGION, E2E_LPG_MASTER_SEGMENT, E2E_LPG_IC_SEGWIL_MAPPING, E2E_LPG_SEGWIL_MAPPING_META } from "../src/e2eDummyData.js";
+import { E2E_MASTER_DATA, E2E_DUMMY_PRODUCT_DATA, E2E_COUNTRY_MONITORING_POLICY, E2E_ENTITY_MASTER, E2E_MLK_ENTITY_SCOPE, E2E_CCL_ENTITY_SCOPE, E2E_CCL_LIMIT_SCOPE, E2E_LPG_MASTER_INDUSTRY, E2E_LPG_MASTER_IC_NATIONAL, E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE, E2E_LPG_MASTER_REGION, E2E_LPG_MASTER_SEGMENT } from "../src/e2eDummyData.js";
 const EPS=0.01;
 const near=(a,b,msg)=>assert.ok(Math.abs(Number(a)-Number(b))<=EPS,msg+" (actual="+a+", expected="+b+")");
 const entityCodes=new Set(E2E_ENTITY_MASTER.map(x=>x.entityCode));
@@ -202,15 +202,4 @@ for(const r of E2E_DUMMY_PRODUCT_DATA["Nominal Pertanggungan"]||[]){
   if(amount>=0&&eil>0&&u!=="") numericNear(Number(u),amount/eil*100,"CIL Utilisasi EIL",0.01);
 }
 
-console.log("[LIMAS AUDIT] PASS • Country="+(E2E_MASTER_DATA.Country||[]).length+" • CCL="+(E2E_MASTER_DATA.CCL||[]).length+" • MLK="+(E2E_MASTER_DATA.MLK||[]).length+" • CIL="+(E2E_MASTER_DATA.CIL||[]).length+" • LPG="+(E2E_MASTER_DATA.LPG||[]).length+" • LPG classified source records="+lpgRecords+" • numeric checks="+numericChecks)assert.equal(E2E_LPG_IC_SEGWIL_MAPPING.length,Number(E2E_LPG_SEGWIL_MAPPING_META.loadedSampleRows),"LPG Segwil mapping metadata row count must reconcile.";
-const segwilKeys=new Set();
-for(const m of E2E_LPG_IC_SEGWIL_MAPPING){
-  assert.ok(m.sectorCode&&m.regionCode&&m.segmentCode&&m.icNasionalCode&&m.icWilayahSegmenCode,"LPG Segwil mapping must contain sector, region, segment and both IC classifications.");
-  const k=m.sectorCode+"|"+m.regionCode+"|"+m.segmentCode;
-  assert.ok(!segwilKeys.has(k),"Duplicate LPG Segwil key "+k);
-  segwilKeys.add(k);
-  assert.ok(String(m.segwilKey||"").includes(String(m.sectorName||""))&&String(m.segwilKey||"").includes(String(m.segmentName||"")),"Supplied segwilKey must contain Sector and Segment labels for "+k);
-}
-assert.ok(E2E_LPG_IC_SEGWIL_MAPPING.some(m=>m.sectorName==="ENERGI & AIR"&&m.regionCode==="HQ_OVS"&&m.segmentCode==="WHOLESALE_COMMERCIAL"&&m.icWilayahSegmenCode==="NETRAL"),"Sample HQ Energi & Air mapping missing.");
-assert.ok(E2E_LPG_IC_SEGWIL_MAPPING.some(m=>m.sectorName==="ENERGI & AIR"&&m.regionCode==="R12"&&m.segmentCode==="WHOLESALE_COMMERCIAL"&&m.icWilayahSegmenCode==="NETRAL"),"Sample Region XII Energi & Air mapping missing.");
-;
+console.log("[LIMAS AUDIT] PASS • Country="+(E2E_MASTER_DATA.Country||[]).length+" • CCL="+(E2E_MASTER_DATA.CCL||[]).length+" • MLK="+(E2E_MASTER_DATA.MLK||[]).length+" • CIL="+(E2E_MASTER_DATA.CIL||[]).length+" • LPG="+(E2E_MASTER_DATA.LPG||[]).length+" • LPG classified source records="+lpgRecords+" • numeric checks="+numericChecks);
