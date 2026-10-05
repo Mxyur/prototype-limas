@@ -73,6 +73,10 @@ try{
     phases:report,
     releaseGate:d.releaseGate()
   },null,2));
+  if(d.releaseGate().status!=="READY"){
+    console.error("\n[LIMAS DQ AUDIT] RELEASE GATE BLOCKED");
+    process.exitCode=1;
+  }
 } finally {
   try{fs.unlinkSync(tmp);}catch{}
 }
