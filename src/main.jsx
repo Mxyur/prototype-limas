@@ -937,11 +937,18 @@ function recordStatus(type,row){
   if(masterLevelDataIssue(type,row))return "Data Issue";
   return maxUtil>=1?"Breach":maxUtil>=0.8?"Warning":"Normal";
 }
+const CIL_PROJECTION_POLICY={
+  BMRI:1.10,
+  DEFAULT_SUBSIDIARY:1.075,
+  description:"Configured projection factors for 2026 CIL reporting; maintained as LIMAS monitoring parameters, not Product Database source fields."
+};
+function cilProjectionFactor(entity){
+  const code=String(entity||"").trim().toUpperCase();
+  return Number(CIL_PROJECTION_POLICY[code]??CIL_PROJECTION_POLICY.DEFAULT_SUBSIDIARY);
+}
 function cilProjection(key){
   return productApplicationsFor("CIL",key).reduce((a,x)=>{
-    const entity=x.entity||"";
-    const factor=entity==="BMRI"?1.10:1.075;
-    return a+(Number(x.normalizedAmount??x.amount)||0)*factor;
+    return a+(Number(x.normalizedAmount??x.amount)||0)*cilProjectionFactor(x.entity);
   },0);
 }
 const MLK_METRIC_AS_OF={
@@ -4282,6 +4289,19 @@ function dataQualityIssueRows(){
   }));
   reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>out.push({
     layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId,object:x.object||x.productId||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
+  }));
+  const businessAudit=auditBusinessEnrichmentCoverage({
+    productDatabase,
+    integrationMappings:productIntegrationMappings,
+    countryMonitoringEligible,
+    integrationDomainAllowed,
+    lpgClassifier:lpgProductClassification,
+    explicitCclSource:isExplicitCclSource,
+    mlkMasterRows:limasDemoData.MLK||[]
+  });
+  (businessAudit.issues||[]).forEach(x=>out.push({
+    layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId||"—",object:x.productId||"—",
+    issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId||null,recordId:x.recordId||null
   }));
   monitoringScopeIntegrityIssues().forEach(x=>out.push({
     layer:x.layer,domain:x.domain,key:x.key||x.recordId||"—",object:x.object||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
