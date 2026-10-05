@@ -871,10 +871,11 @@ const sourceSpec=(r,recordId)=>{
   delete meta.bookingOfficeType;
   delete meta.bookingOfficeStatus;
   delete meta.countryExposure;
-  return {
-    data:JSON.parse(JSON.stringify(r.data||{})),
-    meta
-  };
+  const productId=String(r.productId||"").trim();
+  const forbidden=SOURCE_ONLY_DERIVED_FIELDS[productId]||new Set();
+  const rawData=r.data||{};
+  const data=Object.fromEntries(Object.entries(rawData).filter(([field])=>!forbidden.has(field)));
+  return {data,meta};
 };
 
 
