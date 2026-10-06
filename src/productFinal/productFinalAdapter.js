@@ -8,6 +8,8 @@ export function createProductFinalAdapter(source={}) {
     getHomeSnapshot: () => source.homeSnapshot || null,
     getMonitoringSnapshot: (type) => source.monitoringSnapshots?.[type] || null,
     getLimitsSnapshot: () => source.limitsSnapshot || [],
+    getLimitStructureSnapshot: () => source.limitStructureSnapshot || [],
+    getMasterLimitDetailsSnapshot: () => source.masterLimitDetailsSnapshot || [],
     getProductsSnapshot: () => source.productsSnapshot || {catalog:[],fields:{},samples:{},schemaFields:{},mappings:{}},
     getReportsGovernanceSnapshot: () => source.reportsGovernanceSnapshot || {reports:{},traceability:[],governance:{releaseGate:{},phases:[]},lpgLineage:[]},
     getGovernanceDetail: () => { const x=source.reportsGovernanceSnapshot || {}; return {dq:x.dq||{summary:{},rows:[]},mapping:x.mapping||[],dictionary:x.dictionary||{catalog:[],fields:{},schemaFields:{}},historicalDqClosure:x.historicalDqClosure||[]}; },
