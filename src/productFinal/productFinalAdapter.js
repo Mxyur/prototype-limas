@@ -10,6 +10,7 @@ export function createProductFinalAdapter(source={}) {
     getLimitsSnapshot: () => source.limitsSnapshot || [],
     getProductsSnapshot: () => source.productsSnapshot || {catalog:[],fields:{},samples:{},schemaFields:{},mappings:{}},
     getReportsGovernanceSnapshot: () => source.reportsGovernanceSnapshot || {reports:{},traceability:[],governance:{releaseGate:{},phases:[]},lpgLineage:[]},
+    getGovernanceDetail: () => { const x=source.reportsGovernanceSnapshot || {}; return {dq:x.dq||{summary:{},rows:[]},mapping:x.mapping||[],dictionary:x.dictionary||{catalog:[],fields:{},schemaFields:{}},historicalDqClosure:x.historicalDqClosure||[]}; },
     getUniverses: () => (source.productMasterCatalog || []).map((item) => ({
       id: item.id,
       label: item.label,
