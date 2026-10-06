@@ -38,7 +38,7 @@ function MonitoringView({adapter}){
   });
   const sorted=[...filtered].sort((a,b)=>{
     const av=a?.[sortKey],bv=b?.[sortKey];
-    if(sortKey==="utilization"||sortKey==="limit"||sortKey==="exposure") return (Number(av)||0-(Number(bv)||0))* (sortDir==="asc"?1:-1);
+    if(sortKey==="utilization"||sortKey==="limit"||sortKey==="exposure") return ((Number(av)||0)-(Number(bv)||0))* (sortDir==="asc"?1:-1);
     return String(av??"").localeCompare(String(bv??""),"id",{numeric:true,sensitivity:"base"})*(sortDir==="asc"?1:-1);
   });
   const pageCount=Math.max(1,Math.ceil(sorted.length/pageSize));
