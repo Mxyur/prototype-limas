@@ -11,7 +11,7 @@ const source=fs.readFileSync(sourcePath,"utf8");
 // Stub the JSX module before transforming main.jsx so the audit stays focused
 // on data-quality/governance behavior.
 const auditSource=source.replace(
-  /import\\s+ProductFinalApp\\s+from\\s+["']\.\\/productFinal\\/ProductFinalApp["'];?\\s*/m,
+  /import\s+ProductFinalApp\s+from\s+["']\.\/productFinal\/ProductFinalApp["'];?\s*/m,
   "const ProductFinalApp=()=>null;\\n"
 );
 
