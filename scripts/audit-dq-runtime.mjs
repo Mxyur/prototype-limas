@@ -12,7 +12,7 @@ const source=fs.readFileSync(sourcePath,"utf8");
 // on data-quality/governance behavior.
 const auditSource=source.replace(
   /import\s+ProductFinalApp\s+from\s+["']\.\/productFinal\/ProductFinalApp["'];?\s*/m,
-  "const ProductFinalApp=()=>null;\\n"
+  "const ProductFinalApp=()=>null;\n"
 );
 
 globalThis.window={
