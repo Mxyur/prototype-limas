@@ -5753,9 +5753,28 @@ function productFinalReportsGovernanceSnapshot(){
     utilization:recordUtil("LPG",row),
     status:recordStatus("LPG",row)
   }));
+  const dqSummary=dataQualitySummary();
+  const historicalDqClosure=[
+    "Credit Line raw-source schema / CCL source-field gap",
+    "LPG integration identity mismatch / Master Limit bucket keys",
+    "NCL Country HK deterministic Booking Office enrichment",
+    "NCL Country GB deterministic Booking Office enrichment",
+    "CCL ANZBAU3M canonical read model identity/scope",
+    "CCL MUFGJPJT canonical read model identity/scope",
+    "Historical CCL reconciliation deltas",
+    "CCL stale browser persistence",
+    "Country monitoring Indonesia exclusion",
+    "LPG unresolved classification / zero-limit risk",
+    "Product-layer contamination / source-only boundary",
+    "Report field-level lineage and LPG E2E lineage"
+  ];
   return {
     reports:reportTypes,
     traceability,
+    dq:{summary:dqSummary,rows:dqSummary.registerRows},
+    mapping:Object.values(productIntegrationMappings||{}).flat(),
+    dictionary:{catalog:productMasterCatalog,fields:productTabFields,schemaFields:productSchemaFields},
+    historicalDqClosure,
     governance:{
       releaseGate:{status:release.status,blockingLayers:release.blockingLayers.length,numericFailures:release.numericFailures.length,activeDq:release.activeDq,detail:release.detail},
       phases:Object.values(governance.phases||{}).map(phase=>({phase:phase.phase,title:phase.title,status:phase.status,issues:phase.issues.length}))
