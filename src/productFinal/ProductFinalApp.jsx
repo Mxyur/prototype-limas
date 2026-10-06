@@ -45,6 +45,7 @@ function MonitoringView({adapter}){
         return <tr key={row.key} onClick={()=>setSelected(row)}>
           <td>{universe==="Country"?row.countryCode||row.key:universe==="CCL"?row.key:universe==="MLK"?row.key:universe==="CIL"?row.insurance||row.key:row.sector}</td>
           <td>{universe==="Country"?row.name:universe==="CCL"?row.name:universe==="MLK"?row.name:universe==="CIL"?row.name:row.segment}</td>
+          {universe==="MLK"?<td>{row.group}</td>:null}
           {universe==="LPG"?<td>{row.region}</td>:null}
           <td>{Number(row.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
           {universe==="CCL"?<td>{Number(row.contractual||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>:null}
