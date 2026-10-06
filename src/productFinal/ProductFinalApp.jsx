@@ -108,18 +108,56 @@ function ReportsView({adapter}){
   </div>;
 }
 
-function GovernanceView({adapter}){
-  const snapshot=adapter.getReportsGovernanceSnapshot();
-  const gate=snapshot.governance?.releaseGate||{};
+function ProductFinalGovernance({adapter}){
+  const reportsSnapshot=adapter.getReportsGovernanceSnapshot();
+  const detail=adapter.getGovernanceDetail();
+  const [tab,setTab]=useState("overview");
+  const gate=reportsSnapshot.governance?.releaseGate||{};
+  const dqRows=detail.dq?.rows||[];
+  const mapping=detail.mapping||[];
+  const dictionary=detail.dictionary||{};
+  const historical=detail.historicalDqClosure||[];
+  const trace=reportsSnapshot.traceability||[];
+  const csv=(name,headers,rows)=>{
+    const escape=v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+    const body=[headers.join(","),...rows.map(row=>headers.map(h=>escape(row[h])).join(","))].join("\n");
+    const blob=new Blob([body],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+  };
+  const tabs=["overview","dq","mapping","dictionary","lineage"];
   return <div>
-    <div className="pf-grid">
-      <section className="pf-card"><h2>Release Gate</h2><p>Governance status dibaca dari existing runtime.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Status</div><div className="pf-value">{gate.status||"—"}</div></div><div className="pf-status"><div className="pf-label">Active DQ</div><div className="pf-value">{gate.activeDq??"—"}</div></div><div className="pf-status"><div className="pf-label">Numeric Failures</div><div className="pf-value">{gate.numericFailures??"—"}</div></div></div></section>
-      <section className="pf-card"><h2>Phase Health</h2><p>Phase 1–5 mengikuti governance audit yang sama.</p><div className="pf-list">{(snapshot.governance?.phases||[]).map(p=><div className="pf-universe" key={p.phase}><strong>Phase {p.phase} · {p.title}</strong><span>{p.status} · {p.issues} issues</span></div>)}</div></section>
-      <section className="pf-card"><h2>Lineage</h2><p>Field-level report traceability tetap tersedia tanpa memenuhi operational screen.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Traceable</div><div className="pf-value">{(snapshot.traceability||[]).filter(x=>x.status==="TRACEABLE").length}</div></div><div className="pf-status"><div className="pf-label">Total Fields</div><div className="pf-value">{(snapshot.traceability||[]).length}</div></div></div></section>
-    </div>
-    <section className="pf-card" style={{marginTop:14}}><h2>Report Field Lineage</h2><p>Report Field · Source Layer · Source / Reference · Transformation · Status.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Report</th><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation</th><th>Status</th></tr></thead><tbody>{(snapshot.traceability||[]).slice(0,120).map((row,index)=><tr key={row.reportType+"|"+row.field+"|"+index}><td>{row.reportType}</td><td>{row.label||row.field}</td><td>{row.sourceLayer}</td><td>{row.sourceReference}</td><td>{row.transformation}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replaceAll("_","-")}>{row.status}</span></td></tr>)}</tbody></table></div></section>
-    <section className="pf-card" style={{marginTop:14}}><h2>LPG E2E Classification Lineage</h2><p>Urutan chain dipertahankan dari source record sampai utilization/status.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Source Record</th><th>CIF</th><th>Industry</th><th>Grouping</th><th>Segment</th><th>Region</th><th>IC Nasional</th><th>IC Segwil</th><th>Master Limit</th><th>Outstanding</th><th>Utilization</th><th>Status</th></tr></thead><tbody>{(snapshot.lpgLineage||[]).map(row=><tr key={row.sourceRecord}><td>{row.sourceRecord}</td><td>{row.cif}</td><td>{row.industry}</td><td>{row.grouping}</td><td>{row.segment}</td><td>{row.region}</td><td>{row.icNasional}</td><td>{row.icSegwil}</td><td>{Number(row.masterLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(row.canonicalOutstanding||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{(Number(row.utilization||0)*100).toFixed(2)}%</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td></tr>)}</tbody></table></div></section>
-    <div className="pf-note">{gate.detail||"Governance status tersedia dari existing runtime."}</div>
+    <div className="pf-product-selector">{tabs.map(x=><button key={x} type="button" className={tab===x?"active":""} onClick={()=>setTab(x)}>{x==="overview"?"Overview":x==="dq"?"Data Quality":x==="mapping"?"Business Mapping":x==="dictionary"?"Data Dictionary":"Lineage"}</button>)}</div>
+
+    {tab==="overview"&&<>
+      <div className="pf-grid">
+        <section className="pf-card"><h2>Release Gate</h2><p>Governance status dibaca dari existing runtime.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Status</div><div className="pf-value">{gate.status||"—"}</div></div><div className="pf-status"><div className="pf-label">Active DQ</div><div className="pf-value">{gate.activeDq??"—"}</div></div><div className="pf-status"><div className="pf-label">Numeric Failures</div><div className="pf-value">{gate.numericFailures??"—"}</div></div></div></section>
+        <section className="pf-card"><h2>Phase Health</h2><p>Phase 1–5 mengikuti governance audit yang sama.</p><div className="pf-list">{(reportsSnapshot.governance?.phases||[]).map(p=><div className="pf-universe" key={p.phase}><strong>Phase {p.phase} · {p.title}</strong><span>{p.status} · {p.issues} issues</span></div>)}</div></section>
+        <section className="pf-card"><h2>Trust</h2><p>Governance tidak memenuhi operational screen, tetapi tetap dapat diverifikasi.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Traceable Fields</div><div className="pf-value">{trace.filter(x=>x.status==="TRACEABLE").length}/{trace.length}</div></div><div className="pf-status"><div className="pf-label">Historical DQ</div><div className="pf-value">{historical.length} areas</div></div></div></section>
+      </div>
+      <section className="pf-card" style={{marginTop:14}}><h2>Historical DQ Closure</h2><p>Register reconstructed closure evidence; bukan nomor original historical register.</p><div className="pf-list">{historical.map((item,i)=><div className="pf-universe" key={i}><strong>H-DQ-{String(i+1).padStart(2,"0")}</strong><span>{item} · CLOSED</span></div>)}</div></section>
+      <div className="pf-note">{gate.detail||"Governance status tersedia dari existing runtime."}</div>
+    </>}
+
+    {tab==="dq"&&<section className="pf-card"><div className="pf-card-head-inline"><div><h2>Data Quality Register</h2><p>Read-only governance view dari validator existing. Action/remediation tetap dilakukan pada Version 1.</p></div><button type="button" className="pf-button-secondary" onClick={()=>csv("LIMAS_Product_Final_DQ.csv",["Layer","Domain","Key","Object","Issue Type","Detail","Action Status"],dqRows.map(x=>({Layer:x.layer,Domain:x.domain,Key:x.key,Object:x.object,"Issue Type":x.issueType,Detail:x.detail,"Action Status":x.action?.status}))) }>Export CSV</button></div>
+      <div className="pf-status-row"><div className="pf-status"><div className="pf-label">Current Issues</div><div className="pf-value">{detail.dq?.summary?.rows?.length??dqRows.length}</div></div><div className="pf-status"><div className="pf-label">Open / In Progress</div><div className="pf-value">{detail.dq?.summary?.actionPending??"—"}</div></div></div>
+      <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table"><thead><tr><th>Layer</th><th>Issue Type</th><th>Domain</th><th>Key</th><th>Detail</th><th>Action</th></tr></thead><tbody>{dqRows.length?dqRows.slice(0,150).map((row,i)=><tr key={row.id+"|"+i}><td>{row.layer}</td><td>{row.issueType}</td><td>{row.domain}</td><td>{row.key}</td><td>{row.detail}</td><td>{row.action?.status||"—"}</td></tr>):<tr><td colSpan="6">No Data Quality issue in current validator.</td></tr>}</tbody></table></div>
+    </section>}
+
+    {tab==="mapping"&&<section className="pf-card"><div className="pf-card-head-inline"><div><h2>Business Mapping</h2><p>Source record → target master mapping; read-only in Product Final.</p></div><button type="button" className="pf-button-secondary" onClick={()=>csv("LIMAS_Product_Final_Mapping.csv",["Domain","Product","Record","Source Field","Source Value","Target Key","Target Master","Scope","Status"],mapping.map(x=>({Domain:x.limitType,Product:x.productId,Record:x.recordId,"Source Field":x.sourceField,"Source Value":x.sourceValue,"Target Key":x.key,"Target Master":x.masterObject,Scope:x.scope,Status:x.masterMatch?"Mapped":"Issue"}))) }>Export CSV</button></div>
+      <div className="pf-status-row"><div className="pf-status"><div className="pf-label">Mapping Edges</div><div className="pf-value">{mapping.length}</div></div><div className="pf-status"><div className="pf-label">Mapped</div><div className="pf-value">{mapping.filter(x=>x.masterMatch).length}</div></div></div>
+      <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table"><thead><tr><th>Domain</th><th>Product</th><th>Record</th><th>Source Field</th><th>Source Value</th><th>Target</th><th>Scope</th><th>Status</th></tr></thead><tbody>{mapping.slice(0,180).map((row,i)=><tr key={(row.recordId||"row")+"|"+row.limitType+"|"+i}><td>{row.limitType}</td><td>{row.productId}</td><td>{row.recordId}</td><td>{row.sourceField||"—"}</td><td>{row.sourceValue||"—"}</td><td>{row.masterObject||row.key||"—"}</td><td>{row.scope||"—"}</td><td>{row.masterMatch?"Mapped":"Issue"}</td></tr>)}</tbody></table></div>
+    </section>}
+
+    {tab==="dictionary"&&<section className="pf-card"><h2>Product Data Dictionary</h2><p>Presentation of existing source schema and product metadata; no field semantics are redefined here.</p>
+      <div className="pf-product-selector" style={{marginTop:12}}>{(dictionary.catalog||[]).map(item=><button key={item.id} type="button" onClick={()=>{}}>{item.label}</button>)}</div>
+      {(dictionary.catalog||[]).map(item=><div className="pf-universe" style={{marginTop:8}} key={item.id}><strong>{item.label}</strong><span>{item.definition||item.note||"—"} · Key: {item.key||"—"} · Canonical: {item.canonicalUnit||"Rp Juta"}</span><div style={{marginTop:8,fontSize:10,color:"#5b6472"}}>Source fields: {(dictionary.fields?.[item.id]||[]).length} · Registered schema fields: {(dictionary.schemaFields?.[item.id]||[]).length}</div></div>)}
+      <div className="pf-note">Layer governance: Raw Source → Business Enrichment → Reference Master → Domain Mapping → Canonical/Derived. Derived monitoring outputs tetap berada di Monitoring, bukan Product Database.</div>
+    </section>}
+
+    {tab==="lineage"&&<>
+      <section className="pf-card"><h2>Report Field Lineage</h2><p>Report Field · Source Layer · Source / Reference · Transformation · Status.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Report</th><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation</th><th>Status</th></tr></thead><tbody>{trace.slice(0,180).map((row,index)=><tr key={row.reportType+"|"+row.field+"|"+index}><td>{row.reportType}</td><td>{row.label||row.field}</td><td>{row.sourceLayer}</td><td>{row.sourceReference}</td><td>{row.transformation}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replaceAll("_","-")}>{row.status}</span></td></tr>)}</tbody></table></div></section>
+      <section className="pf-card" style={{marginTop:14}}><h2>LPG E2E Classification Lineage</h2><p>Urutan chain dipertahankan dari source record sampai utilization/status.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Source Record</th><th>CIF</th><th>Industry</th><th>Grouping</th><th>Segment</th><th>Region</th><th>IC Nasional</th><th>IC Segwil</th><th>Master Limit</th><th>Outstanding</th><th>Utilization</th><th>Status</th></tr></thead><tbody>{(reportsSnapshot.lpgLineage||[]).map(row=><tr key={row.sourceRecord}><td>{row.sourceRecord}</td><td>{row.cif}</td><td>{row.industry}</td><td>{row.grouping}</td><td>{row.segment}</td><td>{row.region}</td><td>{row.icNasional}</td><td>{row.icSegwil}</td><td>{Number(row.masterLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(row.canonicalOutstanding||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{(Number(row.utilization||0)*100).toFixed(2)}%</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td></tr>)}</tbody></table></div></section>
+    </>}
   </div>;
 }
 export default function ProductFinalApp({source}){
