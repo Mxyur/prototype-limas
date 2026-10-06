@@ -5643,6 +5643,57 @@ function productFinalHomeSnapshot(){
     }
   };
 }
+function productFinalMonitoringSnapshot(type){
+  const rows=type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+  const totalLimit=rows.reduce((sum,row)=>sum+recordLimit(type,row),0);
+  const totalExposure=rows.reduce((sum,row)=>sum+recordExposure(type,row),0);
+  const utilization=totalLimit?totalExposure/totalLimit:0;
+  const statusCounts={};
+  ["Normal","Warning","Breach","Data Issue"].forEach(status=>{
+    statusCounts[status]=rows.filter(row=>recordStatus(type,row)===status).length;
+  });
+  const format=n=>Number.isFinite(Number(n))?Number(n).toLocaleString("id-ID",{maximumFractionDigits:2}):"—";
+  const percent=n=>Number.isFinite(Number(n))?(Number(n)*100).toFixed(2)+"%":"—";
+  const products=(row)=>{
+    if(type==="CIL"){
+      return productContributionDetail("CIL",row.key).map(x=>demoProductLabel(x.product)+": "+format(x.amount)).join(" • ")||"Tidak ada exposure";
+    }
+    return Object.entries(productContributionMap(type,row.key)).map(([product,value])=>demoProductLabel(product)+": "+format(value)).join(" • ")||"Tidak ada exposure";
+  };
+  const viewRows=rows.map((row,index)=>{
+    const key=String(row.key??index);
+    const base={
+      key,
+      name:row.name||row.sector||row.key||"—",
+      group:row.group||"—",
+      entity:row.entity||"—",
+      sector:row.sector||"—",
+      segment:row.segment||"—",
+      region:row.region||"—",
+      limit:recordLimit(type,row),
+      exposure:recordExposure(type,row),
+      utilization:recordUtil(type,row),
+      status:recordStatus(type,row),
+      productContribution:products(row)
+    };
+    if(type==="Country"){
+      const allocation=countryAllocationMetrics(row);
+      return {...base,countryCode:key,capacityLimit:row.capacityLimit??base.limit,domesticCapacity:allocation.domesticCapacity,overseasCapacity:allocation.overseasCapacity};
+    }
+    if(type==="CCL") return {...base,contractual:row.contractual??null,country:row.country||"—",category:row.category||"—"};
+    if(type==="MLK") return {...base,group:row.group||"—",bmpkEntitas:row.bmpkEntitas??null};
+    if(type==="CIL") return {...base,insurance:key};
+    return base;
+  });
+  return {
+    type,
+    totalLimit,
+    totalExposure,
+    utilization,
+    statusCounts,
+    rows:viewRows
+  };
+}
 function App(){
   const [login,setLogin]=useState(false);
   const [screen,setScreen]=useState("dashboard");
@@ -5663,6 +5714,13 @@ function App(){
     productUniverseAudit,
     runtimeMeta:E2E_DUMMY_META,
     homeSnapshot:productFinalHomeSnapshot(),
+    monitoringSnapshots:{
+      Country:productFinalMonitoringSnapshot("Country"),
+      CCL:productFinalMonitoringSnapshot("CCL"),
+      MLK:productFinalMonitoringSnapshot("MLK"),
+      CIL:productFinalMonitoringSnapshot("CIL"),
+      LPG:productFinalMonitoringSnapshot("LPG"),
+    },
   };
   if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
