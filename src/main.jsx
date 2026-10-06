@@ -5745,6 +5745,13 @@ function App(){
       LPG:productFinalMonitoringSnapshot("LPG"),
     },
     limitsSnapshot:productFinalLimitsSnapshot(),
+    productsSnapshot:{
+      catalog:productMasterCatalog,
+      fields:productTabFields,
+      samples:productSample,
+      schemaFields:productSchemaFields,
+      mappings:productIntegrationMappings,
+    },
   };
   if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
