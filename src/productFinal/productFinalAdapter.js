@@ -9,6 +9,7 @@ export function createProductFinalAdapter(source={}) {
     getMonitoringSnapshot: (type) => source.monitoringSnapshots?.[type] || null,
     getLimitsSnapshot: () => source.limitsSnapshot || [],
     getProductsSnapshot: () => source.productsSnapshot || {catalog:[],fields:{},samples:{},schemaFields:{},mappings:{}},
+    getReportsGovernanceSnapshot: () => source.reportsGovernanceSnapshot || {reports:{},traceability:[],governance:{releaseGate:{},phases:[]},lpgLineage:[]},
     getUniverses: () => (source.productMasterCatalog || []).map((item) => ({
       id: item.id,
       label: item.label,
