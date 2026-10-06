@@ -2,6 +2,7 @@ import React,{useMemo,useState} from "react";
 import {createProductFinalAdapter} from "./productFinalAdapter";
 import "./productFinal.css";
 
+const MONITOR_UNIVERSES=["Country","CCL","MLK","CIL","LPG"];
 const NAV=[
   {id:"home",label:"Home"},
   {id:"monitoring",label:"Monitoring"},
@@ -11,6 +12,51 @@ const NAV=[
   {id:"governance",label:"Governance",divider:true}
 ];
 
+function MonitoringView({adapter}){
+  const [universe,setUniverse]=useState("Country");
+  const [status,setStatus]=useState("All");
+  const [query,setQuery]=useState("");
+  const [selected,setSelected]=useState(null);
+  const snapshot=adapter.getMonitoringSnapshot(universe);
+  const rows=snapshot?.rows||[];
+  const filtered=rows.filter(row=>{
+    const matchesStatus=status==="All"||row.status===status;
+    const hay=[row.key,row.name,row.group,row.entity,row.sector,row.segment,row.region].join(" ").toLowerCase();
+    return matchesStatus&&hay.includes(query.trim().toLowerCase());
+  });
+  const headers=universe==="Country"?["Code","Country","Limit","Exposure","Utilization","Status"]:
+    universe==="CCL"?["Swift","Bank","CCL","Contractual","Outstanding","Utilization","Status"]:
+    universe==="MLK"?["CIF","Debtor","Group","Limit","Exposure","Utilization","Status"]:
+    universe==="CIL"?["Insurance","Name","CIL","Exposure","Utilization","Status"]:
+    ["Sector","Segment","Region","Limit","Outstanding","Utilization","Status"];
+  return <div className="pf-monitor">
+    <div className="pf-monitor-tabs">{MONITOR_UNIVERSES.map(x=><button key={x} type="button" className={universe===x?"active":""} onClick={()=>setUniverse(x)}>{x}</button>)}</div>
+    <div className="pf-monitor-toolbar">
+      <select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Status filter"><option value="All">All Status</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select>
+      <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search entity, key, sector..." aria-label="Search monitoring"/>
+      <span className="pf-monitor-count">{filtered.length} / {rows.length}</span>
+    </div>
+    {!snapshot?<div className="pf-placeholder"><strong>Monitoring snapshot unavailable</strong><span>Canonical monitoring output belum tersedia untuk universe ini.</span></div>:
+    <section className="pf-card">
+      <div className="pf-monitor-summary"><div><span>Limit</span><strong>{Number(snapshot.totalLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Exposure</span><strong>{Number(snapshot.totalExposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Utilization</span><strong>{(Number(snapshot.utilization||0)*100).toFixed(1)}%</strong></div><div><span>Breach</span><strong>{snapshot.statusCounts?.Breach??0}</strong></div></div>
+      <div className="pf-table-wrap"><table className="pf-table"><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
+      {filtered.map(row=>{
+        const util=Number(row.utilization||0)*100;
+        return <tr key={row.key} onClick={()=>setSelected(row)}>
+          <td>{universe==="Country"?row.countryCode||row.key:universe==="CCL"?row.key:universe==="MLK"?row.key:universe==="CIL"?row.insurance||row.key:row.sector}</td>
+          <td>{universe==="Country"?row.name:universe==="CCL"?row.name:universe==="MLK"?row.name:universe==="CIL"?row.name:row.segment}</td>
+          {universe==="LPG"?<td>{row.region}</td>:null}
+          <td>{Number(row.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+          {universe==="CCL"?<td>{Number(row.contractual||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>:null}
+          <td>{Number(row.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+          <td>{util.toFixed(1)}%</td>
+          <td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td>
+        </tr>
+      })}</tbody></table></div>
+      {selected?<aside className="pf-drawer" aria-label="Monitoring detail"><button type="button" className="pf-drawer-close" onClick={()=>setSelected(null)}>Close</button><div className="pf-label">Detail</div><h3>{selected.name||selected.key}</h3><p>{universe} · {selected.key}</p><div className="pf-monitor-detail-grid"><div><span>Limit</span><strong>{Number(selected.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Exposure</span><strong>{Number(selected.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Utilization</span><strong>{(Number(selected.utilization||0)*100).toFixed(2)}%</strong></div><div><span>Status</span><strong>{selected.status}</strong></div></div><div className="pf-note">Business values are read-only from the existing canonical monitoring snapshot. No Product Final recalculation is performed.</div></aside>:null}
+    </section>}
+  </div>;
+}
 export default function ProductFinalApp({source}){
   const [active,setActive]=useState("home");
   const adapter=useMemo(()=>createProductFinalAdapter(source),[source]);
@@ -40,7 +86,7 @@ export default function ProductFinalApp({source}){
           <div className="pf-crumb">LIMAS › {current.label}</div>
           <h1 className="pf-title">{current.label}</h1>
           <p className="pf-subtitle">Foundation shell aktif. Business truth tetap berasal dari existing LIMAS; Product Final hanya mengubah experience layer.</p>
-          {active==="home"?<>
+          {active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
             <div className="pf-grid">
               <section className="pf-card"><h2>Bankwide Overview</h2><p>Summary menggunakan snapshot yang sama dengan existing canonical monitoring presentation.</p><div className="pf-status-row">
                 <div className="pf-status"><div className="pf-label">Master Objects</div><div className="pf-value">{home?.masterObjects??"—"}</div></div>
