@@ -5627,20 +5627,34 @@ function productFinalHomeSnapshot(){
   });
   const canonicalRows=canonicalExceptions();
   const release=releaseGate();
-  return {
-    masterObjects:domainMetrics.reduce((sum,row)=>sum+row.records,0),
-    productSourceRecords:Object.values(productDatabase).reduce((sum,rows)=>sum+(rows||[]).length,0),
-    breach:domainMetrics.reduce((sum,row)=>sum+row.breaches,0),
-    warning:domainMetrics.reduce((sum,row)=>sum+row.warnings,0),
-    issue:domainMetrics.reduce((sum,row)=>sum+row.issues,0),
-    domains:domainMetrics,
-    attention:canonicalRows.filter(row=>row.status==="Warning"||row.status==="Breach").slice(0,6).map(row=>({
+  const totalLimit=domainMetrics.reduce((sum,row)=>sum+row.limit,0);
+  const totalExposure=domainMetrics.reduce((sum,row)=>sum+row.exposure,0);
+  const riskRows=canonicalRows
+    .filter(row=>row.status==="Warning"||row.status==="Breach")
+    .sort((a,b)=>(Number(b.util)||0)-(Number(a.util)||0))
+    .slice(0,8)
+    .map(row=>({
       domain:row.domain,
       object:row.object,
       status:row.status,
       utilization:row.util??null,
       key:row.key
-    })),
+    }));
+  return {
+    masterObjects:domainMetrics.reduce((sum,row)=>sum+row.records,0),
+    productSourceRecords:Object.values(productDatabase).reduce((sum,rows)=>sum+(rows||[]).length,0),
+    totalLimit,
+    totalExposure,
+    available:totalLimit-totalExposure,
+    utilization:totalLimit?totalExposure/totalLimit:0,
+    breach:domainMetrics.reduce((sum,row)=>sum+row.breaches,0),
+    warning:domainMetrics.reduce((sum,row)=>sum+row.warnings,0),
+    issue:domainMetrics.reduce((sum,row)=>sum+row.issues,0),
+    nearBreach:domainMetrics.reduce((sum,row)=>sum+row.warnings,0),
+    domains:domainMetrics,
+    attention:riskRows.slice(0,6),
+    topRisks:riskRows,
+    limitActions:{status:"Not Connected",pending:null,awaitingEffective:null},
     releaseGate:{
       status:release.status,
       blockingLayers:release.blockingLayers.length,

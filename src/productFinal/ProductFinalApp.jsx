@@ -304,33 +304,66 @@ export default function ProductFinalApp({source}){
           <h1 className="pf-title">{current.label}</h1>
           <p className="pf-subtitle">Foundation shell aktif. Business truth tetap berasal dari existing LIMAS; Product Final hanya mengubah experience layer.</p>
           {active==="reports"?<ReportsView adapter={adapter}/>:active==="governance"?<ProductFinalGovernance adapter={adapter}/>:active==="products"?<ProductsView adapter={adapter}/>:active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
-            <div className="pf-grid">
-              <section className="pf-card"><h2>Bankwide Overview</h2><p>Summary menggunakan snapshot yang sama dengan existing canonical monitoring presentation.</p><div className="pf-status-row">
-                <div className="pf-status"><div className="pf-label">Master Objects</div><div className="pf-value">{home?.masterObjects??"—"}</div></div>
-                <div className="pf-status"><div className="pf-label">Product Source Records</div><div className="pf-value">{home?.productSourceRecords??"—"}</div></div>
-              </div></section>
-              <section className="pf-card"><h2>Attention Required</h2><p>Exception berasal dari canonical monitoring output; Product Final tidak menentukan threshold sendiri.</p><div className="pf-status-row">
-                <div className="pf-status"><div className="pf-label">Breach</div><div className="pf-value">{home?.breach??"—"}</div></div>
-                <div className="pf-status"><div className="pf-label">Warning</div><div className="pf-value">{home?.warning??"—"}</div></div>
-              </div></section>
-              <section className="pf-card"><h2>Trust</h2><p>Governance tetap tersedia tanpa memenuhi layar utama.</p><div className="pf-status-row">
-                <div className="pf-status"><div className="pf-label">Release Gate</div><div className="pf-value">{home?.releaseGate?.status??"—"}</div></div>
-                <div className="pf-status"><div className="pf-label">Active DQ</div><div className="pf-value">{home?.releaseGate?.activeDq??"—"}</div></div>
-              </div></section>
+            <section className="pf-dashboard-hero">
+              <div>
+                <div className="pf-label">MANAGEMENT DASHBOARD</div>
+                <h2>Bankwide Limit Position</h2>
+                <p>Executive view of current limit position, utilization and risk attention. All business values remain sourced from the canonical monitoring snapshot.</p>
+              </div>
+              <div className="pf-dashboard-hero-meta">
+                <span className="pf-readonly-badge">CANONICAL</span>
+                <span className="pf-readonly-badge">READ ONLY</span>
+              </div>
+            </section>
+            <div className="pf-dashboard-kpis">
+              <section className="pf-dashboard-kpi"><span>Total Limit</span><strong>{Number(home?.totalLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><small>Across monitored universes</small></section>
+              <section className="pf-dashboard-kpi"><span>Total Exposure</span><strong>{Number(home?.totalExposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><small>Current canonical exposure</small></section>
+              <section className="pf-dashboard-kpi"><span>Available</span><strong>{Number(home?.available||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong><small>Limit less current exposure</small></section>
+              <section className="pf-dashboard-kpi"><span>Utilization</span><strong>{(Number(home?.utilization||0)*100).toFixed(1)}%</strong><small>Bankwide weighted position</small></section>
             </div>
-            <section className="pf-card" style={{marginTop:14}}><h2>Utilization by Domain</h2><p>Nilai utilization berasal dari presentation snapshot existing dan tidak dihitung ulang oleh Product Final.</p>
-              <div className="pf-list">{(home?.domains||[]).map(domain=><div className="pf-universe" key={domain.type}>
-                <strong>{domain.type}</strong>
-                <span>{(Number(domain.utilization||0)*100).toFixed(1)}% · {domain.breaches} breach · {domain.warnings} warning</span>
-              </div>)}</div>
+            <div className="pf-dashboard-grid">
+              <section className="pf-card pf-dashboard-risk-card">
+                <div className="pf-card-head-inline"><div><h2>Risk & Attention Center</h2><p>Prioritized exceptions from canonical monitoring; no new threshold is calculated here.</p></div><span className="pf-monitor-count">{home?.topRisks?.length||0} prioritized</span></div>
+                <div className="pf-risk-summary">
+                  <div><span>Breach</span><strong className="pf-risk-danger">{home?.breach??"—"}</strong></div>
+                  <div><span>Warning / Near Breach</span><strong className="pf-risk-warning">{home?.nearBreach??"—"}</strong></div>
+                  <div><span>Data Issue</span><strong>{home?.issue??"—"}</strong></div>
+                </div>
+                <div className="pf-risk-list">
+                  {(home?.topRisks||[]).length===0?<div className="pf-note">No warning or breach in the current canonical snapshot.</div>:(home.topRisks||[]).map((row,index)=><button type="button" className="pf-risk-row" key={row.domain+"|"+row.key+"|"+index} onClick={()=>{setActive("monitoring");}}>
+                    <span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span>
+                    <span className="pf-risk-object"><strong>{row.object||row.key||"—"}</strong><small>{row.domain} · {row.key||"—"}</small></span>
+                    <strong className="pf-risk-util">{Number.isFinite(Number(row.utilization))?(Number(row.utilization)*100).toFixed(1)+"%":"—"}</strong>
+                  </button>)}
+                </div>
+              </section>
+              <section className="pf-card">
+                <div className="pf-card-head-inline"><div><h2>Limit Actions</h2><p>Operational workflow is not yet connected to the canonical runtime.</p></div><span className="pf-readonly-badge">NOT CONNECTED</span></div>
+                <div className="pf-action-placeholder">
+                  <div><span>Pending Actions</span><strong>—</strong><small>Workflow source not connected</small></div>
+                  <div><span>Awaiting Effective</span><strong>—</strong><small>Workflow source not connected</small></div>
+                </div>
+                <div className="pf-note">No synthetic action count is shown. Once the approved workflow source exists, these cards can become actionable without changing Master Limit ownership.</div>
+              </section>
+            </div>
+            <section className="pf-card pf-dashboard-domain">
+              <div className="pf-card-head-inline"><div><h2>Universe Health</h2><p>Compare limit position and exceptions across Country, CCL, MLK, CIL and LPG.</p></div><span className="pf-monitor-count">{home?.masterObjects??0} monitored objects</span></div>
+              <div className="pf-domain-grid">{(home?.domains||[]).map(domain=><button type="button" className="pf-domain-card" key={domain.type} onClick={()=>{setActive("monitoring");}}>
+                <div className="pf-domain-head"><strong>{domain.type}</strong><span className={"pf-status-badge "+(domain.breaches?"breach":domain.warnings?"warning":"")}>{domain.breaches?"Breach":domain.warnings?"Warning":"Normal"}</span></div>
+                <div className="pf-domain-bar"><span style={{width:Math.min(100,Math.max(0,Number(domain.utilization||0)*100))+"%"}}/></div>
+                <div className="pf-domain-meta"><span>{(Number(domain.utilization||0)*100).toFixed(1)}% utilized</span><span>{domain.records} objects</span></div>
+                <div className="pf-domain-exceptions"><span>{domain.breaches} breach</span><span>{domain.warnings} warning</span><span>{domain.issues} DQ</span></div>
+              </button>)}</div>
             </section>
-            <section className="pf-card" style={{marginTop:14}}><h2>Attention Required</h2>
-              <div className="pf-status-row">{(home?.attention||[]).length===0?<div className="pf-note">No warning/breach pada current canonical snapshot.</div>:(home.attention||[]).map((row,index)=><div className="pf-status" key={row.domain+"|"+row.key+"|"+index}>
-                <div className="pf-label">{row.domain} · {row.status}</div>
-                <div className="pf-value">{row.object||row.key||"—"}</div>
-              </div>)}</div>
+            <section className="pf-card pf-dashboard-trust">
+              <div className="pf-card-head-inline"><div><h2>Trust & Data Health</h2><p>Release and data-quality signals remain visible without competing with operational risk.</p></div><span className="pf-readonly-badge">{home?.releaseGate?.status||"—"}</span></div>
+              <div className="pf-trust-grid">
+                <div><span>Release Gate</span><strong>{home?.releaseGate?.status||"—"}</strong></div>
+                <div><span>Active DQ</span><strong>{home?.releaseGate?.activeDq??"—"}</strong></div>
+                <div><span>Numeric Failures</span><strong>{home?.releaseGate?.numericFailures??"—"}</strong></div>
+                <div><span>Blocking Layers</span><strong>{home?.releaseGate?.blockingLayers??"—"}</strong></div>
+              </div>
             </section>
-            <div className="pf-note">{home?.releaseGate?.detail||"Foundation snapshot tersedia dari existing runtime."}</div>
           </>:<div className="pf-placeholder"><strong>{current.label} — belum diimplementasikan</strong><span>Scope berikutnya dibangun hanya setelah Foundation gate dinyatakan clear.</span></div>}
         </div>
       </main>
