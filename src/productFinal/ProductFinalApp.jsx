@@ -4,10 +4,10 @@ import "./productFinal.css";
 
 const MONITOR_UNIVERSES=["Country","CCL","MLK","CIL","LPG"];
 const NAV=[
-  {id:"home",label:"Home"},
+  {id:"home",label:"Dashboard"},
   {id:"monitoring",label:"Monitoring"},
-  {id:"limits",label:"Limits"},
-  {id:"products",label:"Products"},
+  {id:"limits",label:"Limit Management"},
+  {id:"products",label:"Product Universe"},
   {id:"reports",label:"Reports"},
   {id:"governance",label:"Governance",divider:true}
 ];
