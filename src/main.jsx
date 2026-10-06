@@ -4937,16 +4937,34 @@ function ProductDictionaryBusinessMapping({tab}){
   const enrichment=productBusinessEnrichment[tab]||[];
   const contract=businessContractFor(tab)||{};
   const contractItems=Object.entries(contract).map(([domain,c])=>[domain,(c.source||[]).join(" + "), (c.enrichment||[]).join(" + ")||"—"]);
+  const sourceFields=productSchemaFields[tab]||[];
+  const domainsUsing=productIntegratedDomains(tab);
+  const canonicalUnit=productMasterCatalog.find(x=>x.id===tab)?.canonicalUnit||"Rp Juta";
   const items=[
     ["Country Exposure",m.countryExposureField?m.countryExposureField+" → "+m.countryExposureLabel:(m.countryExposureLabel||"—")],
     ["Booking Office",m.bookingOfficeField?m.bookingOfficeField+" → "+m.bookingOfficeLabel:(m.bookingOfficeLabel||"—")],
     ["Booking Office Type",tab==="CREDIT LINE"?"DN/LN source — not required":(enrichment.includes("Booking Office Type")?"Business Enrichment / Reference":"Derived / Reference")],
     ["Exposure",m.exposureField?m.exposureField+" → "+m.exposureLabel:(m.exposureLabel||"—")]
   ];
+  const governanceRows=[
+    ["Raw Source Field","SOURCE_ONLY",sourceFields.length+" source-native fields", "Product Database; terminology remains unchanged."],
+    ["Business Enrichment","BUSINESS_ENRICHMENT",enrichment.length?enrichment.join(" + "):"Not required", "Identity/classification/reference enrichment is outside raw Product DB."],
+    ["Reference Master","REFERENCE_MASTER",contractItems.length?contractItems.map(x=>x[0]).join(" + "):"Not required", "Approved master/reference identity used to resolve the business target."],
+    ["Domain Mapping","DOMAIN_MAPPING",domainsUsing.join(" + ")||"Future / Scoped", "Source record → target master key → normalized utilization / scope."],
+    ["Canonical / Derived","CANONICAL_DERIVED","Exposure → "+canonicalUnit, "Derived values are produced in canonical read model / monitoring, not persisted as raw source."]
+  ];
   return <div className="product-dictionary-summary">
     <div className="section-title">Business Mapping Standard</div>
     <div className="product-db-kpis">
       {items.map(([label,value])=><div className="mini" key={label}><b>{label}</b><span className="muted-small">{value}</span></div>)}
+    </div>
+    <div className="table-wrap" style={{marginTop:12}}>
+      <table className="table">
+        <thead><tr><th>Governance Layer</th><th>System Layer</th><th>What Belongs Here</th><th>Rule</th></tr></thead>
+        <tbody>{governanceRows.map(([layer,system,belongs,rule])=><tr key={layer}>
+          <td><b>{layer}</b></td><td><span className="chip blue">{system}</span></td><td className="muted-small">{belongs}</td><td className="muted-small">{rule}</td>
+        </tr>)}</tbody>
+      </table>
     </div>
     {enrichment.length>0&&<div className="field-help"><b>Business Enrichment:</b> {enrichment.join(" + ")} — {productBusinessEnrichmentNote[tab]}</div>}
     {contractItems.length>0&&<div className="table-wrap" style={{marginTop:12}}><table className="table">
@@ -4955,7 +4973,6 @@ function ProductDictionaryBusinessMapping({tab}){
     </table></div>}
   </div>;
 }
-
 function CreditLineFieldTable(){
   const fields=creditLineCanonicalFields;
   const [editing,setEditing]=useState(false);
