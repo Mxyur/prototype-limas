@@ -17,7 +17,13 @@ const requiredAppMarkers=[
   "Drill down",
   "Underlying Utilization",
   "FULL COLUMN MODE",
-  "SIMULATION ONLY"
+  "SIMULATION ONLY",
+  "function BarChart",
+  "function HorizontalBarChart",
+  "function DonutChart",
+  "pf-reference-kpis",
+  "pf-reference-action",
+  "Executive Overview"
 ];
 const failures=[];
 const assert=(ok,msg)=>{if(!ok)failures.push(msg)};
