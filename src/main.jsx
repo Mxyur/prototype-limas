@@ -5694,6 +5694,29 @@ function productFinalMonitoringSnapshot(type){
     rows:viewRows
   };
 }
+function productFinalLimitsSnapshot(){
+  const domains=["Country","CCL","MLK","CIL","LPG"];
+  return domains.map(type=>{
+    const rows=type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+    const limit=rows.reduce((sum,row)=>sum+recordLimit(type,row),0);
+    const exposure=rows.reduce((sum,row)=>sum+recordExposure(type,row),0);
+    return {
+      type,
+      totalLimit:limit,
+      totalExposure:exposure,
+      utilization:limit?exposure/limit:0,
+      rows:rows.map((row,index)=>({
+        key:String(row.key??index),
+        name:row.name||row.sector||row.key||"—",
+        limit:recordLimit(type,row),
+        exposure:recordExposure(type,row),
+        status:recordStatus(type,row),
+        entity:row.entity||"—",
+        region:row.region||"—",
+      }))
+    };
+  });
+}
 function App(){
   const [login,setLogin]=useState(false);
   const [screen,setScreen]=useState("dashboard");
@@ -5721,6 +5744,7 @@ function App(){
       CIL:productFinalMonitoringSnapshot("CIL"),
       LPG:productFinalMonitoringSnapshot("LPG"),
     },
+    limitsSnapshot:productFinalLimitsSnapshot(),
   };
   if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
