@@ -65,79 +65,109 @@ export function auditBusinessEnrichmentCoverage({
   countryMonitoringEligible=()=>true,
   integrationDomainAllowed=()=>true,
   lpgClassifier=()=>({}),
-  explicitCclSource=()=>false
+  explicitCclSource=()=>false,
+  mlkMasterRows=[]
 }={}){
   const issues=[];
   const add=(x)=>issues.push({phase:3,layer:"Integration / Mapping",status:"Data Issue",...x});
-
   const mappings=Object.values(integrationMappings||{}).flat().filter(Boolean);
   const mappingByRecord=(productId,recordId,domain)=>mappings.filter(x=>
     String(x.productId||productId)===String(productId)&&
     String(x.recordId||"")===String(recordId)&&
     String(x.limitType||"")===String(domain)
   );
+  const positiveSourceExposure=(productId,d,row,domain)=>{
+    if(productId==="CASHLOAN")return Number(d.total_bade)||0;
+    if(productId==="NON CASH LOAN")return domain==="LPG"
+      ?(String(row?.sourceSystem||"").startsWith("DWH")&&String(d.CCY||"").toUpperCase()==="IDR"
+        ?Number(d.BALANCE)||0
+        :(Number(d.EQVIDR)||0)/1000000)
+      :(Number(d.EQVIDR)||0)/1000000;
+    if(productId==="CREDIT LINE")return Number(String(d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+    if(productId==="BONDS")return Number(d["Amount Eq. IDR Juta"])||0;
+    if(productId==="NOSTRO")return Number(d.Balance)||0;
+    if(productId==="Nominal Pertanggungan")return Number(d["Nominal Pertanggungan 2025 (Rp Juta)"])||0;
+    return 0;
+  };
 
   Object.entries(productDatabase||{}).forEach(([productId,rows])=>{
     (rows||[]).forEach(row=>{
       const d=row?.data||{},meta=row?.meta||{},recordId=row?.recordId;
-      if((productId==="CASHLOAN"||productId==="NON CASH LOAN"||productId==="BONDS"||productId==="NOSTRO")&&integrationDomainAllowed(row,"Country")){
+
+      // COUNTRY business enrichment: positive foreign exposure must resolve
+      // to a booking-office classification unless the row is explicitly scoped away.
+      if(["CASHLOAN","NON CASH LOAN","BONDS","NOSTRO"].includes(productId)&&integrationDomainAllowed(row,"Country")){
         const countryField=productId==="CASHLOAN"?"code":productId==="NON CASH LOAN"?"Country Code":productId==="BONDS"?"Issuer Country":"Bank Country";
         const country=String(d[countryField]??"").trim().toUpperCase();
-        const exposure=productId==="CASHLOAN"?Number(d.total_bade||0):
-          productId==="NON CASH LOAN"?Number(d.EQVIDR||0)/1000000:
-          productId==="BONDS"?Number(d["Amount Eq. IDR Juta"]||0):
-          Number(d.Balance||0);
+        const exposure=positiveSourceExposure(productId,d,row,"Country");
         if(country&&countryMonitoringEligible(country)&&positive(exposure)){
-          const mapped=mappingByRecord(productId,recordId,"Country");
-          const mapping=mapped[0];
+          const mapped=mappingByRecord(productId,recordId,"Country")[0];
           const isCcl=explicitCclSource(row);
-          if(!isCcl&&(!mapping||blank(mapping.bookingOfficeType)||mapping.bookingOfficeType==="Needs Mapping")){
+          if(!isCcl&&(!mapped||blank(mapped.bookingOfficeType)||mapped.bookingOfficeType==="Needs Mapping")){
             add({issueType:"BOOKING_OFFICE_ENRICHMENT_MISSING",productId,recordId,limitType:"Country",key:country,detail:"Positive Country exposure lacks canonical Booking Office Type enrichment."});
           }
         }
       }
 
-      const cclUpstreamRelevant=Boolean(meta.cclCounterpartyId)&&(["CASHLOAN","NON CASH LOAN"].includes(productId));
-      const cclDirectRelevant=Boolean(meta.cclLimitType)&&productId==="CREDIT LINE";
-      if(cclUpstreamRelevant){
-        if(blank(meta.cclCounterpartyId))
-          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:"—",detail:"CCL upstream source row requires stable cclCounterpartyId enrichment."});
-        if(blank(meta.creditLineLimitType))
-          add({issueType:"CCL_UPSTREAM_LIMIT_TYPE_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:meta.cclCounterpartyId||"—",detail:"CCL upstream Cash/NCL row requires DIRECT/INDIRECT creditLineLimitType enrichment; cclLimitType belongs only to the canonical Credit Line CCL mapping."});
+      // CCL: validate only when the source row is explicitly in the CCL universe.
+      // Credit Line is inherently CCL-linked; Cash/NCL CCL rows are tagged by CCL metadata/record identity.
+      const cclMapping=mappingByRecord(productId,recordId,"CCL")[0];
+      const cclTagged=explicitCclSource(row)||Boolean(cclMapping);
+      const cclRelevant=(productId==="CREDIT LINE"&&positive(positiveSourceExposure(productId,d,row,"CCL")))||cclTagged;
+      if(cclRelevant){
+        if(productId==="CREDIT LINE"&&blank(meta.cclCounterpartyId))
+          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL",key:"—",detail:"Credit Line row requires stable cclCounterpartyId enrichment."});
+        if(["CASHLOAN","NON CASH LOAN"].includes(productId)&&cclTagged&&blank(meta.cclCounterpartyId))
+          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:"—",detail:"CCL upstream row requires stable cclCounterpartyId enrichment."});
+        const limitType=productId==="CREDIT LINE"?meta.cclLimitType:meta.creditLineLimitType;
+        if(blank(limitType)||!["DIRECT","INDIRECT"].includes(String(limitType).toUpperCase()))
+          add({issueType:productId==="CREDIT LINE"?"CCL_LIMIT_TYPE_MISSING":"CCL_UPSTREAM_LIMIT_TYPE_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||cclMapping?.key||"—",detail:"CCL mapping requires a valid DIRECT/INDIRECT limit type."});
         if(blank(meta.reportingEntity))
-          add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"CCL_UPSTREAM",key:meta.cclCounterpartyId||"—",detail:"CCL upstream reporting requires explicit reportingEntity enrichment."});
-      }
-      if(cclDirectRelevant){
-        if(blank(meta.cclCounterpartyId))
-          add({issueType:"CCL_COUNTERPARTY_ID_MISSING",productId,recordId,limitType:"CCL",key:"—",detail:"CCL Credit Line row requires stable cclCounterpartyId enrichment."});
-        if(blank(meta.cclLimitType))
-          add({issueType:"CCL_LIMIT_TYPE_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||"—",detail:"CCL Credit Line row requires DIRECT/INDIRECT cclLimitType enrichment."});
-        if(blank(meta.reportingEntity))
-          add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||"—",detail:"CCL consolidated reporting requires explicit reportingEntity enrichment."});
+          add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"CCL",key:meta.cclCounterpartyId||cclMapping?.key||"—",detail:"CCL consolidated reporting requires explicit reportingEntity enrichment."});
+        if(cclMapping?.masterMatch===false)
+          add({issueType:"CCL_MASTER_MAPPING_MISSING",productId,recordId,limitType:"CCL",key:cclMapping.key||meta.cclCounterpartyId||"—",detail:"CCL source row has no resolved target master."});
       }
 
-      const mlkRelevant=
-        (productId==="CASHLOAN"&&String(recordId||"").startsWith("CL-MLK-"))||
-        (productId==="NON CASH LOAN"&&String(recordId||"").startsWith("NCL-MLK-"))||
-        (productId==="CREDIT LINE"&&(String(recordId||"").startsWith("TL-MLK-")||String(d["Swift Code"]||"").toUpperCase().startsWith("TL-")));
-      if(mlkRelevant&&blank(meta.reportingEntity))
-        add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"MLK",key:d.no_cus||d.CUSTID||String(d["Swift Code"]||"").replace(/^TL-/i,"")||"—",detail:"MLK source row must carry explicit reportingEntity; do not silently default to BMRI."});
+      // MLK identity must be CIF -> MLK master -> entity. Product metadata is not
+      // authoritative for entity when the CIF exists in MLK master.
+      const cif=String(productId==="CASHLOAN"?d.no_cus:productId==="NON CASH LOAN"?d.CUSTID:"").trim();
+      const treasuryCif=String(meta.mlkCif||"").trim()||String(d["Swift Code"]||"").match(/^TL-(.+)$/i)?.[1]||"";
+      const mlkCif=productId==="CREDIT LINE"?treasuryCif:cif;
+      const mlkMaster=(mlkMasterRows||[]).find(x=>String(x?.key||"").trim()===mlkCif);
+      const mlkMapping=mappingByRecord(productId,recordId,"MLK")[0];
+      const mlkRelevant=Boolean(mlkMaster)||Boolean(mlkMapping)||Boolean(meta.mlkCif)||(/^TL-/i.test(String(d["Swift Code"]||""))&&positive(positiveSourceExposure(productId,d,row,"MLK")));
+      if(mlkRelevant&&positive(positiveSourceExposure(productId,d,row,"MLK"))){
+        if(!mlkCif)
+          add({issueType:"MLK_CIF_MISSING",productId,recordId,limitType:"MLK",key:"—",detail:"MLK-applicable positive exposure has no deterministic CIF."});
+        if(!meta.reportingEntity&& !mlkMapping?.entity)
+          add({issueType:"REPORTING_ENTITY_MISSING",productId,recordId,limitType:"MLK",key:mlkCif||"—",detail:"MLK positive exposure requires reporting entity from MLK master/entity mapping."});
+      }
 
-      const lpg=lpgClassifier(row);
-      if(lpg?.classified&&["CASHLOAN","NON CASH LOAN"].includes(productId)&&positive(
-        productId==="CASHLOAN"?Number(d.total_bade||0):Number(d.EQVIDR||0)/1000000
-      )){
-        const rowsLpg=mappingByRecord(productId,recordId,"LPG");
-        const mapping=rowsLpg[0];
-        const e=mapping?.businessEnrichment||{};
-        if(blank(e.masterIndustryCode)||blank(e.segmentCode)||blank(e.regionCode)){
-          add({issueType:"LPG_BUSINESS_ENRICHMENT_MISSING",productId,recordId,limitType:"LPG",key:(lpg.sector||"—")+"|"+(lpg.segment||"—"),detail:"LPG positive exposure requires Sector/Segment/Region to resolve to canonical master codes."});
+      // LPG: any declared/attribute-bearing LPG row is applicable. A positive
+      // applicable row must resolve the complete debtor classification chain.
+      if(["CASHLOAN","NON CASH LOAN"].includes(productId)){
+        const lpg=lpgClassifier(row);
+        const lpgAttributeBearing=Boolean(lpg?.sector||lpg?.segment||lpg?.region)||Boolean(meta.lpgApplicability);
+        const lpgApplicable=lpg?.applicability==="APPLICABLE" || lpgAttributeBearing;
+        const exposure=positiveSourceExposure(productId,d,row,"LPG");
+        if(lpgApplicable&&positive(exposure)){
+          if(!lpg?.classified){
+            add({issueType:"LPG_CLASSIFICATION_INCOMPLETE",productId,recordId,limitType:"LPG",key:(lpg?.sector||"—")+"|"+(lpg?.segment||"—"),detail:"Positive LPG-applicable exposure must have Sector/Industry, Segment, and Region."});
+          }else{
+            const mapping=mappingByRecord(productId,recordId,"LPG")[0];
+            const e=mapping?.businessEnrichment||{};
+            ["masterIndustryCode","groupingCode","segmentCode","regionCode"].forEach(field=>{
+              if(blank(e[field]))add({issueType:"LPG_BUSINESS_ENRICHMENT_MISSING",productId,recordId,limitType:"LPG",key:mapping?.key||((lpg?.sector||"—")+"|"+(lpg?.segment||"—")),detail:"LPG mapping missing canonical "+field+"."});
+            });
+            if(!mapping)
+              add({issueType:"LPG_MAPPING_MISSING",productId,recordId,limitType:"LPG",key:(lpg.sector||"—")+"|"+(lpg.segment||"—"),detail:"Positive LPG exposure is classified but has no canonical mapping row."});
+          }
         }
       }
     });
   });
 
-  // Every positive mapping must point to a concrete target master and carry source lineage metadata.
+  // Every positive mapping must retain lineage and resolve to a concrete master.
   mappings.forEach(m=>{
     if(positive(m.normalizedAmount??m.amount)&&blank(m.sourceField)){
       add({issueType:"MAPPING_SOURCE_FIELD_MISSING",productId:m.productId,recordId:m.recordId,limitType:m.limitType,key:m.key,detail:"Positive integration mapping is missing source field lineage."});

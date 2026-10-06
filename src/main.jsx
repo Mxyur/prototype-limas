@@ -6,6 +6,7 @@ import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_D
 import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE,PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY,PRODUCTION_SAMPLE_LPG_MASTER_IC_NATIONAL,PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE,PRODUCTION_SAMPLE_LPG_MASTER_REGION,PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT,PRODUCTION_SAMPLE_LPG_IC_SEGWIL_MAPPING,PRODUCTION_SAMPLE_LPG_SEGWIL_MAPPING_META} from './productionSampleData';
 import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage,auditReportFieldTraceability,summarizeReportFieldTraceability} from './reportTraceability';
 import {auditMasterLimitGovernance,auditBusinessEnrichmentCoverage,auditCanonicalReadModel,auditReportRuntime} from './governancePhaseAudit';
+import {PRODUCT_SOURCE_SCHEMA_OVERRIDES,PRODUCT_DERIVED_FIELDS_FORBIDDEN,BUSINESS_MAPPING_CONTRACTS,buildDebtorClassificationRegistry,resolveMlkIdentity,businessContractFor} from './productSchemaGovernance';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
@@ -376,7 +377,11 @@ function lpgScopeLimit(row,scope=LPG_BANK_SCOPE){
 function lpgProductAttribute(r,field){return String(r?.data?.[field]??"").trim();}
 function lpgProductClassification(r){
   const sector=lpgProductAttribute(r,"ecosystem_lpg"),segment=lpgProductAttribute(r,"segmen_lpg"),region=lpgProductAttribute(r,"region_lpg");
-  return {sector,segment,region,classified:Boolean(sector&&segment)};
+  const explicit=String(r?.meta?.lpgApplicability||"").trim().toUpperCase();
+  const applicability=explicit==="APPLICABLE"||explicit==="NOT_APPLICABLE"
+    ?explicit
+    :(sector||segment||region?"APPLICABLE":"UNDECLARED");
+  return {sector,segment,region,applicability,classified:applicability==="APPLICABLE"&&Boolean(sector&&segment&&region)};
 }
 function lpgProductAmount(r){
   if(r.productId==="CASHLOAN")return Number(r.data?.total_bade)||0;
@@ -932,11 +937,18 @@ function recordStatus(type,row){
   if(masterLevelDataIssue(type,row))return "Data Issue";
   return maxUtil>=1?"Breach":maxUtil>=0.8?"Warning":"Normal";
 }
+const CIL_PROJECTION_POLICY={
+  BMRI:1.10,
+  DEFAULT_SUBSIDIARY:1.075,
+  description:"Configured projection factors for 2026 CIL reporting; maintained as LIMAS monitoring parameters, not Product Database source fields."
+};
+function cilProjectionFactor(entity){
+  const code=String(entity||"").trim().toUpperCase();
+  return Number(CIL_PROJECTION_POLICY[code]??CIL_PROJECTION_POLICY.DEFAULT_SUBSIDIARY);
+}
 function cilProjection(key){
   return productApplicationsFor("CIL",key).reduce((a,x)=>{
-    const entity=x.entity||"";
-    const factor=entity==="BMRI"?1.10:1.075;
-    return a+(Number(x.normalizedAmount??x.amount)||0)*factor;
+    return a+(Number(x.normalizedAmount??x.amount)||0)*cilProjectionFactor(x.entity);
   },0);
 }
 const MLK_METRIC_AS_OF={
@@ -1054,8 +1066,20 @@ function downloadReportCsv(type,rows){
 function ReportFieldLineage({type,cfg,rows}){
   const lineage=auditReportFieldTraceability({[type]:cfg},{[type]:rows});
   const summary=summarizeReportFieldTraceability(lineage);
+  const businessEnrichmentFor=(r)=>{
+    if(r?.businessEnrichment)return r.businessEnrichment;
+    if(r?.sourceLayer==="BUSINESS_ENRICHMENT")return r.sourceReference;
+    return "Not required";
+  };
+  const lpgMappings=type==="LPG"
+    ? Object.values(productIntegrationMappings||{}).flat()
+        .filter(a=>a?.limitType==="LPG"&&a?.businessEnrichment)
+        .map(a=>({...a,businessEnrichment:a.businessEnrichment||{}}))
+    : [];
+  const lpgLineageRows=[...new Map(lpgMappings.map(a=>[String(a.recordId)+"|"+String(a.key),a])).values()];
+  const lpgLeaf=lpgLineageRows.slice(0,50);
   return <section className="card">
-    <div className="head"><div><h2>Report Field Lineage</h2><p>Traceability field report {type} dari source/master sampai transformation atau formula.</p></div><Status v={summary.ready?"Normal":"Data Issue"}/></div>
+    <div className="head"><div><h2>Report Field Lineage</h2><p>Traceability field report {type} dari source/master → business enrichment → transformation/formula → runtime output.</p></div><Status v={summary.ready?"Normal":"Data Issue"}/></div>
     <div className="body">
       <div className="metric-grid">
         <DomainKpi label="Fields" value={summary.totalFields} sub="Configured report columns"/>
@@ -1064,16 +1088,54 @@ function ReportFieldLineage({type,cfg,rows}){
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table">
-          <thead><tr><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation / Formula</th><th>Status</th></tr></thead>
+          <thead><tr><th>Report Field</th><th>Source Layer</th><th>Source / Master Field</th><th>Business Enrichment</th><th>Transformation / Formula</th><th>Traceability Status</th></tr></thead>
           <tbody>{lineage.map((r,i)=><tr key={"lineage-"+type+"-"+r.field+"-"+i}>
             <td><b>{r.label}</b><div className="muted-small key">{r.field}</div></td>
             <td>{r.sourceLayer}</td>
             <td className="muted-small">{r.sourceReference}</td>
+            <td className="muted-small">{businessEnrichmentFor(r)}</td>
             <td className="muted-small">{r.transformation}</td>
             <td><Status v={r.status==="TRACEABLE"?"Normal":"Data Issue"}/></td>
           </tr>)}</tbody>
         </table>
       </div>
+      {type==="LPG"&&<section className="card" style={{marginTop:16,border:"1px solid var(--line)"}}>
+        <div className="head">
+          <div><h2>LPG E2E Classification Lineage</h2><p>Runtime lineage per mapped debtor/facility. Tidak menggunakan placeholder; setiap row berasal dari Integration / Business Mapping runtime.</p></div>
+          <span className="chip blue">{lpgLineageRows.length} mapped rows</span>
+        </div>
+        <div className="body">
+          <div className="field-help"><b>Required chain:</b> CIF → Industry → Grouping → Segment → Region → IC Nasional → IC Segwil → Master Limit → Canonical Outstanding → Utilization.</div>
+          <div className="table-wrap" style={{marginTop:12}}>
+            <table className="table">
+              <thead><tr><th>Source Record</th><th>CIF</th><th>Industry</th><th>Grouping</th><th>Segment</th><th>Region</th><th>IC Nasional</th><th>IC Segwil</th><th>Master Limit</th><th>Canonical Outstanding</th><th>Utilization</th><th>Status</th></tr></thead>
+              <tbody>{lpgLeaf.map((a,i)=>{
+                const e=a.businessEnrichment||{};
+                const master=(limasDemoData.LPG||[]).find(m=>String(m.key)===String(a.key));
+                const outstanding=Number(a.normalizedAmount??a.amount)||0;
+                const limit=master?Number(lpgScopeLimit(master,a.scope||LPG_BANK_SCOPE)||0):null;
+                const util=limit===null?null:(limit===0?(outstanding>0?Infinity:0):outstanding/limit);
+                const status=!a.masterMatch?"Data Issue":util===null?"Data Issue":util>=1?"Breach":util>=0.8?"Warning":"Normal";
+                return <tr key={"lpg-lineage-"+a.recordId+"-"+a.key+"-"+i}>
+                  <td className="key">{a.recordId}</td>
+                  <td>{e.cif||"—"}</td>
+                  <td>{e.industryName||e.industryCode||"—"}</td>
+                  <td>{e.groupingName||e.groupingCode||"—"}</td>
+                  <td>{e.segmentCode||"—"}</td>
+                  <td>{e.regionCode||"—"}</td>
+                  <td>{e.icNasionalCode||"—"}</td>
+                  <td>{e.icWilayahSegmenCode||"—"}</td>
+                  <td>{limit===null?"—":fmtReport(limit)}</td>
+                  <td>{fmtReport(outstanding)}</td>
+                  <td>{util===null?"—":util===Infinity?"∞":(util*100).toFixed(2)+"%"}</td>
+                  <td><Status v={status}/></td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          {lpgLineageRows.length>50&&<div className="field-help">Menampilkan 50 mapped rows pertama; total runtime lineage {lpgLineageRows.length} rows.</div>}
+        </div>
+      </section>}
     </div>
   </section>;
 }
@@ -3188,10 +3250,20 @@ const productBusinessMapping={
   "Nominal Pertanggungan":{countryExposureField:null,countryExposureLabel:"Tidak relevan",bookingOfficeField:null,bookingOfficeLabel:"Tidak relevan",exposureField:"Nominal Pertanggungan 2025 (Rp Juta)",exposureLabel:"Nominal Pertanggungan 2025",limitSource:"CIL master: EIL / Consolidated Insurance Limit"}
 };
 const productBusinessEnrichment={
-  "NON CASH LOAN":["Booking Office","Booking Office Type"],
+  "CASHLOAN":["Booking Office Type","CCL Counterparty / Type / Entity (conditional)","MLK CIF / Entity (conditional)","LPG Applicability + Industry → Grouping → Segment → Region → IC Nasional → IC Segwil (conditional)"],
+  "NON CASH LOAN":["Booking Office","Booking Office Type","CCL Counterparty / Type / Entity (conditional)","MLK CIF / Entity (conditional)","LPG Applicability + Industry → Grouping → Segment → Region → IC Nasional → IC Segwil (conditional)"],
+  "CREDIT LINE":["CCL Counterparty / Limit Type / Entity","MLK CIF / Entity (Treasury conditional)"],
+  "BONDS":["Booking Office Type"],
+  "NOSTRO":["Booking Office Type","FX Normalization"],
+  "Nominal Pertanggungan":["Insurance Company ID","Entity Code"]
 };
 const productBusinessEnrichmentNote={
-  "NON CASH LOAN":"Field enrichment LIMAS karena source NCL belum menyediakan kantor pembukuan. Nilai wajib diisi dari reference/mapping yang disepakati; tidak diinfer dari Country Code, Country Name, Swift Code, atau counterparty.",
+  "CASHLOAN":"Enrichment berada di Integration/Business Mapping; source field tidak diubah. CCL/MLK/LPG bersifat conditional berdasarkan domain applicability.",
+  "NON CASH LOAN":"Booking Office dan Booking Office Type wajib dari reference/enrichment, bukan inferred dari Country Code. CCL/MLK/LPG bersifat conditional berdasarkan domain applicability.",
+  "CREDIT LINE":"CCL mapping wajib memiliki counterparty, limit type, dan reporting entity; MLK Treasury menggunakan explicit mlkCif reference.",
+  "BONDS":"Branch digunakan sebagai Booking Office source; Booking Office Type berasal dari office reference.",
+  "NOSTRO":"Branch digunakan sebagai Booking Office source; FX normalization wajib menjaga CCY + FX rate + as-of.",
+  "Nominal Pertanggungan":"Insurer/entity source tetap raw; Insurance Company ID dan Entity Code adalah mapping-layer identity."
 };
 const productBusinessMappingLabel=(productId,kind)=>{
   // Display labels use the canonical LIMAS business vocabulary; source field names are never renamed.
@@ -3274,9 +3346,8 @@ const productTabFields={
 };
 
 const productSchemaFields=Object.fromEntries(productMasterCatalog.map(p=>[p.id,[...new Set(
-  p.id==='Nominal Pertanggungan'?(productTabFields[p.id]||[]):
-  p.id==='CREDIT LINE'?creditLineCanonicalFields.map(x=>x.key):
-  (productTabFields[p.id]||productFields[p.id]||[])
+  PRODUCT_SOURCE_SCHEMA_OVERRIDES[p.id]||((productTabFields[p.id]||productFields[p.id]||[])
+    .filter(f=>!(PRODUCT_DERIVED_FIELDS_FORBIDDEN[p.id]||[]).includes(f)))
 )]]));
 
 const bookingOfficeReference=[
@@ -3343,7 +3414,9 @@ function integrationDomainAllowed(row,domain){
 
 function isExplicitCclSource(row){
   const d=row?.data||{},meta=row?.meta||{};
-  return Boolean(meta.cclLimitType)
+  const applicability=String(meta.cclApplicability||"").trim().toUpperCase();
+  return applicability==="APPLICABLE"
+    || Boolean(meta.cclLimitType)
     || Boolean(meta.creditLineLimitType)
     || Boolean(meta.cclCounterpartyId)
     || /^CCL-/i.test(String(d.no_cus||""))
@@ -3399,7 +3472,8 @@ function initializeRuntimeDataset(){
         // Product Database is source-only: preserve the exact source field names.
         // Credit Line has a canonical display crosswalk, but its raw source fields
         // (e.g. "Credit Line Total Utilisasi") must remain intact for integration.
-        record.data=JSON.parse(JSON.stringify(spec.data||{}));
+        const raw=spec.data||{};
+        record.data=Object.fromEntries((productSchemaFields[productId]||[]).map(field=>[field,raw?.[field]??""]));
         return record;
       });
       if(productDatabase[productId]?.[0])productSample[productId]={...productDatabase[productId][0].data};
@@ -3554,9 +3628,10 @@ function buildProductIntegrationMappings(){
   (productDatabase.CASHLOAN||[]).forEach(r=>{
     const d=r.data||{},code=String(d.code||"").trim(),cif=String(d.no_cus||"").trim();
     if(code&&countryMonitoringEligible(code))addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> eligible foreign Country Code"});
-    const entity=String(r.meta?.reportingEntity||"").toUpperCase()||null;
-    if(cif&&(limasDemoData.MLK||[]).some(x=>String(x.key)===cif))
-      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK CIF",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:""}});
+    const mlkIdentity=resolveMlkIdentity(cif,limasDemoData.MLK||[]);
+    const entity=mlkIdentity.entityCode||null;
+    if(cif&&mlkIdentity.master)
+      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK master CIF -> entity",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:"",mlkIdentityStatus:mlkIdentity.status}});
   });
 
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
@@ -3574,7 +3649,10 @@ function buildProductIntegrationMappings(){
           :"NCL Country Code -> Country Code"
       });
     }
-    if(cif)addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK CIF",entity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(String(r.meta?.reportingEntity||"").toUpperCase())?String(r.meta?.reportingEntity).toUpperCase():""}});
+    const mlkIdentity=resolveMlkIdentity(cif,limasDemoData.MLK||[]);
+    const entity=mlkIdentity.entityCode||null;
+    if(cif&&mlkIdentity.master)
+      addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK master CIF -> entity",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:"",mlkIdentityStatus:mlkIdentity.status}});
     // FI NCL is upstream of Credit Line / Commercial Line.
     // It is intentionally not registered as a direct CCL utilization mapping.
     // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
@@ -3615,10 +3693,13 @@ function buildProductIntegrationMappings(){
         cclLineage:{bankLoan:clUpstream,commercialLine:nclUpstream,treasuryLine:treasuryUtil,creditLineTotal:sourceCreditLineTotal,derivedCreditLineTotal}
       });
     }
-    const mlkKey=swift.match(/^TL-(.+)$/i)?.[1]||"";
-    if(mlkKey&&(limasDemoData.MLK||[]).some(x=>String(x.key)===mlkKey)){
-      const treasury=Number(String(d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
-      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:d["Bade Treasury Line"]!==undefined?"Bade Treasury Line":"Treasury Line Total Utilisasi",sourceValue:d["Bade Treasury Line"]??d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:"Credit Line TL-CIF reference -> MLK CIF",entity:String(r.meta?.reportingEntity||"BMRI").toUpperCase(),businessEnrichment:{mlkCif:mlkKey,reportingEntity:String(r.meta?.reportingEntity||"BMRI").toUpperCase()}});
+    const explicitMlkKey=String(r.meta?.mlkCif||"").trim();
+    const legacyMlkKey=/^TL-(.+)$/i.test(String(d["Swift Code"]||"")) ? String(d["Swift Code"]).replace(/^TL-/i,"").trim() : "";
+    const mlkKey=explicitMlkKey||legacyMlkKey;
+    const mlkIdentity=resolveMlkIdentity(mlkKey,limasDemoData.MLK||[]);
+    if(mlkKey&&mlkIdentity.master){
+      const treasury=Number(String(d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:"Treasury Line Total Utilisasi",sourceValue:d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:explicitMlkKey?"Credit Line explicit mlkCif -> MLK master CIF":"Credit Line legacy TL-CIF reference -> MLK master CIF (E2E compatibility)",entity:mlkIdentity.entityCode,businessEnrichment:{mlkCif:mlkKey,reportingEntity:mlkIdentity.entityCode,mlkIdentityStatus:mlkIdentity.status}});
     }
     if(country){
       const components=[
@@ -3643,27 +3724,45 @@ function buildProductIntegrationMappings(){
   });
 
   (productDatabase["Nominal Pertanggungan"]||[]).forEach(r=>{
-    const d=r.data||{},insurer=String(d["Perusahaan Asuransi"]||"").trim(),entity=String(d.Entitas||"").trim();
+    const d=r.data||{},insurer=String(d["Perusahaan Asuransi"]||"").trim(),sourceEntity=String(d.Entitas||"").trim().toUpperCase();
     const master=(limasDemoData.CIL||[]).find(m=>String(m.name||"").trim().toLowerCase()===insurer.toLowerCase());
+    const entityMaster=E2E_ENTITY_MASTER.find(x=>String(x.entityCode||"").toUpperCase()===sourceEntity)||E2E_ENTITY_MASTER.find(x=>String(x.entityName||"").trim().toUpperCase()===sourceEntity);
+    const entityCode=entityMaster?.entityCode||sourceEntity;
+    const entityEilKey=entityCode==="MANTAP"?"Mandiri Taspen":entityCode;
     const targetKey=master?.key||insurer;
     if(insurer)addIntegrationMapping("Nominal Pertanggungan",r,{
-      limitType:"CIL",key:targetKey,entity,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",
-      sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity -> CIL master key",
-      businessEnrichment:{insuranceCompanyId:targetKey,entity}
+      limitType:"CIL",key:targetKey,entity:entityCode,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",
+      sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity Code -> CIL master key + EIL entity key",
+      businessEnrichment:{insuranceCompanyId:targetKey,entityCode,entityEilKey}
     });
   });
 
+  const debtorClassificationRegistry=buildDebtorClassificationRegistry(productDatabase,{
+    industry:lpgIndustryForSourceValue,
+    segment:lpgCanonicalSegment,
+    region:lpgCanonicalRegion
+  });
   ["CASHLOAN","NON CASH LOAN"].forEach(productId=>{
     (productDatabase[productId]||[]).forEach(r=>{
-      const d=r.data||{},sector=String(d.ecosystem_lpg||"").trim(),segment=normalizeLpgSegment(d.segmen_lpg);
-      if(!sector||!segment)return;
-      const scope=String(d.region_lpg||"").trim();
-      const industry=lpgIndustryForSourceValue(sector);
-      const segmentMaster=lpgCanonicalSegment(segment);
-      const regionMaster=lpgCanonicalRegion(scope);
-      const segwil=lpgSegwilMappingFor(industry?.industryCode,regionMaster?.regionCode,segmentMaster?.segmentCode);
-      addIntegrationMapping(productId,r,{limitType:"LPG",key:sector+"|"+segment,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:scope||null,sourceField:"ecosystem_lpg / segmen_lpg",sourceValue:sector+" / "+segment,mappingRule:"Product LPG attributes -> Ecosystem x Segment x Scope",
-        businessEnrichment:{masterIndustryCode:industry?.industryCode||"",groupingCode:industry?.groupingCode||"",segmentCode:segmentMaster?.segmentCode||"",regionCode:regionMaster?.regionCode||"",icNasionalCode:segwil?.icNasionalCode||"",icWilayahSegmenCode:segwil?.icWilayahSegmenCode||""}
+      const d=r.data||{},cif=String(productId==="CASHLOAN"?d.no_cus:d.CUSTID||"").trim();
+      const applicability=lpgProductClassification(r).applicability;
+      if(applicability!=="APPLICABLE")return;
+      const classification=debtorClassificationRegistry.byCif.get(cif)||{};
+      const sector=String(classification.industryName||d.ecosystem_lpg||"").trim();
+      const segment=normalizeLpgSegment(classification.segmentName||d.segmen_lpg);
+      const scope=String(classification.regionName||d.region_lpg||"").trim();
+      const industry=classification.industryCode?{industryCode:classification.industryCode,groupingCode:classification.groupingCode,groupingName:classification.groupingName,industryName:classification.industryName}:lpgIndustryForSourceValue(sector);
+      const segmentMaster=classification.segmentCode?{segmentCode:classification.segmentCode,segmentName:classification.segmentName,legacyValues:lpgCanonicalSegment(segment)?.legacyValues||[]}:lpgCanonicalSegment(segment);
+      const regionMaster=classification.regionCode?{regionCode:classification.regionCode,regionName:classification.regionName,legacyScope:lpgCanonicalRegion(scope)?.legacyScope||""}:lpgCanonicalRegion(scope);
+      if(!industry||!segmentMaster||!regionMaster)return;
+      // Limit-master identity must preserve the approved legacy bucket key (e.g. BATUBARA|Commercial).
+      // Canonical segment/region codes stay in business enrichment; they must not mutate Master Limit keys.
+      const segmentBucket=String(d.segmen_lpg||segmentMaster.legacyValues?.[0]||segmentMaster.segmentName||"").trim();
+      const scopeBucket=String(d.region_lpg||regionMaster.legacyScope||scope).trim();
+      const key=(industry.groupingName||sector)+"|"+segmentBucket;
+      const segwil=lpgSegwilMappingFor(industry.industryCode,regionMaster.regionCode,segmentMaster.segmentCode);
+      addIntegrationMapping(productId,r,{limitType:"LPG",key,amount:productRawExposure(productId,r,"LPG"),label:productId==="CASHLOAN"?"Cash Loan":"Non Cash Loan",scope:scopeBucket,sourceField:(productId==="CASHLOAN"?"no_cus":"CUSTID")+" + ecosystem_lpg / segmen_lpg / region_lpg",sourceValue:cif+" / "+sector+" / "+segmentBucket+" / "+scopeBucket,mappingRule:"CIF -> authoritative debtor classification -> Industry -> Grouping -> Segment -> Region -> IC Nasional -> IC Segwil",
+        businessEnrichment:{cif,industryCode:industry.industryCode||"",industryName:industry.industryName||"",groupingCode:industry.groupingCode||"",groupingName:industry.groupingName||"",masterIndustryCode:industry.industryCode||"",segmentCode:segmentMaster.segmentCode||"",regionCode:regionMaster.regionCode||"",icNasionalCode:segwil?.icNasionalCode||"",icWilayahSegmenCode:segwil?.icWilayahSegmenCode||""}
       });
     });
   });
@@ -4244,6 +4343,19 @@ function dataQualityIssueRows(){
   reconciliationIssues().filter(x=>x.status==="Data Issue").forEach(x=>out.push({
     layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId,object:x.object||x.productId||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
   }));
+  const businessAudit=auditBusinessEnrichmentCoverage({
+    productDatabase,
+    integrationMappings:productIntegrationMappings,
+    countryMonitoringEligible,
+    integrationDomainAllowed,
+    lpgClassifier:lpgProductClassification,
+    explicitCclSource:isExplicitCclSource,
+    mlkMasterRows:limasDemoData.MLK||[]
+  });
+  (businessAudit.issues||[]).forEach(x=>out.push({
+    layer:"Integration / Mapping",domain:x.limitType||"Integration",key:x.key||x.recordId||"—",object:x.productId||"—",
+    issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId||null,recordId:x.recordId||null
+  }));
   monitoringScopeIntegrityIssues().forEach(x=>out.push({
     layer:x.layer,domain:x.domain,key:x.key||x.recordId||"—",object:x.object||"—",issueType:x.issueType,detail:x.detail,sourceStatus:"Data Issue",productId:x.productId,recordId:x.recordId
   }));
@@ -4391,6 +4503,10 @@ function canonicalProductQualityIssues(){
         if(balance&&fx&&idr&&Math.abs(idr-(balance*fx))>.01)issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"NOSTRO_FX_RECONCILIATION",detail:"Balance × FX Rate to IDR does not reconcile to source Balance IDR."});
       }
       if(productId==="Nominal Pertanggungan"&&(!d["Perusahaan Asuransi"]||!d.Entitas))issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"MISSING_KEY",detail:"CIL utilization requires insurer and entity."});
+      const allowed=new Set(productSchemaFields[productId]||[]);
+      Object.keys(d).filter(field=>!allowed.has(field)).forEach(field=>{
+        issues.push({layer:"Product Database",productId,recordId:r.recordId,type:"SOURCE_SCHEMA_CONTAMINATION",key:field,detail:"Field berada di runtime Product Database tetapi tidak terdaftar sebagai raw source field."});
+      });
     });
   });
   return issues;
@@ -4474,7 +4590,7 @@ function governancePhaseAudit(){
     CIL:report.CIL||[],
     LPG:report.LPG||[]
   };
-  const fieldAliases={"CREDIT LINE":[...new Set((creditLineCanonicalFields||[]).map(x=>x.source).filter(Boolean))]};
+  const fieldAliases={};
   const phase1Raw=auditMasterLimitGovernance({
     masters:limasDemoData,
     masterIssues:masterCanonicalQualityIssues(),
@@ -4497,7 +4613,8 @@ function governancePhaseAudit(){
     countryMonitoringEligible,
     integrationDomainAllowed,
     lpgClassifier:lpgProductClassification,
-    explicitCclSource:isExplicitCclSource
+    explicitCclSource:isExplicitCclSource,
+    mlkMasterRows:limasDemoData.MLK||[]
   });
   const phase3Issues=[
     ...reconciliationIssues().filter(x=>x.status==="Data Issue").map(x=>({phase:3,layer:"Integration / Mapping",issueType:x.issueType,productId:x.productId,recordId:x.recordId,key:x.key||"—",detail:x.detail})),
@@ -4818,21 +4935,44 @@ function saveProductCatalogMeta(item,meta){
 function ProductDictionaryBusinessMapping({tab}){ 
   const m=productBusinessMapping[tab]||{};
   const enrichment=productBusinessEnrichment[tab]||[];
+  const contract=businessContractFor(tab)||{};
+  const contractItems=Object.entries(contract).map(([domain,c])=>[domain,(c.source||[]).join(" + "), (c.enrichment||[]).join(" + ")||"—"]);
+  const sourceFields=productSchemaFields[tab]||[];
+  const domainsUsing=productIntegratedDomains(tab);
+  const canonicalUnit=productMasterCatalog.find(x=>x.id===tab)?.canonicalUnit||"Rp Juta";
   const items=[
     ["Country Exposure",m.countryExposureField?m.countryExposureField+" → "+m.countryExposureLabel:(m.countryExposureLabel||"—")],
     ["Booking Office",m.bookingOfficeField?m.bookingOfficeField+" → "+m.bookingOfficeLabel:(m.bookingOfficeLabel||"—")],
     ["Booking Office Type",tab==="CREDIT LINE"?"DN/LN source — not required":(enrichment.includes("Booking Office Type")?"Business Enrichment / Reference":"Derived / Reference")],
     ["Exposure",m.exposureField?m.exposureField+" → "+m.exposureLabel:(m.exposureLabel||"—")]
   ];
+  const governanceRows=[
+    ["Raw Source Field","SOURCE_ONLY",sourceFields.length+" source-native fields", "Product Database; terminology remains unchanged."],
+    ["Business Enrichment","BUSINESS_ENRICHMENT",enrichment.length?enrichment.join(" + "):"Not required", "Identity/classification/reference enrichment is outside raw Product DB."],
+    ["Reference Master","REFERENCE_MASTER",contractItems.length?contractItems.map(x=>x[0]).join(" + "):"Not required", "Approved master/reference identity used to resolve the business target."],
+    ["Domain Mapping","DOMAIN_MAPPING",domainsUsing.join(" + ")||"Future / Scoped", "Source record → target master key → normalized utilization / scope."],
+    ["Canonical / Derived","CANONICAL_DERIVED","Exposure → "+canonicalUnit, "Derived values are produced in canonical read model / monitoring, not persisted as raw source."]
+  ];
   return <div className="product-dictionary-summary">
     <div className="section-title">Business Mapping Standard</div>
     <div className="product-db-kpis">
       {items.map(([label,value])=><div className="mini" key={label}><b>{label}</b><span className="muted-small">{value}</span></div>)}
     </div>
+    <div className="table-wrap" style={{marginTop:12}}>
+      <table className="table">
+        <thead><tr><th>Governance Layer</th><th>System Layer</th><th>What Belongs Here</th><th>Rule</th></tr></thead>
+        <tbody>{governanceRows.map(([layer,system,belongs,rule])=><tr key={layer}>
+          <td><b>{layer}</b></td><td><span className="chip blue">{system}</span></td><td className="muted-small">{belongs}</td><td className="muted-small">{rule}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>
     {enrichment.length>0&&<div className="field-help"><b>Business Enrichment:</b> {enrichment.join(" + ")} — {productBusinessEnrichmentNote[tab]}</div>}
+    {contractItems.length>0&&<div className="table-wrap" style={{marginTop:12}}><table className="table">
+      <thead><tr><th>Domain</th><th>Source Inputs</th><th>Enrichment / Identity Contract</th></tr></thead>
+      <tbody>{contractItems.map(([domain,source,enrich])=><tr key={domain}><td><b>{domain}</b></td><td className="muted-small">{source}</td><td className="muted-small">{enrich}</td></tr>)}</tbody>
+    </table></div>}
   </div>;
 }
-
 function CreditLineFieldTable(){
   const fields=creditLineCanonicalFields;
   const [editing,setEditing]=useState(false);
@@ -4848,7 +4988,7 @@ function CreditLineFieldTable(){
   };
   return <div className="product-field-block">
     <div className="product-field-toolbar">
-      <div><b>Data Dictionary — Credit Line</b><span>Credit Line = Commercial Line + Treasury Line. Domestic/Overseas sudah tersedia dari DN/LN pada source; tidak dibuat mapping Booking Office tambahan.</span></div>
+      <div><b>Data Dictionary — Credit Line</b><span>Credit Line = Commercial Line + Treasury Line. DN/LN tetap source semantics; Product Database hanya menyimpan raw source fields, canonical display adalah crosswalk di layer UI.</span></div>
       {!editing?<button className="btn primary" onClick={()=>setEditing(true)}>Edit Field Metadata</button>:<div className="toolbar"><button className="btn ghost" onClick={cancel}>Batal</button><button className="btn primary" onClick={save}>Simpan Perubahan</button></div>}
     </div>
     <ProductDictionaryBusinessMapping tab="CREDIT LINE"/>

@@ -7,18 +7,18 @@ export const PRODUCT_REPORT_REQUIREMENTS = {
     {report:"Country", sourceFields:["code","total_bade","nm_cab"], enrichmentFields:["bookingOfficeType"], note:"Country exposure, utilization, and Domestic/Overseas classification."},
     {report:"MLK", sourceFields:["no_cus","total_bade"], enrichmentFields:["reportingEntity"], note:"CIF-level utilization; entity is required for consolidated scope."},
     {report:"CCL", sourceFields:["no_cus","total_bade"], enrichmentFields:["cclCounterpartyId","cclLimitType","reportingEntity"], note:"Upstream FI Bank Loan lineage; raw Cash Loan is not directly added twice to CCL."},
-    {report:"LPG", sourceFields:["no_cus","total_bade","ecosystem_lpg","segmen_lpg","region_lpg"], enrichmentFields:["masterIndustryCode"], note:"Debtor-level LPG classification and Master Industry identity."}
+    {report:"LPG", sourceFields:["no_cus","total_bade","ecosystem_lpg","segmen_lpg","region_lpg"], enrichmentFields:["lpgApplicability","industryCode","groupingCode","segmentCode","regionCode","icNasionalCode","icWilayahSegmenCode"], note:"CIF/debtor identity → Industry → Grouping → Segment → Region → IC Nasional → IC Segwil."}
   ],
   "NON CASH LOAN": [
     {report:"Country", sourceFields:["CUSTID","TRXREF","Country Code","EQVIDR","CCY","AMOUNT","BALANCE","EXCHANGERT"], enrichmentFields:["Booking Office","Booking Office Type"], note:"Country exposure, normalized utilization, and Domestic/Overseas classification."},
     {report:"MLK", sourceFields:["CUSTID","TRXREF","EQVIDR"], enrichmentFields:["reportingEntity"], note:"CIF-level utilization; entity is required for consolidated scope."},
     {report:"CCL", sourceFields:["CUSTID","TRXREF","EQVIDR"], enrichmentFields:["cclCounterpartyId","cclLimitType","reportingEntity"], note:"Upstream FI NCL → Commercial Line lineage."},
-    {report:"LPG", sourceFields:["CUSTID","TRXREF","EQVIDR","BALANCE","CCY","AMOUNT","EXCHANGERT","ecosystem_lpg","segmen_lpg","region_lpg"], enrichmentFields:["masterIndustryCode"], note:"Debtor-level LPG classification and canonical IDR exposure."}
+    {report:"LPG", sourceFields:["CUSTID","TRXREF","EQVIDR","BALANCE","CCY","AMOUNT","EXCHANGERT","ecosystem_lpg","segmen_lpg","region_lpg"], enrichmentFields:["lpgApplicability","industryCode","groupingCode","segmentCode","regionCode","icNasionalCode","icWilayahSegmenCode"], note:"CIF/debtor identity → Industry → Grouping → Segment → Region → IC Nasional → IC Segwil; exposure is normalized to Rp Juta."}
   ],
   "CREDIT LINE": [
     {report:"Country", sourceFields:["Swift Code Vlookup","Code","Comm DN Utilisasi","Comm LN Utilisasi","Treasury DN Utilisasi","Treasury LN Utilisasi","Credit Line Total Utilisasi"], enrichmentFields:[], note:"Country product limits/exposure; DN/LN directly define Domestic/Overseas."},
     {report:"CCL", sourceFields:["Swift Code Vlookup","Code","Comm DN","Comm DN Utilisasi","Comm LN","Comm LN Utilisasi","Comm Line Total","Comm Line Total Utilisasi","Treasury DN","Treasury DN Utilisasi","Treasury LN","Treasury LN Utilisasi","Treasury Line Total","Treasury Line Total Utilisasi","Credit Line Total","Credit Line Total Utilisasi"], enrichmentFields:["cclCounterpartyId","cclLimitType","reportingEntity"], note:"Canonical CCL Credit Line utilization and Commercial/Treasury lineage."},
-    {report:"MLK", sourceFields:["Swift Code","Bade Treasury Line","Treasury Line Total Utilisasi"], enrichmentFields:["reportingEntity"], note:"Treasury Line → MLK facility utilization."}
+    {report:"MLK", sourceFields:["Swift Code","Treasury Line Total Utilisasi"], enrichmentFields:["mlkCif","reportingEntity"], note:"Treasury Line → explicit/controlled MLK CIF → MLK master entity → facility utilization."}
   ],
   "BONDS": [
     {report:"Country", sourceFields:["Securities Name","Issuer Country","Amount Eq. IDR Juta","Branch"], enrichmentFields:["bookingOfficeType"], note:"Issuer-country exposure and booking-office classification."}
@@ -242,8 +242,13 @@ function lpgDynamicTraceability(key){
     if(kind==="outstanding")return {sourceLayer:"CANONICAL_READ_MODEL",sourceReference:"lpgScopeExposure(master, scope)",transformation:"Sum of normalized Cash Loan + NCL exposure in the scope.",mandatory:true};
     return {sourceLayer:"REPORT_DERIVED",sourceReference:"lpgScopeUtil(master, scope)",transformation:"Outstanding / scope limit with explicit zero-limit handling.",mandatory:true};
   }
-  if(key==="sector")return {sourceLayer:"MASTER_LIMIT",sourceReference:"LPG.sector",transformation:"Direct ecosystem/sector identity.",mandatory:true};
-  if(key==="segment")return {sourceLayer:"MASTER_LIMIT",sourceReference:"LPG.segment",transformation:"Direct segment identity.",mandatory:true};
+  if(key==="sector")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"Debtor Classification Registry.industryCode / industryName",transformation:"CIF → authoritative debtor Industry → Industry-to-Grouping master; report bucket preserves canonical Grouping/sector identity.",mandatory:true};
+  if(key==="segment")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"Debtor Classification Registry.segmentCode / segmentName",transformation:"CIF → canonical Segment master.",mandatory:true};
+  if(key==="grouping")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"Industry-to-Grouping Master.groupingCode / groupingName",transformation:"Industry master mapping produces canonical Grouping.",mandatory:true};
+  if(key==="region")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"LPG Region Master.regionCode / regionName",transformation:"Debtor classification resolves canonical Region.",mandatory:true};
+  if(key==="icNasional")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"LPG Industry → IC Nasional Mapping",transformation:"Industry master code resolves IC Nasional.",mandatory:true};
+  if(key==="icWilayahSegmen"||key==="icSegwil")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"LPG Sector × Region × Segment → IC Segwil Mapping",transformation:"Canonical industry/region/segment tuple resolves IC Segwil.",mandatory:true};
+  if(key==="applicability")return {sourceLayer:"BUSINESS_ENRICHMENT",sourceReference:"Product meta.lpgApplicability + LPG source attributes",transformation:"APPLICABLE / NOT_APPLICABLE control prevents silent drop of positive eligible exposure.",mandatory:true};
   if(key==="cl")return {sourceLayer:"CANONICAL_READ_MODEL",sourceReference:"productContributionMap('LPG',master.key).CASHLOAN",transformation:"Bankwide normalized Cash Loan contribution.",mandatory:true};
   if(key==="ncl")return {sourceLayer:"CANONICAL_READ_MODEL",sourceReference:"productContributionMap('LPG',master.key)['NON CASH LOAN']",transformation:"Bankwide normalized NCL contribution.",mandatory:true};
   if(key==="crosscheck")return {sourceLayer:"REPORT_DERIVED",sourceReference:"lpgCrosscheck(master)",transformation:"Bankwide versus regional/KP+OVS reconciliation.",mandatory:true};

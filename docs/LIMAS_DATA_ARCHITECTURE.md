@@ -191,6 +191,49 @@ It should not create a second master-limit repository.
 - Product utilization remains prototype dummy/read-model data until actual source systems are integrated.
 - Browser localStorage is prototype persistence only; it is not the target production persistence layer.
 
+
+
+## 7A. Business identity and enrichment contract
+
+Product Database remains source-only. Business identity and classification are resolved in the Integration / Business Mapping layer.
+
+### Debtor identity
+
+- Cash Loan -> CIF from `no_cus`
+- Non Cash Loan -> CIF from `CUSTID`
+- Credit Line -> counterparty from `Swift Code Vlookup` / controlled CCL mapping
+- Nominal Pertanggungan -> insurer + entity identity
+- MLK Treasury -> explicit `mlkCif`; legacy `TL-<CIF>` is compatibility-only for existing E2E fixtures
+
+### LPG classification
+
+For an applicable Cash Loan / NCL row:
+
+`CIF -> Debtor -> Industry -> Grouping -> Segment -> Region -> IC Nasional -> IC Segwil`
+
+The source fields `ecosystem_lpg`, `segmen_lpg`, and `region_lpg` remain source attributes. Industry/Grouping/IC identities are enrichment and reference-master outputs.
+
+### Conditional DQ
+
+A positive exposure that is applicable to a domain but cannot resolve its required identity/enrichment is a Data Issue. The pipeline must never silently drop such exposure between Product DB, Mapping, Canonical Read Model, Monitoring, and Reporting.
+
+## 7B. Product Database source-only rule
+
+The following are integration/derived concepts and are not raw Product Database fields:
+
+- Credit Line: `Bade Treasury Line`
+- Nominal Pertanggungan: EIL, CIL, CIT, projection, utilization, PCP/EWS, and action-plan outputs
+
+These values may appear in Monitoring/Reporting or canonical read-model calculations, but they must not be persisted as source Product Database fields.
+
+## 7C. Product business contract
+
+Each product has an explicit domain contract defining:
+
+`Source Inputs -> Business Identity / Enrichment -> Domain Mapping`
+
+This contract is maintained separately from the source schema so UI normalization never changes source field names.
+
 ## 8. Target Microsoft 365 implementation
 
 SharePoint Lists / controlled master repository -> Master Limit
