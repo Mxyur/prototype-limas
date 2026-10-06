@@ -419,3 +419,28 @@
 .pf-source-strip strong{display:block;margin-top:5px;color:#34475f;font-size:10px;line-height:1.35}
 @media(max-width:900px){.pf-source-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.pf-source-strip{grid-template-columns:1fr}}
+
+/* Phase 8F — Limit Action Simulation */
+.pf-action-sim-overlay{position:fixed;inset:0;z-index:1000;background:rgba(5,16,35,.72);display:flex;align-items:center;justify-content:center;padding:24px}
+.pf-action-sim{width:min(1180px,100%);max-height:92vh;overflow:auto;background:var(--pf-surface,#fff);border:1px solid var(--pf-border,#d8e0ea);border-radius:18px;box-shadow:0 24px 70px rgba(5,16,35,.28);padding:24px}
+.pf-action-sim-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:16px}
+.pf-action-sim-head h2{margin:4px 0 6px;font-size:24px}
+.pf-action-sim-head p{margin:0;color:var(--pf-muted,#667085)}
+.pf-action-sim-banner{display:flex;gap:12px;align-items:center;padding:12px 14px;border:1px solid #d7b45b;background:#fff8e7;border-radius:10px;margin-bottom:18px}
+.pf-action-sim-banner strong{font-size:11px;letter-spacing:.08em}
+.pf-action-sim-banner span{font-size:13px;color:#6b5a2d}
+.pf-action-sim-grid{display:grid;grid-template-columns:minmax(300px,.82fr) minmax(420px,1.18fr);gap:18px}
+.pf-action-form label{display:flex;flex-direction:column;gap:6px;margin-top:12px;font-size:12px;font-weight:700;color:var(--pf-text,#182230)}
+.pf-action-form input,.pf-action-form select,.pf-action-form textarea{font:inherit;font-weight:400;border:1px solid var(--pf-border,#d8e0ea);border-radius:8px;padding:10px;background:#fff;color:var(--pf-text,#182230)}
+.pf-action-current{margin-top:12px;padding:12px;border:1px solid var(--pf-border,#d8e0ea);border-radius:9px;display:grid;gap:3px}
+.pf-action-current span,.pf-action-detail-grid span,.pf-action-detail-copy>span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--pf-muted,#667085)}
+.pf-action-current strong{font-size:18px}.pf-action-current small{color:var(--pf-muted,#667085)}
+.pf-action-counts{display:flex;gap:7px;flex-wrap:wrap}.pf-action-counts span{font-size:11px;padding:5px 8px;border:1px solid var(--pf-border,#d8e0ea);border-radius:999px}
+.pf-empty-state{padding:28px 8px;display:grid;gap:5px;color:var(--pf-muted,#667085)}.pf-empty-state strong{color:var(--pf-text,#182230)}
+.pf-action-list{display:grid;gap:7px;margin-top:14px}.pf-action-list button{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:11px 12px;border:1px solid var(--pf-border,#d8e0ea);background:#fff;border-radius:9px;cursor:pointer}.pf-action-list button.active{border-color:#7ba6d8;background:#f3f7fc}.pf-action-list button span:first-child{display:grid;gap:2px}.pf-action-list small{color:var(--pf-muted,#667085)}
+.pf-action-detail{margin-top:18px;padding-top:18px;border-top:1px solid var(--pf-border,#d8e0ea)}.pf-action-detail-head{display:flex;justify-content:space-between;gap:12px}.pf-action-detail-head h3{margin:3px 0}.pf-action-detail-head p{margin:0;color:var(--pf-muted,#667085)}
+.pf-action-detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.pf-action-detail-grid div{padding:11px;border:1px solid var(--pf-border,#d8e0ea);border-radius:8px;display:grid;gap:4px}.pf-action-detail-grid strong{font-size:14px}.pf-action-detail-copy{margin-top:12px;padding:11px;border:1px solid var(--pf-border,#d8e0ea);border-radius:8px}.pf-action-detail-copy p{margin:5px 0 12px;color:var(--pf-text,#182230)}
+.pf-action-flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:14px}.pf-action-flow span{padding:6px 8px;border:1px solid var(--pf-border,#d8e0ea);border-radius:999px;font-size:10px;font-weight:800;color:var(--pf-muted,#667085)}.pf-action-flow span.active{background:#edf4fc;border-color:#7ba6d8;color:#174a7e}.pf-action-flow i{font-style:normal;color:var(--pf-muted,#667085)}
+.pf-action-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media(max-width:800px){.pf-action-sim{padding:16px}.pf-action-sim-grid{grid-template-columns:1fr}.pf-action-detail-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.pf-action-sim-overlay{padding:8px}.pf-action-detail-grid{grid-template-columns:1fr}.pf-action-sim-head{align-items:stretch;flex-direction:column}}
