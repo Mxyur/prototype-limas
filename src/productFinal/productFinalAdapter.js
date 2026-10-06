@@ -6,6 +6,7 @@ export function createProductFinalAdapter(source={}) {
   return {
     getRuntimeMeta: () => source.runtimeMeta || {},
     getHomeSnapshot: () => source.homeSnapshot || null,
+    getMonitoringSnapshot: (type) => source.monitoringSnapshots?.[type] || null,
     getUniverses: () => (source.productMasterCatalog || []).map((item) => ({
       id: item.id,
       label: item.label,
