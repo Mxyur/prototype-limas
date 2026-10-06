@@ -411,3 +411,11 @@
   .pf-grid-pager{align-items:flex-start;flex-direction:column}
   .pf-grid-pager-actions{width:100%;justify-content:flex-end}
 }
+
+/* PHASE 8E — LIMIT MANAGEMENT */
+.pf-source-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.pf-source-strip>div{border:1px solid var(--pf-border-soft);border-radius:9px;padding:10px;background:#f8fafc}
+.pf-source-strip span{display:block;color:#718096;font-size:8px;text-transform:uppercase;font-weight:800;letter-spacing:.04em}
+.pf-source-strip strong{display:block;margin-top:5px;color:#34475f;font-size:10px;line-height:1.35}
+@media(max-width:900px){.pf-source-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.pf-source-strip{grid-template-columns:1fr}}

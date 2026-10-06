@@ -147,6 +147,12 @@ function LimitsView({adapter}){
           <div><span>Available</span><strong>{money(selectedStructure.available)}</strong></div>
           <div><span>Utilization</span><strong>{pct(selectedStructure.utilization)}</strong></div>
         </div>
+        <div className="pf-source-strip">
+          <div><span>Ownership</span><strong>Core / Master Limit</strong></div>
+          <div><span>Source Layer</span><strong>Canonical Read Model</strong></div>
+          <div><span>Source Record ID</span><strong>{selectedStructure.key||"—"}</strong></div>
+          <div><span>Sync Status</span><strong>Snapshot</strong></div>
+        </div>
         <div className="pf-structure-chain">
           <div><b>Universe</b><span>{domain}</span></div><div><b>Master Object</b><span>{selectedStructure.key}</span></div><div><b>Scope / Entity</b><span>{selectedStructure.entity||selectedStructure.region||"—"}</span></div><div><b>Allocation</b><span>{(selectedStructure.allocation||[]).length} component(s)</span></div>
         </div>
@@ -165,6 +171,12 @@ function LimitsView({adapter}){
       {selectedDetail&&<section className="pf-card" style={{marginTop:14}}>
         <div className="pf-detail-heading"><div><div className="pf-label">Master Limit Record</div><h2>{selectedDetail.name}</h2><p>{domain} · {selectedDetail.key}</p></div><span className={"pf-status-badge "+String(selectedDetail.status||"").toLowerCase().replace(" ","-")}>{selectedDetail.status}</span></div>
         <div className="pf-detail-kpis"><div><span>Master Limit</span><strong>{money(selectedDetail.masterLimit)}</strong></div><div><span>Exposure</span><strong>{money(selectedDetail.exposure)}</strong></div><div><span>Available</span><strong>{money(selectedDetail.masterLimit-selectedDetail.exposure)}</strong></div></div>
+        <div className="pf-source-strip">
+          <div><span>Ownership</span><strong>Core / Master Limit</strong></div>
+          <div><span>Source Layer</span><strong>Canonical Read Model</strong></div>
+          <div><span>Master Key</span><strong>{selectedDetail.key||"—"}</strong></div>
+          <div><span>Sync Status</span><strong>Snapshot</strong></div>
+        </div>
         <div className="pf-master-sections">{Object.entries(selectedDetail.sections||{}).map(([section,fields])=><section className="pf-master-section" key={section}><div className="pf-section-heading">{section}</div><div className="pf-master-fields">{fields.map((field,i)=><div className="pf-master-field" key={field.field+"|"+i}><span>{field.field}</span><strong>{typeof field.value==="number"?money(field.value):String(field.value??"—")}</strong></div>)}</div></section>)}</div>
       </section>}
     </div>}
