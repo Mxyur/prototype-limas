@@ -2349,7 +2349,7 @@ function Setup({nav,setSel}){
         </div>
       </section>
       {mode==="allocation"&&<LimitAllocationSetup initialType={type} onTypeChange={setType} nav={nav}/>}
-      {mode==="master"&&<section className="card">
+      {mode==="master" ? (<section className="card">
         <div className="head">
           <div><h2>{type} Master</h2><p>Unique key: <span className="key">{info.key}</span> • approved master limit, lifecycle, version dan audit disimpan terpisah dari Product Database.</p></div>
           <div className="toolbar">
@@ -2367,7 +2367,7 @@ function Setup({nav,setSel}){
             <span className="muted-small">{filtered.length+" / "+rows.length+" records"}</span>
           </div>
         </div>
-      </section>}
+      </section>) : null}
 
       {creating&&<MasterCreateForm type={type} onCancel={()=>setCreating(false)} onCreated={()=>{setCreating(false);forceRefresh(x=>x+1);}}/>}
 
