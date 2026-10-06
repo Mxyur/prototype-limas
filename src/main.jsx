@@ -5739,20 +5739,27 @@ function productFinalReportsGovernanceSnapshot(){
   const traceability=auditReportFieldTraceability(reportConfig,reportRows);
   const governance=governancePhaseAudit();
   const release=releaseGate();
-  const lpgRows=lpgLeafRows(limasDemoData.LPG||[]).map((row,index)=>({
-    sourceRecord:"LPG-"+(index+1),
-    cif:row.key,
-    industry:row.sector,
-    grouping:row.segment,
-    segment:row.segment,
-    region:row.region,
-    icNasional:row.icNasional||"—",
-    icSegwil:row.icWilayahSegmen||"—",
-    masterLimit:recordLimit("LPG",row),
-    canonicalOutstanding:recordExposure("LPG",row),
-    utilization:recordUtil("LPG",row),
-    status:recordStatus("LPG",row)
-  }));
+  const lpgRows=lpgLeafRows(limasDemoData.LPG||[]).map((row)=>{
+    const apps=lpgProductApplicationsForKey(row.key);
+    const industry=lpgIndustryForSourceValue(row.sector);
+    const segment=lpgCanonicalSegment(row.segment);
+    const region=lpgCanonicalRegion(row.region);
+    const segwil=industry&&region&&segment?lpgSegwilMappingFor(industry.industryCode,region.regionCode,segment.segmentCode):null;
+    return {
+      sourceRecord:apps.map(app=>app.recordId).join(" • ")||"—",
+      cif:apps.map(app=>String(app.sourceData?.no_cus||app.sourceData?.CUSTID||"")).filter(Boolean).join(" • ")||"—",
+      industry:row.sector||"—",
+      grouping:industry?.groupingName||"—",
+      segment:segment?.segmentName||row.segment||"—",
+      region:region?.regionName||row.region||"—",
+      icNasional:industry?.industryCode?lpgNationalIcName(industry.industryCode):"NOT MAPPED",
+      icSegwil:segwil?.icWilayahSegmenCode||"NOT MAPPED",
+      masterLimit:recordLimit("LPG",row),
+      canonicalOutstanding:recordExposure("LPG",row),
+      utilization:recordUtil("LPG",row),
+      status:recordStatus("LPG",row)
+    };
+  });
   const dqSummary=dataQualitySummary();
   const historicalDqClosure=[
     "Credit Line raw-source schema / CCL source-field gap",
