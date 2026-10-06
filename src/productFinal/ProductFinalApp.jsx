@@ -12,49 +12,73 @@ const NAV=[
   {id:"governance",label:"Governance",divider:true}
 ];
 
+function GridPager({page,pageCount,pageSize,setPage,setPageSize,total}){return <div className="pf-grid-pager">
+  <div className="pf-grid-pager-info">{total} records · Page {page} of {pageCount}</div>
+  <div className="pf-grid-pager-actions">
+    <select value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(1)}} aria-label="Rows per page"><option value="25">25 / page</option><option value="50">50 / page</option><option value="100">100 / page</option></select>
+    <button type="button" disabled={page<=1} onClick={()=>setPage(Math.max(1,page-1))}>Previous</button>
+    <button type="button" disabled={page>=pageCount} onClick={()=>setPage(Math.min(pageCount,page+1))}>Next</button>
+  </div>
+</div>}
 function MonitoringView({adapter}){
   const [universe,setUniverse]=useState("Country");
   const [status,setStatus]=useState("All");
   const [query,setQuery]=useState("");
   const [selected,setSelected]=useState(null);
+  const [page,setPage]=useState(1);
+  const [pageSize,setPageSize]=useState(25);
+  const [sortKey,setSortKey]=useState("status");
+  const [sortDir,setSortDir]=useState("asc");
   const snapshot=adapter.getMonitoringSnapshot(universe);
   const rows=snapshot?.rows||[];
   const filtered=rows.filter(row=>{
     const matchesStatus=status==="All"||row.status===status;
-    const hay=[row.key,row.name,row.group,row.entity,row.sector,row.segment,row.region].join(" ").toLowerCase();
+    const hay=[row.key,row.name,row.group,row.entity,row.sector,row.segment,row.region,row.countryCode,row.insurance].join(" ").toLowerCase();
     return matchesStatus&&hay.includes(query.trim().toLowerCase());
   });
+  const sorted=[...filtered].sort((a,b)=>{
+    const av=a?.[sortKey],bv=b?.[sortKey];
+    if(sortKey==="utilization"||sortKey==="limit"||sortKey==="exposure") return ((Number(av)||0)-(Number(bv)||0))* (sortDir==="asc"?1:-1);
+    return String(av??"").localeCompare(String(bv??""),"id",{numeric:true,sensitivity:"base"})*(sortDir==="asc"?1:-1);
+  });
+  const pageCount=Math.max(1,Math.ceil(sorted.length/pageSize));
+  const safePage=Math.min(page,pageCount);
+  const pageRows=sorted.slice((safePage-1)*pageSize,safePage*pageSize);
   const headers=universe==="Country"?["Code","Country","Limit","Exposure","Utilization","Status"]:
     universe==="CCL"?["Swift","Bank","CCL","Contractual","Outstanding","Utilization","Status"]:
     universe==="MLK"?["CIF","Debtor","Group","Limit","Exposure","Utilization","Status"]:
     universe==="CIL"?["Insurance","Name","CIL","Exposure","Utilization","Status"]:
     ["Sector","Segment","Region","Limit","Outstanding","Utilization","Status"];
+  const toggleSort=key=>{if(sortKey===key)setSortDir(x=>x==="asc"?"desc":"asc");else{setSortKey(key);setSortDir("asc")}setPage(1)};
+  const money=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("id-ID",{maximumFractionDigits:2}):"—";
+  const pct=v=>Number.isFinite(Number(v))?(Number(v)*100).toFixed(1)+"%":"—";
   return <div className="pf-monitor">
-    <div className="pf-monitor-tabs">{MONITOR_UNIVERSES.map(x=><button key={x} type="button" className={universe===x?"active":""} onClick={()=>setUniverse(x)}>{x}</button>)}</div>
+    <div className="pf-monitor-tabs">{MONITOR_UNIVERSES.map(x=><button key={x} type="button" className={universe===x?"active":""} onClick={()=>{setUniverse(x);setPage(1);setSelected(null)}}>{x}</button>)}</div>
     <div className="pf-monitor-toolbar">
-      <select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Status filter"><option value="All">All Status</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select>
-      <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search entity, key, sector..." aria-label="Search monitoring"/>
+      <select value={status} onChange={e=>{setStatus(e.target.value);setPage(1)}} aria-label="Status filter"><option value="All">All Status</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select>
+      <input value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}} placeholder="Search entity, key, sector..." aria-label="Search monitoring"/>
       <span className="pf-monitor-count">{filtered.length} / {rows.length}</span>
     </div>
     {!snapshot?<div className="pf-placeholder"><strong>Monitoring snapshot unavailable</strong><span>Canonical monitoring output belum tersedia untuk universe ini.</span></div>:
     <section className="pf-card">
-      <div className="pf-monitor-summary"><div><span>Limit</span><strong>{Number(snapshot.totalLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Exposure</span><strong>{Number(snapshot.totalExposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Utilization</span><strong>{(Number(snapshot.utilization||0)*100).toFixed(1)}%</strong></div><div><span>Breach</span><strong>{snapshot.statusCounts?.Breach??0}</strong></div></div>
-      <div className="pf-table-wrap"><table className="pf-table"><thead><tr>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
-      {filtered.map(row=>{
+      <div className="pf-monitor-summary"><div><span>Limit</span><strong>{money(snapshot.totalLimit)}</strong></div><div><span>Exposure</span><strong>{money(snapshot.totalExposure)}</strong></div><div><span>Utilization</span><strong>{pct(snapshot.utilization)}</strong></div><div><span>Breach</span><strong>{snapshot.statusCounts?.Breach??0}</strong></div></div>
+      <div className="pf-table-wrap"><table className="pf-table"><thead><tr>{headers.map((h,i)=><th key={h}><button type="button" className="pf-th-sort" onClick={()=>toggleSort(i===0?(universe==="Country"?"countryCode":universe==="CCL"?"key":universe==="MLK"?"key":universe==="CIL"?"insurance":"sector"):i===1?"name":i===2&&(universe==="MLK"?"group":universe==="LPG"?"region":"limit")?"limit":i===3?"exposure":i===4?"utilization":"status")}>{h}</button></th>)}</tr></thead><tbody>
+      {pageRows.map(row=>{
         const util=Number(row.utilization||0)*100;
         return <tr key={row.key} onClick={()=>setSelected(row)}>
           <td>{universe==="Country"?row.countryCode||row.key:universe==="CCL"?row.key:universe==="MLK"?row.key:universe==="CIL"?row.insurance||row.key:row.sector}</td>
           <td>{universe==="Country"?row.name:universe==="CCL"?row.name:universe==="MLK"?row.name:universe==="CIL"?row.name:row.segment}</td>
           {universe==="MLK"?<td>{row.group}</td>:null}
           {universe==="LPG"?<td>{row.region}</td>:null}
-          <td>{Number(row.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
-          {universe==="CCL"?<td>{Number(row.contractual||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>:null}
-          <td>{Number(row.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td>
+          <td>{money(row.limit)}</td>
+          {universe==="CCL"?<td>{money(row.contractual)}</td>:null}
+          <td>{money(row.exposure)}</td>
           <td>{util.toFixed(1)}%</td>
           <td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td>
         </tr>
       })}</tbody></table></div>
-      {selected?<aside className="pf-drawer" aria-label="Monitoring detail"><button type="button" className="pf-drawer-close" onClick={()=>setSelected(null)}>Close</button><div className="pf-label">Detail</div><h3>{selected.name||selected.key}</h3><p>{universe} · {selected.key}</p><div className="pf-monitor-detail-grid"><div><span>Limit</span><strong>{Number(selected.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Exposure</span><strong>{Number(selected.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</strong></div><div><span>Utilization</span><strong>{(Number(selected.utilization||0)*100).toFixed(2)}%</strong></div><div><span>Status</span><strong>{selected.status}</strong></div></div><div className="pf-note">Business values are read-only from the existing canonical monitoring snapshot. No Product Final recalculation is performed.</div></aside>:null}
+      <GridPager page={safePage} pageCount={pageCount} pageSize={pageSize} setPage={setPage} setPageSize={setPageSize} total={sorted.length}/>
+      {selected?<aside className="pf-drawer" aria-label="Monitoring detail"><button type="button" className="pf-drawer-close" onClick={()=>setSelected(null)}>Close</button><div className="pf-label">Detail</div><h3>{selected.name||selected.key}</h3><p>{universe} · {selected.key}</p><div className="pf-monitor-detail-grid"><div><span>Limit</span><strong>{money(selected.limit)}</strong></div><div><span>Exposure</span><strong>{money(selected.exposure)}</strong></div><div><span>Utilization</span><strong>{pct(selected.utilization)}</strong></div><div><span>Status</span><strong>{selected.status}</strong></div></div><div className="pf-note">Business values are read-only from the existing canonical monitoring snapshot. No Product Final recalculation is performed.</div></aside>:null}
     </section>}
   </div>;
 }
@@ -173,50 +197,50 @@ function ReportsView({adapter}){
   const types=Object.keys(snapshot.reports||{});
   const [type,setType]=useState(types[0]||"Country");
   const [status,setStatus]=useState("All");
+  const [query,setQuery]=useState("");
+  const [page,setPage]=useState(1);
+  const [pageSize,setPageSize]=useState(25);
+  const [sortKey,setSortKey]=useState("");
+  const [sortDir,setSortDir]=useState("asc");
   const [selected,setSelected]=useState(null);
   const report=snapshot.reports?.[type];
   const columns=report?.columns||[];
-  const rows=(report?.rows||[]).filter(row=>status==="All"||row.status===status||row.statusMaster===status);
-  const visibleColumns=columns.slice(0,7);
-  const valueFor=(row,keys)=>{
-    for(const key of keys){if(row?.[key]!==undefined&&row?.[key]!==null&&row?.[key]!=="")return row[key];}
-    return null;
-  };
+  const valueFor=(row,keys)=>{for(const key of keys){if(row?.[key]!==undefined&&row?.[key]!==null&&row?.[key]!=="")return row[key]}return null};
   const money=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("id-ID",{maximumFractionDigits:2}):"—";
-  const pct=v=>{const n=Number(v);if(!Number.isFinite(n))return "—";return (Math.abs(n)<=1?n*100:n).toFixed(1)+"%";};
+  const pct=v=>{const n=Number(v);if(!Number.isFinite(n))return "—";return (Math.abs(n)<=1?n*100:n).toFixed(1)+"%"};
+  const baseRows=(report?.rows||[]).filter(row=>{
+    const statusMatch=status==="All"||row.status===status||row.statusMaster===status;
+    const hay=columns.map(([,key])=>row?.[key]).join(" ").toLowerCase();
+    return statusMatch&&hay.includes(query.trim().toLowerCase());
+  });
+  const activeSort=sortKey||columns[0]?.[1]||"";
+  const rows=[...baseRows].sort((a,b)=>{
+    const av=a?.[activeSort],bv=b?.[activeSort];
+    const an=Number(av),bn=Number(bv);
+    const cmp=Number.isFinite(an)&&Number.isFinite(bn)?an-bn:String(av??"").localeCompare(String(bv??""),"id",{numeric:true,sensitivity:"base"});
+    return cmp*(sortDir==="asc"?1:-1);
+  });
+  const pageCount=Math.max(1,Math.ceil(rows.length/pageSize));
+  const safePage=Math.min(page,pageCount);
+  const pageRows=rows.slice((safePage-1)*pageSize,safePage*pageSize);
+  const visibleColumns=columns.slice(0,7);
   const totalLimit=rows.reduce((s,r)=>s+(Number(valueFor(r,["limit","masterLimit","ccl","cil","capacityLimit"]))||0),0);
   const totalExposure=rows.reduce((s,r)=>s+(Number(valueFor(r,["outstanding","exposure","total","totalBade"]))||0),0);
   const exceptionCount=rows.filter(r=>["Warning","Breach","Data Issue"].includes(r.status)||["Warning","Breach","Data Issue"].includes(r.statusMaster)).length;
   const avgUtil=rows.length?rows.reduce((s,r)=>s+(Number(valueFor(r,["utilization","utilisasi","utilisasiCcl"]))||0),0)/rows.length:0;
-  const exportCsv=()=>{
-    const headers=columns.map(([label])=>label),keys=columns.map(([,key])=>key);
-    const esc=v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-    const body=[headers.join(","),...rows.map(row=>keys.map(k=>esc(row[k])).join(","))].join("\n");
-    const blob=new Blob([body],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download="LIMAS-"+type+".csv";a.click();URL.revokeObjectURL(url);
-  };
+  const toggleSort=key=>{if(activeSort===key)setSortDir(x=>x==="asc"?"desc":"asc");else{setSortKey(key);setSortDir("asc")}setPage(1)};
+  const exportCsv=()=>{const headers=columns.map(([label])=>label),keys=columns.map(([,key])=>key);const esc=v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};const body=[headers.join(","),...rows.map(row=>keys.map(k=>esc(row[k])).join(","))].join("\n");const blob=new Blob([body],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="LIMAS-"+type+".csv";a.click();URL.revokeObjectURL(url)};
   return <div>
-    <section className="pf-card pf-report-header">
-      <div><div className="pf-label">LIMAS REPORT</div><h2>{report?.title||type}</h2><p>{report?.subtitle||"Canonical reporting view"}{report?.source?" · "+report.source:""}</p></div>
-      <div className="pf-report-header-meta"><span>{rows.length} records</span><span>Read-only</span></div>
-    </section>
-    <div className="pf-product-selector pf-report-selector">{types.map(x=><button key={x} type="button" className={type===x?"active":""} onClick={()=>{setType(x);setSelected(null)}}>{snapshot.reports[x].title||x}</button>)}</div>
+    <section className="pf-card pf-report-header"><div><div className="pf-label">LIMAS REPORT</div><h2>{report?.title||type}</h2><p>{report?.subtitle||"Canonical reporting view"}{report?.source?" · "+report.source:""}</p></div><div className="pf-report-header-meta"><span>{rows.length} records</span><span>Read-only</span></div></section>
+    <div className="pf-product-selector pf-report-selector">{types.map(x=><button key={x} type="button" className={type===x?"active":""} onClick={()=>{setType(x);setSelected(null);setPage(1)}}>{snapshot.reports[x].title||x}</button>)}</div>
     {!report?<div className="pf-placeholder"><strong>Report unavailable</strong></div>:<>
-      <div className="pf-report-kpis">
-        <div><span>Total Limit</span><strong>{money(totalLimit)}</strong></div>
-        <div><span>Total Exposure</span><strong>{money(totalExposure)}</strong></div>
-        <div><span>Average Utilization</span><strong>{pct(avgUtil)}</strong></div>
-        <div><span>Exceptions</span><strong>{exceptionCount}</strong></div>
-      </div>
-      <div className="pf-monitor-toolbar pf-report-toolbar"><select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><span className="pf-monitor-count">{rows.length} records</span><button type="button" className="pf-button-secondary" onClick={exportCsv}>Export Full CSV</button></div>
-      <section className="pf-card">
-        <div className="pf-card-head-inline"><div><h2>Report Detail</h2><p>Key fields remain visible; open a row for the complete report record.</p></div></div>
-        <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table pf-report-table"><thead><tr>{visibleColumns.map(([label])=><th key={label}>{label}</th>)}<th>Detail</th></tr></thead><tbody>
-          {rows.slice(0,100).map((row,index)=><tr key={row.no||row.key||index}>
-            {visibleColumns.map(([label,key])=><td key={key} className="pf-cell-wrap">{key==="status"||key==="statusMaster"?<span className={"pf-status-badge "+String(row[key]||row.status||"").toLowerCase().replace(" ","-")}>{row[key]||row.status||"—"}</span>:String(row[key]??"—")}</td>)}
-            <td><button type="button" className="pf-row-action" onClick={()=>setSelected(row)}>View detail</button></td>
-          </tr>)}
+      <div className="pf-report-kpis"><div><span>Total Limit</span><strong>{money(totalLimit)}</strong></div><div><span>Total Exposure</span><strong>{money(totalExposure)}</strong></div><div><span>Average Utilization</span><strong>{pct(avgUtil)}</strong></div><div><span>Exceptions</span><strong>{exceptionCount}</strong></div></div>
+      <div className="pf-monitor-toolbar pf-report-toolbar"><select value={status} onChange={e=>{setStatus(e.target.value);setPage(1)}} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><input value={query} onChange={e=>{setQuery(e.target.value);setPage(1)}} placeholder="Search report fields..." aria-label="Search report"/><span className="pf-monitor-count">{rows.length} records</span><button type="button" className="pf-button-secondary" onClick={exportCsv}>Export Full CSV</button></div>
+      <section className="pf-card"><div className="pf-card-head-inline"><div><h2>Report Detail</h2><p>Search, sort and page through the full canonical report dataset.</p></div></div>
+        <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table pf-report-table"><thead><tr>{visibleColumns.map(([label,key])=><th key={label}><button type="button" className="pf-th-sort" onClick={()=>toggleSort(key)}>{label}</button></th>)}<th>Detail</th></tr></thead><tbody>
+          {pageRows.map((row,index)=><tr key={row.no||row.key||index}>{visibleColumns.map(([label,key])=><td key={key} className="pf-cell-wrap">{key==="status"||key==="statusMaster"?<span className={"pf-status-badge "+String(row[key]||row.status||"").toLowerCase().replace(" ","-")}>{row[key]||row.status||"—"}</span>:String(row[key]??"—")}</td>)}<td><button type="button" className="pf-row-action" onClick={()=>setSelected(row)}>View detail</button></td></tr>)}
         </tbody></table></div>
+        <GridPager page={safePage} pageCount={pageCount} pageSize={pageSize} setPage={setPage} setPageSize={setPageSize} total={rows.length}/>
       </section>
       {selected&&<aside className="pf-drawer pf-report-drawer" aria-label="Report record detail"><button type="button" className="pf-drawer-close" onClick={()=>setSelected(null)}>Close</button><div className="pf-label">{type} · Record Detail</div><h3>{String(valueFor(selected,["name","debtor","bank","country","key"])||"Report record")}</h3><p>Complete record from canonical report snapshot.</p><div className="pf-report-detail-list">{columns.map(([label,key])=><div key={key}><span>{label}</span><strong>{String(selected[key]??"—")}</strong></div>)}</div></aside>}
     </>}

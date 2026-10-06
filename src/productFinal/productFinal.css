@@ -387,3 +387,27 @@
   .pf-dashboard-kpis,.pf-risk-summary,.pf-action-placeholder,.pf-trust-grid{grid-template-columns:1fr}
   .pf-domain-grid{grid-template-columns:1fr 1fr}
 }
+
+/* PHASE 8D — LARGE DATASET UX */
+.pf-th-sort{
+  border:0;background:transparent;color:inherit;font:inherit;font-weight:800;
+  padding:0;text-align:left;cursor:pointer;width:100%;text-transform:inherit;letter-spacing:inherit;
+}
+.pf-th-sort:hover{color:var(--pf-blue)}
+.pf-grid-pager{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 2px 0;
+}
+.pf-grid-pager-info{color:#718096;font-size:9px}
+.pf-grid-pager-actions{display:flex;align-items:center;gap:5px}
+.pf-grid-pager-actions select,.pf-grid-pager-actions button{
+  height:30px;border:1px solid var(--pf-border);border-radius:7px;background:#fff;color:#52647a;
+  padding:0 8px;font:inherit;font-size:9px;font-weight:700;
+}
+.pf-grid-pager-actions button{cursor:pointer}
+.pf-grid-pager-actions button:hover:not(:disabled){background:#edf4ff;border-color:#b9cde6;color:#1f5fbf}
+.pf-grid-pager-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:700px){
+  .pf-grid-pager{align-items:flex-start;flex-direction:column}
+  .pf-grid-pager-actions{width:100%;justify-content:flex-end}
+}
