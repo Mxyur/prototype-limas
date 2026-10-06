@@ -94,6 +94,34 @@ function ProductsView({adapter}){
     :<section className="pf-card"><h2>Domain Mapping</h2><p>Source record → target master mapping, read-only.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Domain</th><th>Source Record</th><th>Source Field</th><th>Target</th><th>Scope</th><th>Status</th></tr></thead><tbody>{mappings.map((row,i)=><tr key={(row.recordId||"row")+"|"+i}><td>{row.limitType||"—"}</td><td>{row.recordId||"—"}</td><td>{row.sourceField||"—"}</td><td>{row.masterObject||row.key||"—"}</td><td>{row.scope||"—"}</td><td>{row.masterMatch?"Mapped":"Issue"}</td></tr>)}</tbody></table></div></section>}
   </div>;
 }
+function ReportsView({adapter}){
+  const snapshot=adapter.getReportsGovernanceSnapshot();
+  const types=Object.keys(snapshot.reports||{});
+  const [type,setType]=useState(types[0]||"Country");
+  const [status,setStatus]=useState("All");
+  const report=snapshot.reports?.[type];
+  const rows=(report?.rows||[]).filter(row=>status==="All"||row.status===status||row.statusMaster===status);
+  return <div>
+    <div className="pf-product-selector">{types.map(x=><button key={x} type="button" className={type===x?"active":""} onClick={()=>setType(x)}>{snapshot.reports[x].title||x}</button>)}</div>
+    <div className="pf-monitor-toolbar"><select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><span className="pf-monitor-count">{rows.length} records</span></div>
+    {!report?<div className="pf-placeholder"><strong>Report unavailable</strong></div>:<section className="pf-card"><h2>{report.title}</h2><p>{report.subtitle} · {report.source}</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr>{(report.columns||[]).slice(0,10).map(([label])=><th key={label}>{label}</th>)}</tr></thead><tbody>{rows.slice(0,50).map((row,index)=><tr key={row.no||index}>{(report.columns||[]).slice(0,10).map(([label,key])=><td key={key}>{key==="status"||key==="statusMaster"?<span className={"pf-status-badge "+String(row[key]||row.status||"").toLowerCase().replace(" ","-")}>{row[key]||row.status||"—"}</span>:String(row[key]??"—")}</td>)}</tr>)}</tbody></table></div></section>}
+  </div>;
+}
+
+function GovernanceView({adapter}){
+  const snapshot=adapter.getReportsGovernanceSnapshot();
+  const gate=snapshot.governance?.releaseGate||{};
+  return <div>
+    <div className="pf-grid">
+      <section className="pf-card"><h2>Release Gate</h2><p>Governance status dibaca dari existing runtime.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Status</div><div className="pf-value">{gate.status||"—"}</div></div><div className="pf-status"><div className="pf-label">Active DQ</div><div className="pf-value">{gate.activeDq??"—"}</div></div><div className="pf-status"><div className="pf-label">Numeric Failures</div><div className="pf-value">{gate.numericFailures??"—"}</div></div></div></section>
+      <section className="pf-card"><h2>Phase Health</h2><p>Phase 1–5 mengikuti governance audit yang sama.</p><div className="pf-list">{(snapshot.governance?.phases||[]).map(p=><div className="pf-universe" key={p.phase}><strong>Phase {p.phase} · {p.title}</strong><span>{p.status} · {p.issues} issues</span></div>)}</div></section>
+      <section className="pf-card"><h2>Lineage</h2><p>Field-level report traceability tetap tersedia tanpa memenuhi operational screen.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Traceable</div><div className="pf-value">{(snapshot.traceability||[]).filter(x=>x.status==="TRACEABLE").length}</div></div><div className="pf-status"><div className="pf-label">Total Fields</div><div className="pf-value">{(snapshot.traceability||[]).length}</div></div></div></section>
+    </div>
+    <section className="pf-card" style={{marginTop:14}}><h2>Report Field Lineage</h2><p>Report Field · Source Layer · Source / Reference · Transformation · Status.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Report</th><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation</th><th>Status</th></tr></thead><tbody>{(snapshot.traceability||[]).slice(0,120).map((row,index)=><tr key={row.reportType+"|"+row.field+"|"+index}><td>{row.reportType}</td><td>{row.label||row.field}</td><td>{row.sourceLayer}</td><td>{row.sourceReference}</td><td>{row.transformation}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replaceAll("_","-")}>{row.status}</span></td></tr>)}</tbody></table></div></section>
+    <section className="pf-card" style={{marginTop:14}}><h2>LPG E2E Classification Lineage</h2><p>Urutan chain dipertahankan dari source record sampai utilization/status.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Source Record</th><th>CIF</th><th>Industry</th><th>Grouping</th><th>Segment</th><th>Region</th><th>IC Nasional</th><th>IC Segwil</th><th>Master Limit</th><th>Outstanding</th><th>Utilization</th><th>Status</th></tr></thead><tbody>{(snapshot.lpgLineage||[]).map(row=><tr key={row.sourceRecord}><td>{row.sourceRecord}</td><td>{row.cif}</td><td>{row.industry}</td><td>{row.grouping}</td><td>{row.segment}</td><td>{row.region}</td><td>{row.icNasional}</td><td>{row.icSegwil}</td><td>{Number(row.masterLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(row.canonicalOutstanding||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{(Number(row.utilization||0)*100).toFixed(2)}%</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td></tr>)}</tbody></table></div></section>
+    <div className="pf-note">{gate.detail||"Governance status tersedia dari existing runtime."}</div>
+  </div>;
+}
 export default function ProductFinalApp({source}){
   const [active,setActive]=useState("home");
   const adapter=useMemo(()=>createProductFinalAdapter(source),[source]);
@@ -123,7 +151,7 @@ export default function ProductFinalApp({source}){
           <div className="pf-crumb">LIMAS › {current.label}</div>
           <h1 className="pf-title">{current.label}</h1>
           <p className="pf-subtitle">Foundation shell aktif. Business truth tetap berasal dari existing LIMAS; Product Final hanya mengubah experience layer.</p>
-          {active==="products"?<ProductsView adapter={adapter}/>:active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
+          {active==="reports"?<ReportsView adapter={adapter}/>:active==="governance"?<GovernanceView adapter={adapter}/>:active==="products"?<ProductsView adapter={adapter}/>:active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
             <div className="pf-grid">
               <section className="pf-card"><h2>Bankwide Overview</h2><p>Summary menggunakan snapshot yang sama dengan existing canonical monitoring presentation.</p><div className="pf-status-row">
                 <div className="pf-status"><div className="pf-label">Master Objects</div><div className="pf-value">{home?.masterObjects??"—"}</div></div>
