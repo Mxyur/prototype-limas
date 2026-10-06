@@ -5701,6 +5701,82 @@ function productFinalMonitoringSnapshot(type){
     rows:viewRows
   };
 }
+function productFinalLimitStructureSnapshot(){
+  const domainTypes=["Country","CCL","MLK","CIL","LPG"];
+  return domainTypes.map(type=>{
+    const rows=type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+    return {
+      type,
+      rows:rows.map((row,index)=>{
+        const key=String(row.key??index);
+        const limit=recordLimit(type,row);
+        const exposure=recordExposure(type,row);
+        const components=(MASTER_EDITABLE_FIELDS[type]||[])
+          .filter(x=>/limit|ccl|cil|master/i.test(String(x.field)))
+          .map(x=>({
+            section:x.section,
+            field:x.field,
+            value:masterFieldValue(type,x.section,x.field,"—",row,index)
+          }));
+        let allocation=[];
+        if(type==="Country"){
+          allocation=countryAllocationMetrics(row).items.map(x=>({
+            product:x.product,
+            domestic:x.domestic,
+            overseas:x.overseas,
+            total:x.total
+          }));
+        }else{
+          allocation=productContributionDetail(type,key).map(x=>({product:x.product,exposure:x.amount}));
+        }
+        return {
+          key,
+          name:row.name||row.sector||key||"—",
+          entity:row.entity||"—",
+          region:row.region||"—",
+          managingUnit:row.unitKerja||row.unitPengelola||row.managingUnit||"—",
+          group:row.groupUsahaHolding||row.group||row.grouping||"—",
+          limit,
+          exposure,
+          available:limit-exposure,
+          utilization:limit?exposure/limit:(exposure>0?Infinity:0),
+          status:recordStatus(type,row),
+          components,
+          allocation
+        };
+      })
+    };
+  });
+}
+function productFinalMasterLimitDetailsSnapshot(){
+  const domainTypes=["Country","CCL","MLK","CIL","LPG"];
+  return domainTypes.map(type=>{
+    const rows=type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+    return {
+      type,
+      rows:rows.map((row,index)=>{
+        const key=String(row.key??index);
+        const sections=Object.fromEntries(
+          Object.entries(domains[type]?.sections||{}).map(([section,fields])=>[
+            section,
+            fields.map(([field,base])=>({
+              field,
+              value:masterFieldValue(type,section,field,base,row,index)
+            }))
+          ])
+        );
+        return {
+          key,
+          name:row.name||row.sector||key||"—",
+          status:recordStatus(type,row),
+          masterLimit:recordLimit(type,row),
+          exposure:recordExposure(type,row),
+          sections
+        };
+      })
+    };
+  });
+}
 function productFinalLimitsSnapshot(){
   const domains=["Country","CCL","MLK","CIL","LPG"];
   return domains.map(type=>{
@@ -5824,6 +5900,8 @@ function App(){
       LPG:productFinalMonitoringSnapshot("LPG"),
     },
     limitsSnapshot:productFinalLimitsSnapshot(),
+    limitStructureSnapshot:productFinalLimitStructureSnapshot(),
+    masterLimitDetailsSnapshot:productFinalMasterLimitDetailsSnapshot(),
     productsSnapshot:{
       catalog:productMasterCatalog,
       fields:productTabFields,

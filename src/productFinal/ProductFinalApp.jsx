@@ -60,16 +60,90 @@ function MonitoringView({adapter}){
 }
 function LimitsView({adapter}){
   const domains=adapter.getLimitsSnapshot();
+  const structures=adapter.getLimitStructureSnapshot();
+  const details=adapter.getMasterLimitDetailsSnapshot();
   const [domain,setDomain]=useState(domains[0]?.type||"Country");
+  const [view,setView]=useState("overview");
+  const [selectedKey,setSelectedKey]=useState(null);
   const selected=domains.find(x=>x.type===domain)||domains[0];
+  const structure=structures.find(x=>x.type===domain)||structures[0];
+  const detail=details.find(x=>x.type===domain)||details[0];
+  const structureRows=structure?.rows||[];
+  const selectedStructure=structureRows.find(x=>String(x.key)===String(selectedKey))||structureRows[0];
+  const selectedDetail=(detail?.rows||[]).find(x=>String(x.key)===String(selectedKey))||(detail?.rows||[])[0];
+  const money=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("id-ID",{maximumFractionDigits:2}):"—";
+  const pct=v=>Number.isFinite(Number(v))?(Number(v)*100).toFixed(1)+"%":"—";
+  const selectRow=key=>setSelectedKey(key);
+
   return <div>
-    <div className="pf-monitor-tabs">{domains.map(x=><button key={x.type} type="button" className={domain===x.type?"active":""} onClick={()=>setDomain(x.type)}>{x.type}</button>)}</div>
-    <div className="pf-grid" style={{marginTop:12}}>
-      <section className="pf-card"><h2>Master Limit</h2><p>Read-only view dari master limit existing.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Total Limit</div><div className="pf-value">{Number(selected?.totalLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</div></div><div className="pf-status"><div className="pf-label">Exposure</div><div className="pf-value">{Number(selected?.totalExposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</div></div><div className="pf-status"><div className="pf-label">Utilization</div><div className="pf-value">{(Number(selected?.utilization||0)*100).toFixed(1)}%</div></div></div></section>
-      <section className="pf-card"><h2>Write Boundary</h2><p>Product Final tidak membuat CRUD master limit kedua.</p><div className="pf-note">Perubahan master limit tetap dilakukan pada Governance / Version 1 application.</div></section>
-      <section className="pf-card"><h2>Scope</h2><p>Detail limit mengikuti canonical scope. Product Final hanya menyajikan data yang sudah tersedia.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Objects</div><div className="pf-value">{selected?.rows?.length??0}</div></div></div></section>
+    <div className="pf-monitor-tabs pf-section-tabs">
+      {["overview","structure","master"].map(x=><button key={x} type="button" className={view===x?"active":""} onClick={()=>setView(x)}>
+        {x==="overview"?"Overview":x==="structure"?"Limit Structure":"Master Limit Detail"}
+      </button>)}
     </div>
-    <section className="pf-card" style={{marginTop:14}}><h2>Limit Detail</h2><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Key</th><th>Name</th><th>Limit</th><th>Exposure</th><th>Status</th><th>Entity</th><th>Region</th></tr></thead><tbody>{(selected?.rows||[]).map(row=><tr key={row.key}><td>{row.key}</td><td>{row.name}</td><td>{Number(row.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(row.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td><td>{row.entity}</td><td>{row.region}</td></tr>)}</tbody></table></div></section>
+    <div className="pf-monitor-tabs" style={{marginTop:10}}>
+      {domains.map(x=><button key={x.type} type="button" className={domain===x.type?"active":""} onClick={()=>{setDomain(x.type);setSelectedKey(null)}}>{x.type}</button>)}
+    </div>
+
+    {view==="overview"&&<div>
+      <div className="pf-grid">
+        <section className="pf-card"><h2>Master Limit</h2><p>Canonical master-limit summary. Read-only presentation layer.</p><div className="pf-status-row">
+          <div className="pf-status"><div className="pf-label">Total Limit</div><div className="pf-value">{money(selected?.totalLimit)}</div></div>
+          <div className="pf-status"><div className="pf-label">Exposure</div><div className="pf-value">{money(selected?.totalExposure)}</div></div>
+          <div className="pf-status"><div className="pf-label">Utilization</div><div className="pf-value">{pct(selected?.utilization)}</div></div>
+        </div></section>
+        <section className="pf-card"><h2>Limit Structure</h2><p>Hierarchy from universe/master scope to allocation and utilization.</p><div className="pf-status-row">
+          <div className="pf-status"><div className="pf-label">Objects</div><div className="pf-value">{structureRows.length}</div></div>
+          <div className="pf-status"><div className="pf-label">Components</div><div className="pf-value">{structureRows.reduce((n,x)=>n+(x.components||[]).length,0)}</div></div>
+        </div></section>
+        <section className="pf-card"><h2>Write Boundary</h2><p>Product Final tidak membuat CRUD master limit kedua.</p><div className="pf-note">Perubahan master limit tetap dilakukan pada Governance / Version 1 application.</div></section>
+      </div>
+      <section className="pf-card" style={{marginTop:14}}>
+        <div className="pf-card-head-inline"><div><h2>{domain} · Limit Objects</h2><p>Pilih object untuk membuka detail struktur limit.</p></div><span className="pf-monitor-count">{selected?.rows?.length??0} objects</span></div>
+        <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table"><thead><tr><th>Key</th><th>Name</th><th>Limit</th><th>Exposure</th><th>Utilization</th><th>Status</th></tr></thead><tbody>
+          {(selected?.rows||[]).map(row=><tr key={row.key} onClick={()=>{setSelectedKey(row.key);setView("structure")}}><td>{row.key}</td><td className="pf-cell-wrap">{row.name}</td><td>{money(row.limit)}</td><td>{money(row.exposure)}</td><td>{pct(row.limit?row.exposure/row.limit:0)}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td></tr>)}
+        </tbody></table></div>
+      </section>
+    </div>}
+
+    {view==="structure"&&<div>
+      <section className="pf-card">
+        <div className="pf-card-head-inline"><div><h2>Limit Structure · {domain}</h2><p>Canonical hierarchy and allocation view. No new business calculation is introduced.</p></div><span className="pf-readonly-badge">READ ONLY</span></div>
+        <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table pf-table-structured"><thead><tr><th>Key</th><th>Name</th><th>Entity</th><th>Managing Unit</th><th>Master Limit</th><th>Available</th><th>Utilization</th><th>Status</th></tr></thead><tbody>
+          {structureRows.map(row=><tr key={row.key} className={String(selectedStructure?.key)===String(row.key)?"pf-row-selected":""} onClick={()=>selectRow(row.key)}>
+            <td>{row.key}</td><td className="pf-cell-wrap">{row.name}</td><td>{row.entity}</td><td>{row.managingUnit}</td><td>{money(row.limit)}</td><td>{money(row.available)}</td><td>{pct(row.utilization)}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td>
+          </tr>)}
+        </tbody></table></div>
+      </section>
+      {selectedStructure&&<section className="pf-card" style={{marginTop:14}}>
+        <div className="pf-detail-heading"><div><div className="pf-label">Selected Limit Object</div><h2>{selectedStructure.name}</h2><p>{domain} · {selectedStructure.key} · {selectedStructure.group}</p></div><button type="button" className="pf-button-secondary" onClick={()=>setView("master")}>Open Master Detail</button></div>
+        <div className="pf-detail-kpis">
+          <div><span>Master Limit</span><strong>{money(selectedStructure.limit)}</strong></div>
+          <div><span>Exposure</span><strong>{money(selectedStructure.exposure)}</strong></div>
+          <div><span>Available</span><strong>{money(selectedStructure.available)}</strong></div>
+          <div><span>Utilization</span><strong>{pct(selectedStructure.utilization)}</strong></div>
+        </div>
+        <div className="pf-structure-chain">
+          <div><b>Universe</b><span>{domain}</span></div><div><b>Master Object</b><span>{selectedStructure.key}</span></div><div><b>Scope / Entity</b><span>{selectedStructure.entity||selectedStructure.region||"—"}</span></div><div><b>Allocation</b><span>{(selectedStructure.allocation||[]).length} component(s)</span></div>
+        </div>
+        <div className="pf-section-heading">Limit Components</div>
+        <div className="pf-component-grid">{(selectedStructure.components||[]).map((x,i)=><div className="pf-component-card" key={x.section+"|"+x.field+"|"+i}><span>{x.section}</span><strong>{x.field}</strong><b>{typeof x.value==="number"?money(x.value):String(x.value??"—")}</b></div>)}</div>
+        <div className="pf-section-heading">Product / Allocation View</div>
+        {(selectedStructure.allocation||[]).length?<div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Product / Component</th><th>Domestic</th><th>Overseas</th><th>Total / Exposure</th></tr></thead><tbody>{selectedStructure.allocation.map((x,i)=><tr key={(x.product||"component")+"|"+i}><td>{x.product}</td><td>{x.domestic!==undefined?money(x.domestic):"—"}</td><td>{x.overseas!==undefined?money(x.overseas):"—"}</td><td>{money(x.total??x.exposure)}</td></tr>)}</tbody></table></div>:<div className="pf-note">Tidak ada allocation component yang tersedia pada canonical snapshot untuk object ini.</div>}
+      </section>}
+    </div>}
+
+    {view==="master"&&<div>
+      <section className="pf-card">
+        <div className="pf-card-head-inline"><div><h2>Master Limit Detail · {domain}</h2><p>Field-level master structure dari canonical existing runtime. Read-only.</p></div><span className="pf-readonly-badge">CANONICAL</span></div>
+        <div className="pf-master-object-grid" style={{marginTop:14}}>{(detail?.rows||[]).map(row=><button type="button" key={row.key} className={"pf-master-object "+(String(selectedDetail?.key)===String(row.key)?"active":"")} onClick={()=>selectRow(row.key)}><strong>{row.name}</strong><span>{row.key} · {money(row.masterLimit)} limit · {row.status}</span></button>)}</div>
+      </section>
+      {selectedDetail&&<section className="pf-card" style={{marginTop:14}}>
+        <div className="pf-detail-heading"><div><div className="pf-label">Master Limit Record</div><h2>{selectedDetail.name}</h2><p>{domain} · {selectedDetail.key}</p></div><span className={"pf-status-badge "+String(selectedDetail.status||"").toLowerCase().replace(" ","-")}>{selectedDetail.status}</span></div>
+        <div className="pf-detail-kpis"><div><span>Master Limit</span><strong>{money(selectedDetail.masterLimit)}</strong></div><div><span>Exposure</span><strong>{money(selectedDetail.exposure)}</strong></div><div><span>Available</span><strong>{money(selectedDetail.masterLimit-selectedDetail.exposure)}</strong></div></div>
+        <div className="pf-master-sections">{Object.entries(selectedDetail.sections||{}).map(([section,fields])=><section className="pf-master-section" key={section}><div className="pf-section-heading">{section}</div><div className="pf-master-fields">{fields.map((field,i)=><div className="pf-master-field" key={field.field+"|"+i}><span>{field.field}</span><strong>{typeof field.value==="number"?money(field.value):String(field.value??"—")}</strong></div>)}</div></section>)}</div>
+      </section>}
+    </div>}
   </div>;
 }
 function ProductsView({adapter}){
@@ -99,21 +173,55 @@ function ReportsView({adapter}){
   const types=Object.keys(snapshot.reports||{});
   const [type,setType]=useState(types[0]||"Country");
   const [status,setStatus]=useState("All");
+  const [selected,setSelected]=useState(null);
   const report=snapshot.reports?.[type];
+  const columns=report?.columns||[];
   const rows=(report?.rows||[]).filter(row=>status==="All"||row.status===status||row.statusMaster===status);
+  const visibleColumns=columns.slice(0,7);
+  const valueFor=(row,keys)=>{
+    for(const key of keys){if(row?.[key]!==undefined&&row?.[key]!==null&&row?.[key]!=="")return row[key];}
+    return null;
+  };
+  const money=v=>Number.isFinite(Number(v))?Number(v).toLocaleString("id-ID",{maximumFractionDigits:2}):"—";
+  const pct=v=>{const n=Number(v);if(!Number.isFinite(n))return "—";return (Math.abs(n)<=1?n*100:n).toFixed(1)+"%";};
+  const totalLimit=rows.reduce((s,r)=>s+(Number(valueFor(r,["limit","masterLimit","ccl","cil","capacityLimit"]))||0),0);
+  const totalExposure=rows.reduce((s,r)=>s+(Number(valueFor(r,["outstanding","exposure","total","totalBade"]))||0),0);
+  const exceptionCount=rows.filter(r=>["Warning","Breach","Data Issue"].includes(r.status)||["Warning","Breach","Data Issue"].includes(r.statusMaster)).length;
+  const avgUtil=rows.length?rows.reduce((s,r)=>s+(Number(valueFor(r,["utilization","utilisasi","utilisasiCcl"]))||0),0)/rows.length:0;
+  const exportCsv=()=>{
+    const headers=columns.map(([label])=>label),keys=columns.map(([,key])=>key);
+    const esc=v=>{const s=String(v??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+    const body=[headers.join(","),...rows.map(row=>keys.map(k=>esc(row[k])).join(","))].join("\n");
+    const blob=new Blob([body],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="LIMAS-"+type+".csv";a.click();URL.revokeObjectURL(url);
+  };
   return <div>
-    <div className="pf-product-selector">{types.map(x=><button key={x} type="button" className={type===x?"active":""} onClick={()=>setType(x)}>{snapshot.reports[x].title||x}</button>)}</div>
-    <div className="pf-monitor-toolbar"><select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><span className="pf-monitor-count">{rows.length} records</span><button type="button" className="pf-button-secondary" onClick={()=>{
-      const cols=(report?.columns||[]).slice(0,10), headers=cols.map(([label])=>label), keys=cols.map(([,key])=>key);
-      const esc=(v)=>{const s=String(v??"");return /[",\\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-      const body=[headers.join(","),...(rows||[]).map(row=>keys.map(k=>esc(row[k])).join(","))].join("\n");
-      const blob=new Blob([body],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
-      a.href=url;a.download="LIMAS-"+type+".csv";a.click();URL.revokeObjectURL(url);
-    }}>Export CSV</button></div>
-    {!report?<div className="pf-placeholder"><strong>Report unavailable</strong></div>:<section className="pf-card"><h2>{report.title}</h2><p>{report.subtitle} · {report.source}</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr>{(report.columns||[]).slice(0,10).map(([label])=><th key={label}>{label}</th>)}</tr></thead><tbody>{rows.slice(0,50).map((row,index)=><tr key={row.no||index}>{(report.columns||[]).slice(0,10).map(([label,key])=><td key={key}>{key==="status"||key==="statusMaster"?<span className={"pf-status-badge "+String(row[key]||row.status||"").toLowerCase().replace(" ","-")}>{row[key]||row.status||"—"}</span>:String(row[key]??"—")}</td>)}</tr>)}</tbody></table></div></section>}
+    <section className="pf-card pf-report-header">
+      <div><div className="pf-label">LIMAS REPORT</div><h2>{report?.title||type}</h2><p>{report?.subtitle||"Canonical reporting view"}{report?.source?" · "+report.source:""}</p></div>
+      <div className="pf-report-header-meta"><span>{rows.length} records</span><span>Read-only</span></div>
+    </section>
+    <div className="pf-product-selector pf-report-selector">{types.map(x=><button key={x} type="button" className={type===x?"active":""} onClick={()=>{setType(x);setSelected(null)}}>{snapshot.reports[x].title||x}</button>)}</div>
+    {!report?<div className="pf-placeholder"><strong>Report unavailable</strong></div>:<>
+      <div className="pf-report-kpis">
+        <div><span>Total Limit</span><strong>{money(totalLimit)}</strong></div>
+        <div><span>Total Exposure</span><strong>{money(totalExposure)}</strong></div>
+        <div><span>Average Utilization</span><strong>{pct(avgUtil)}</strong></div>
+        <div><span>Exceptions</span><strong>{exceptionCount}</strong></div>
+      </div>
+      <div className="pf-monitor-toolbar pf-report-toolbar"><select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><span className="pf-monitor-count">{rows.length} records</span><button type="button" className="pf-button-secondary" onClick={exportCsv}>Export Full CSV</button></div>
+      <section className="pf-card">
+        <div className="pf-card-head-inline"><div><h2>Report Detail</h2><p>Key fields remain visible; open a row for the complete report record.</p></div></div>
+        <div className="pf-table-wrap" style={{marginTop:14}}><table className="pf-table pf-report-table"><thead><tr>{visibleColumns.map(([label])=><th key={label}>{label}</th>)}<th>Detail</th></tr></thead><tbody>
+          {rows.slice(0,100).map((row,index)=><tr key={row.no||row.key||index}>
+            {visibleColumns.map(([label,key])=><td key={key} className="pf-cell-wrap">{key==="status"||key==="statusMaster"?<span className={"pf-status-badge "+String(row[key]||row.status||"").toLowerCase().replace(" ","-")}>{row[key]||row.status||"—"}</span>:String(row[key]??"—")}</td>)}
+            <td><button type="button" className="pf-row-action" onClick={()=>setSelected(row)}>View detail</button></td>
+          </tr>)}
+        </tbody></table></div>
+      </section>
+      {selected&&<aside className="pf-drawer pf-report-drawer" aria-label="Report record detail"><button type="button" className="pf-drawer-close" onClick={()=>setSelected(null)}>Close</button><div className="pf-label">{type} · Record Detail</div><h3>{String(valueFor(selected,["name","debtor","bank","country","key"])||"Report record")}</h3><p>Complete record from canonical report snapshot.</p><div className="pf-report-detail-list">{columns.map(([label,key])=><div key={key}><span>{label}</span><strong>{String(selected[key]??"—")}</strong></div>)}</div></aside>}
+    </>}
   </div>;
 }
-
 function ProductFinalGovernance({adapter}){
   const reportsSnapshot=adapter.getReportsGovernanceSnapshot();
   const detail=adapter.getGovernanceDetail();
@@ -195,7 +303,7 @@ export default function ProductFinalApp({source}){
           <div className="pf-crumb">LIMAS › {current.label}</div>
           <h1 className="pf-title">{current.label}</h1>
           <p className="pf-subtitle">Foundation shell aktif. Business truth tetap berasal dari existing LIMAS; Product Final hanya mengubah experience layer.</p>
-          {active==="reports"?<ReportsView adapter={adapter}/>:active==="governance"?<GovernanceView adapter={adapter}/>:active==="products"?<ProductsView adapter={adapter}/>:active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
+          {active==="reports"?<ReportsView adapter={adapter}/>:active==="governance"?<ProductFinalGovernance adapter={adapter}/>:active==="products"?<ProductsView adapter={adapter}/>:active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
             <div className="pf-grid">
               <section className="pf-card"><h2>Bankwide Overview</h2><p>Summary menggunakan snapshot yang sama dengan existing canonical monitoring presentation.</p><div className="pf-status-row">
                 <div className="pf-status"><div className="pf-label">Master Objects</div><div className="pf-value">{home?.masterObjects??"—"}</div></div>
