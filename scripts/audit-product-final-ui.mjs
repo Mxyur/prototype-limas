@@ -23,7 +23,10 @@ const requiredAppMarkers=[
   "function DonutChart",
   "pf-reference-kpis",
   "pf-reference-action",
-  "Executive Overview"
+  "Bankwide Limit Position",
+  "Risk & Attention Center",
+  "Limit Actions",
+  "Universe Position"
 ];
 const failures=[];
 const assert=(ok,msg)=>{if(!ok)failures.push(msg)};
