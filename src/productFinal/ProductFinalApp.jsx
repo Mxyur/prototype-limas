@@ -72,6 +72,28 @@ function LimitsView({adapter}){
     <section className="pf-card" style={{marginTop:14}}><h2>Limit Detail</h2><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Key</th><th>Name</th><th>Limit</th><th>Exposure</th><th>Status</th><th>Entity</th><th>Region</th></tr></thead><tbody>{(selected?.rows||[]).map(row=><tr key={row.key}><td>{row.key}</td><td>{row.name}</td><td>{Number(row.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(row.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td><td>{row.entity}</td><td>{row.region}</td></tr>)}</tbody></table></div></section>
   </div>;
 }
+function ProductsView({adapter}){
+  const data=adapter.getProductsSnapshot();
+  const catalog=data.catalog||[];
+  const [product,setProduct]=useState(catalog[0]?.id||"CASHLOAN");
+  const [layer,setLayer]=useState("Source");
+  const fields=data.fields?.[product]||[];
+  const samples=data.samples?.[product]||{};
+  const mappings=data.mappings?.[product]||[];
+  const enrichment=[...new Set(mappings.flatMap(row=>Object.keys(row.businessEnrichment||{})))];
+  const references=[...new Map(mappings.map(row=>[String(row.key||"") ,{key:row.key,name:row.masterObject}])).values()].filter(x=>x.key);
+  return <div>
+    <div className="pf-product-selector">{catalog.map(item=><button key={item.id} type="button" className={product===item.id?"active":""} onClick={()=>{setProduct(item.id);setLayer("Source")}}>{item.label}</button>)}</div>
+    <div className="pf-product-meta">
+      <span>{catalog.find(x=>x.id===product)?.definition||catalog.find(x=>x.id===product)?.note||"Product registry"}</span>
+    </div>
+    <div className="pf-product-layers">{["Source","Business Enrichment","Reference Master","Domain Mapping"].map(x=><button key={x} type="button" className={layer===x?"active":""} onClick={()=>setLayer(x)}>{x}</button>)}</div>
+    {layer==="Source"?<section className="pf-card"><h2>Source Fields</h2><p>Field tetap source-oriented. Derived monitoring outputs tidak dimasukkan ke Product Database.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Field</th><th>Sample</th><th>Canonical Schema</th></tr></thead><tbody>{fields.map(field=><tr key={field}><td>{field}</td><td>{samples[field]===0?0:(samples[field]??"—")}</td><td>{(data.schemaFields?.[product]||[]).includes(field)?"Registered":"Not registered"}</td></tr>)}</tbody></table></div></section>
+    :layer==="Business Enrichment"?<section className="pf-card"><h2>Business Enrichment</h2><p>Enrichment dibaca dari mapping yang sudah dibangun existing.</p><div className="pf-list">{enrichment.length?enrichment.map(x=><div className="pf-universe" key={x}><strong>{x}</strong><span>Mapped enrichment field</span></div>):<div className="pf-note">No enrichment field configured for this product.</div>}</div></section>
+    :layer==="Reference Master"?<section className="pf-card"><h2>Reference Master</h2><p>Reference target tetap berasal dari existing integration mapping.</p><div className="pf-list">{references.length?references.map(x=><div className="pf-universe" key={x.key}><strong>{x.name||x.key}</strong><span>{x.key}</span></div>):<div className="pf-note">No reference mapping available.</div>}</div></section>
+    :<section className="pf-card"><h2>Domain Mapping</h2><p>Source record → target master mapping, read-only.</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Domain</th><th>Source Record</th><th>Source Field</th><th>Target</th><th>Scope</th><th>Status</th></tr></thead><tbody>{mappings.map((row,i)=><tr key={(row.recordId||"row")+"|"+i}><td>{row.limitType||"—"}</td><td>{row.recordId||"—"}</td><td>{row.sourceField||"—"}</td><td>{row.masterObject||row.key||"—"}</td><td>{row.scope||"—"}</td><td>{row.masterMatch?"Mapped":"Issue"}</td></tr>)}</tbody></table></div></section>}
+  </div>;
+}
 export default function ProductFinalApp({source}){
   const [active,setActive]=useState("home");
   const adapter=useMemo(()=>createProductFinalAdapter(source),[source]);
@@ -101,7 +123,7 @@ export default function ProductFinalApp({source}){
           <div className="pf-crumb">LIMAS › {current.label}</div>
           <h1 className="pf-title">{current.label}</h1>
           <p className="pf-subtitle">Foundation shell aktif. Business truth tetap berasal dari existing LIMAS; Product Final hanya mengubah experience layer.</p>
-          {active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
+          {active==="products"?<ProductsView adapter={adapter}/>:active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
             <div className="pf-grid">
               <section className="pf-card"><h2>Bankwide Overview</h2><p>Summary menggunakan snapshot yang sama dengan existing canonical monitoring presentation.</p><div className="pf-status-row">
                 <div className="pf-status"><div className="pf-label">Master Objects</div><div className="pf-value">{home?.masterObjects??"—"}</div></div>
