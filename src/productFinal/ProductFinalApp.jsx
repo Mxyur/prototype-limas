@@ -68,7 +68,7 @@ export default function ProductFinalApp({source}){
               </div>)}</div>
             </section>
             <div className="pf-note">{home?.releaseGate?.detail||"Foundation snapshot tersedia dari existing runtime."}</div>
-          </></>:<div className="pf-placeholder"><strong>{current.label} — belum diimplementasikan</strong><span>Scope berikutnya dibangun hanya setelah Foundation gate dinyatakan clear.</span></div>}
+          </>:<div className="pf-placeholder"><strong>{current.label} — belum diimplementasikan</strong><span>Scope berikutnya dibangun hanya setelah Foundation gate dinyatakan clear.</span></div>}
         </div>
       </main>
     </div>
