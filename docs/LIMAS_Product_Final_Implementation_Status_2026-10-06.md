@@ -15,7 +15,7 @@ Purpose: keep every unfinished Product Final requirement explicitly managed and 
 | Phase | Scope | Status | Gate |
 |---|---|---|---|
 | 8A | Information Architecture | PASS | Closed |
-| 8B | Reference-based enterprise visual language | IN PROGRESS | Must achieve real visual delta vs reference |
+| 8B | Reference-based enterprise visual language | BLOCKED AT VISUAL GATE | Implementation + automated QA PASS; browser visual acceptance still blocked by protected preview access |
 | 8C | Management dashboard / executive analytics | PENDING | Starts only after 8B PASS |
 | 8D | Large dataset / stress UX | PASS* | Re-run after visual work if regression |
 | 8E | Limit Management workspace | PASS* | Re-run after visual work if regression |
@@ -45,17 +45,29 @@ Reference source:
 - LIMAS_Product_Final_Blueprint_and_Build_Spec.md
 
 ## 8B acceptance
-[ ] Real chart primitives exist in Product Final
-[ ] Executive dashboard structurally matches the reference pattern
-[ ] Domain dashboard pattern exists
-[ ] Breach/exception area is visually prominent
-[ ] Recommendation / Switching entry point is discoverable
-[ ] Sidebar/navigation has product-like visual hierarchy
-[ ] Visual language is consistent across Dashboard/Monitoring/Limits/Reports
-[ ] Existing canonical data boundary remains intact
-[ ] Product Final audit checks visual primitives
-[ ] Build + audit + workflow checks PASS
-[ ] Browser visual acceptance performed where deployment access permits
+[x] Real chart primitives exist in Product Final
+[x] Executive dashboard structurally matches the reference pattern
+[x] Domain dashboard pattern exists
+[x] Breach/exception area is visually prominent
+[x] Recommendation / Switching entry point is discoverable
+[x] Sidebar/navigation has product-like visual hierarchy
+[x] Visual language is consistent across Dashboard/Monitoring/Limits/Reports
+[x] Existing canonical data boundary remains intact
+[x] Product Final audit checks visual primitives
+[x] Build + audit + workflow checks PASS
+[ ] Browser visual acceptance — BLOCKED: protected Vercel preview is not accessible through the current integration
+
+### 8B implementation evidence
+- Visual reference primitives added: BarChart, HorizontalBarChart, DonutChart, analytics cards, reference KPI treatment, dashboard filters, exception table, Recommendation / Switching CTA, navigation glyph treatment.
+- Existing pre-build JSX warning in `src/main.jsx` was normalized in the same sequential gate; latest Vite build no longer reports the prior JSX warning.
+- Latest branch commit: `f7bf0766d2fc52d20b469df315bd17a2ec0553c8`.
+- GitHub Audit: SUCCESS.
+- GitHub Vite Build Validation: SUCCESS.
+- Vercel preview checks for both Product Final surfaces: SUCCESS.
+- Remaining non-functional warnings: dependency vulnerabilities, runner/action Node warning, and Vite chunk-size warning.
+
+### Gate decision
+8B implementation is technically PASS, but the mandatory visual gate is BLOCKED by deployment access. Do not start 8C until visual acceptance is available or an equivalent trusted visual verification path is established.
 
 ## Next gates
 8B PASS → 8C → 8F/8G workflow reconciliation → 8H → 8I → 8J.
