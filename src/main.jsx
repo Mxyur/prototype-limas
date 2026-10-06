@@ -5717,6 +5717,52 @@ function productFinalLimitsSnapshot(){
     };
   });
 }
+function productFinalReportsGovernanceSnapshot(){
+  const reportData=buildReportDummy(limasDemoData);
+  const reportRows={
+    Country:reportData.Country||[],
+    CCL:reportData.CCL||[],
+    CCL_DIRECT:buildCCLDirectReportRows(),
+    CCL_INDIRECT:buildCCLIndirectReportRows(),
+    MLK:reportData.MLK||[],
+    MLK_CONSOLIDATED:reportData.MLK||[],
+    CIL:reportData.CIL||[],
+    LPG:reportData.LPG||[]
+  };
+  const reportTypes=Object.fromEntries(Object.entries(reportConfig).map(([type,cfg])=>[type,{
+    title:cfg.title,
+    subtitle:cfg.subtitle,
+    source:cfg.source,
+    columns:cfg.columns,
+    rows:reportRows[type]||[]
+  }]));
+  const traceability=auditReportFieldTraceability(reportConfig,reportRows);
+  const governance=governancePhaseAudit();
+  const release=releaseGate();
+  const lpgRows=lpgLeafRows(limasDemoData.LPG||[]).map((row,index)=>({
+    sourceRecord:"LPG-"+(index+1),
+    cif:row.key,
+    industry:row.sector,
+    grouping:row.segment,
+    segment:row.segment,
+    region:row.region,
+    icNasional:row.icNasional||"—",
+    icSegwil:row.icWilayahSegmen||"—",
+    masterLimit:recordLimit("LPG",row),
+    canonicalOutstanding:recordExposure("LPG",row),
+    utilization:recordUtil("LPG",row),
+    status:recordStatus("LPG",row)
+  }));
+  return {
+    reports:reportTypes,
+    traceability,
+    governance:{
+      releaseGate:{status:release.status,blockingLayers:release.blockingLayers.length,numericFailures:release.numericFailures.length,activeDq:release.activeDq,detail:release.detail},
+      phases:Object.values(governance.phases||{}).map(phase=>({phase:phase.phase,title:phase.title,status:phase.status,issues:phase.issues.length}))
+    },
+    lpgLineage:lpgRows
+  };
+}
 function App(){
   const [login,setLogin]=useState(false);
   const [screen,setScreen]=useState("dashboard");
@@ -5752,6 +5798,7 @@ function App(){
       schemaFields:productSchemaFields,
       mappings:productIntegrationMappings,
     },
+    reportsGovernanceSnapshot:productFinalReportsGovernanceSnapshot(),
   };
   if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
