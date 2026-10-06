@@ -5599,6 +5599,50 @@ class AppErrorBoundary extends React.Component{
     return this.props.children;
   }
 }
+function productFinalHomeSnapshot(){
+  const domainsList=["Country","CCL","MLK","CIL","LPG"];
+  const rowsForKpi=type=>type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+  const domainMetrics=domainsList.map(type=>{
+    const rows=rowsForKpi(type);
+    const limit=rows.reduce((a,r)=>a+recordLimit(type,r),0);
+    const exposure=rows.reduce((a,r)=>a+recordExposure(type,r),0);
+    const utilization=limit?exposure/limit:0;
+    return {
+      type,
+      records:rows.length,
+      limit,
+      exposure,
+      utilization,
+      warnings:rows.filter(r=>recordStatus(type,r)==="Warning").length,
+      breaches:rows.filter(r=>recordStatus(type,r)==="Breach").length,
+      issues:rows.filter(r=>recordStatus(type,r)==="Data Issue").length
+    };
+  });
+  const canonicalRows=canonicalExceptions();
+  const release=releaseGate();
+  return {
+    masterObjects:domainMetrics.reduce((sum,row)=>sum+row.records,0),
+    productSourceRecords:Object.values(productDatabase).reduce((sum,rows)=>sum+(rows||[]).length,0),
+    breach:domainMetrics.reduce((sum,row)=>sum+row.breaches,0),
+    warning:domainMetrics.reduce((sum,row)=>sum+row.warnings,0),
+    issue:domainMetrics.reduce((sum,row)=>sum+row.issues,0),
+    domains:domainMetrics,
+    attention:canonicalRows.filter(row=>row.status==="Warning"||row.status==="Breach").slice(0,6).map(row=>({
+      domain:row.domain,
+      object:row.object,
+      status:row.status,
+      utilization:row.util??null,
+      key:row.key
+    })),
+    releaseGate:{
+      status:release.status,
+      blockingLayers:release.blockingLayers.length,
+      numericFailures:release.numericFailures.length,
+      activeDq:release.activeDq,
+      detail:release.detail
+    }
+  };
+}
 function App(){
   const [login,setLogin]=useState(false);
   const [screen,setScreen]=useState("dashboard");
@@ -5618,6 +5662,7 @@ function App(){
     productMasterCatalog,
     productUniverseAudit,
     runtimeMeta:E2E_DUMMY_META,
+    homeSnapshot:productFinalHomeSnapshot(),
   };
   if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
