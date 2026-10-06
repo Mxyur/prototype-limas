@@ -7,10 +7,13 @@ import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_P
 import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage,auditReportFieldTraceability,summarizeReportFieldTraceability} from './reportTraceability';
 import {auditMasterLimitGovernance,auditBusinessEnrichmentCoverage,auditCanonicalReadModel,auditReportRuntime} from './governancePhaseAudit';
 import {PRODUCT_SOURCE_SCHEMA_OVERRIDES,PRODUCT_DERIVED_FIELDS_FORBIDDEN,BUSINESS_MAPPING_CONTRACTS,buildDebtorClassificationRegistry,resolveMlkIdentity,businessContractFor} from './productSchemaGovernance';
+import ProductFinalApp from './productFinal/ProductFinalApp';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
 // - VITE_LIMAS_RUNTIME_MODE may explicitly select E2E or PRODUCTION.
+const LIMAS_SURFACE=String(import.meta.env?.VITE_LIMAS_SURFACE||"EXISTING").trim().toUpperCase();
+
 const LIMAS_RUNTIME_MODE=String(
   import.meta.env?.VITE_LIMAS_RUNTIME_MODE ||
   (import.meta.env?.DEV ? "E2E" : "PRODUCTION_SAMPLE")
@@ -1183,7 +1186,14 @@ function Report({nav}){
 function Status({v}){const cls=v==="Breach"?"breach":v==="Warning"?"warning":v==="Data Issue"?"dataissue":"normal";return <span className={`badge ${cls}`}>{v}</span>}
 function Layout({screen,onNav,children}){const nav=[['dashboard','⌂','Dashboard'],['setup','⚙','Limit Setup'],['products','▦','Product Data & Integration'],['subsidiaries','♙','Perusahaan Anak'],['ingestion','⇩','Data Ingestion'],['report','▤','Generate Report'],['warning','◉','Early Warning'],['quality','◍','Data Quality'],['remediation','↗','Data Remediation'],['access','♙','Access Control'],['Country','◎','Country Limit'],['CCL','◈','Counterparty / CCL'],['MLK','◌','Debtor / MLK'],['CIL','⬡','Insurance / CIL'],['LPG','◫','Portfolio / LPG']];return <div className="app shell"><aside className="side"><div className="brand"><div><b>LIMAS</b><small>Limit Management System</small></div></div><div className="nav">{nav.map(([id,ic,lb],i)=><React.Fragment key={id}>{i===1&&<div className="section">Master & Data</div>}{i===5&&<div className="section">Reporting</div>}{i===10&&<div className="section">Monitoring</div>}<button className={screen===id?'active':''} onClick={()=>onNav(id)}><span style={{width:16}}>{ic}</span>{lb}</button></React.Fragment>)}</div><div className="collapse">‹‹ &nbsp; Collapse</div></aside><main className="main">{children}</main></div>}
 function Header({title,subtitle}){return <div className="top"><div className="title"><h1>{title}</h1><p>{subtitle}</p></div><div className="usr">🔔 <span className="avatar">R</span><div><b>{currentLimasUser()}</b><div style={{fontSize:10,color:'#95a3b9'}}>CPR • LIMAS • {roleLabel()}</div></div></div></div>}
-function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user);return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/><select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select><button className="btn primary" onClick={()=>{setLimasSession(role,user);go();}}>Masuk ke LIMAS</button><div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div></div></div>}
+function Login({go}){const [role,setRole]=useState("Maker"),[user,setUser]=useState(RBAC_ROLES.Maker.user),[experience,setExperience]=useState("VERSION_1");
+  const enter=()=>{setLimasSession(role,user);if(experience==="PRODUCT_FINAL"){const target=String(import.meta.env?.VITE_LIMAS_PRODUCT_FINAL_URL||"").trim();if(!target){alert("URL LIMAS Product Final belum dikonfigurasi pada environment aplikasi existing.");return;}window.location.href=target;return;}go();};
+  return <div className="app login"><div className="login-card"><div className="login-logo">LM</div><h1>LIMAS</h1><p>Limit Management System</p><input value={user} onChange={e=>setUser(e.target.value)} placeholder="Username"/><input defaultValue="demo123" type="password" placeholder="Password"/>
+    <div className="field-help" style={{marginBottom:10}}><b>Pilih versi aplikasi</b><div style={{display:"flex",gap:8,marginTop:8}}><button type="button" className={experience==="VERSION_1"?"btn primary":"btn ghost"} style={{flex:1}} onClick={()=>setExperience("VERSION_1")}>Version 1</button><button type="button" className={experience==="PRODUCT_FINAL"?"btn primary":"btn ghost"} style={{flex:1}} onClick={()=>setExperience("PRODUCT_FINAL")}>Product Final</button></div></div>
+    <select className="select" value={role} onChange={e=>{setRole(e.target.value);setUser(RBAC_ROLES[e.target.value].user);}}><option>Maker</option><option>Checker</option><option>Viewer</option></select>
+    <button className="btn primary" onClick={enter}>Masuk ke LIMAS</button>
+    <div className="field-help" style={{marginTop:10}}>Demo role: Maker = submit/correct • Checker = approve/promote/resolve • Viewer = read-only.</div><div className="foot">Prototype • Development Environment</div>
+  </div></div>}
 
 function DomainKpi({label,value,sub,accent=""}){return <div className="metric"><div className="label">{label}</div><div className="value" style={accent?{color:`var(--${accent})`}:{}}>{value}</div><div className="sub">{sub}</div></div>}
 
@@ -5596,6 +5606,196 @@ class AppErrorBoundary extends React.Component{
     return this.props.children;
   }
 }
+function productFinalHomeSnapshot(){
+  const domainsList=["Country","CCL","MLK","CIL","LPG"];
+  const rowsForKpi=type=>type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+  const domainMetrics=domainsList.map(type=>{
+    const rows=rowsForKpi(type);
+    const limit=rows.reduce((a,r)=>a+recordLimit(type,r),0);
+    const exposure=rows.reduce((a,r)=>a+recordExposure(type,r),0);
+    const utilization=limit?exposure/limit:0;
+    return {
+      type,
+      records:rows.length,
+      limit,
+      exposure,
+      utilization,
+      warnings:rows.filter(r=>recordStatus(type,r)==="Warning").length,
+      breaches:rows.filter(r=>recordStatus(type,r)==="Breach").length,
+      issues:rows.filter(r=>recordStatus(type,r)==="Data Issue").length
+    };
+  });
+  const canonicalRows=canonicalExceptions();
+  const release=releaseGate();
+  return {
+    masterObjects:domainMetrics.reduce((sum,row)=>sum+row.records,0),
+    productSourceRecords:Object.values(productDatabase).reduce((sum,rows)=>sum+(rows||[]).length,0),
+    breach:domainMetrics.reduce((sum,row)=>sum+row.breaches,0),
+    warning:domainMetrics.reduce((sum,row)=>sum+row.warnings,0),
+    issue:domainMetrics.reduce((sum,row)=>sum+row.issues,0),
+    domains:domainMetrics,
+    attention:canonicalRows.filter(row=>row.status==="Warning"||row.status==="Breach").slice(0,6).map(row=>({
+      domain:row.domain,
+      object:row.object,
+      status:row.status,
+      utilization:row.util??null,
+      key:row.key
+    })),
+    releaseGate:{
+      status:release.status,
+      blockingLayers:release.blockingLayers.length,
+      numericFailures:release.numericFailures.length,
+      activeDq:release.activeDq,
+      detail:release.detail
+    }
+  };
+}
+function productFinalMonitoringSnapshot(type){
+  const rows=type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+  const totalLimit=rows.reduce((sum,row)=>sum+recordLimit(type,row),0);
+  const totalExposure=rows.reduce((sum,row)=>sum+recordExposure(type,row),0);
+  const utilization=totalLimit?totalExposure/totalLimit:0;
+  const statusCounts={};
+  ["Normal","Warning","Breach","Data Issue"].forEach(status=>{
+    statusCounts[status]=rows.filter(row=>recordStatus(type,row)===status).length;
+  });
+  const format=n=>Number.isFinite(Number(n))?Number(n).toLocaleString("id-ID",{maximumFractionDigits:2}):"—";
+  const percent=n=>Number.isFinite(Number(n))?(Number(n)*100).toFixed(2)+"%":"—";
+  const products=(row)=>{
+    if(type==="CIL"){
+      return productContributionDetail("CIL",row.key).map(x=>demoProductLabel(x.product)+": "+format(x.amount)).join(" • ")||"Tidak ada exposure";
+    }
+    return Object.entries(productContributionMap(type,row.key)).map(([product,value])=>demoProductLabel(product)+": "+format(value)).join(" • ")||"Tidak ada exposure";
+  };
+  const viewRows=rows.map((row,index)=>{
+    const key=String(row.key??index);
+    const base={
+      key,
+      name:row.name||row.sector||row.key||"—",
+      group:row.group||"—",
+      entity:row.entity||"—",
+      sector:row.sector||"—",
+      segment:row.segment||"—",
+      region:row.region||"—",
+      limit:recordLimit(type,row),
+      exposure:recordExposure(type,row),
+      utilization:recordUtil(type,row),
+      status:recordStatus(type,row),
+      productContribution:products(row)
+    };
+    if(type==="Country"){
+      const allocation=countryAllocationMetrics(row);
+      return {...base,countryCode:key,capacityLimit:row.capacityLimit??base.limit,domesticCapacity:allocation.domesticCapacity,overseasCapacity:allocation.overseasCapacity};
+    }
+    if(type==="CCL") return {...base,contractual:row.contractual??null,country:row.country||"—",category:row.category||"—"};
+    if(type==="MLK") return {...base,group:row.group||"—",bmpkEntitas:row.bmpkEntitas??null};
+    if(type==="CIL") return {...base,insurance:key};
+    return base;
+  });
+  return {
+    type,
+    totalLimit,
+    totalExposure,
+    utilization,
+    statusCounts,
+    rows:viewRows
+  };
+}
+function productFinalLimitsSnapshot(){
+  const domains=["Country","CCL","MLK","CIL","LPG"];
+  return domains.map(type=>{
+    const rows=type==="LPG"?lpgLeafRows(limasDemoData.LPG):limasDemoData[type]||[];
+    const limit=rows.reduce((sum,row)=>sum+recordLimit(type,row),0);
+    const exposure=rows.reduce((sum,row)=>sum+recordExposure(type,row),0);
+    return {
+      type,
+      totalLimit:limit,
+      totalExposure:exposure,
+      utilization:limit?exposure/limit:0,
+      rows:rows.map((row,index)=>({
+        key:String(row.key??index),
+        name:row.name||row.sector||row.key||"—",
+        limit:recordLimit(type,row),
+        exposure:recordExposure(type,row),
+        status:recordStatus(type,row),
+        entity:row.entity||"—",
+        region:row.region||"—",
+      }))
+    };
+  });
+}
+function productFinalReportsGovernanceSnapshot(){
+  const reportData=buildReportDummy(limasDemoData);
+  const reportRows={
+    Country:reportData.Country||[],
+    CCL:reportData.CCL||[],
+    CCL_DIRECT:buildCCLDirectReportRows(),
+    CCL_INDIRECT:buildCCLIndirectReportRows(),
+    MLK:reportData.MLK||[],
+    MLK_CONSOLIDATED:reportData.MLK||[],
+    CIL:reportData.CIL||[],
+    LPG:reportData.LPG||[]
+  };
+  const reportTypes=Object.fromEntries(Object.entries(reportConfig).map(([type,cfg])=>[type,{
+    title:cfg.title,
+    subtitle:cfg.subtitle,
+    source:cfg.source,
+    columns:cfg.columns,
+    rows:reportRows[type]||[]
+  }]));
+  const traceability=auditReportFieldTraceability(reportConfig,reportRows);
+  const governance=governancePhaseAudit();
+  const release=releaseGate();
+  const lpgRows=lpgLeafRows(limasDemoData.LPG||[]).map((row)=>{
+    const apps=lpgProductApplicationsForKey(row.key);
+    const industry=lpgIndustryForSourceValue(row.sector);
+    const segment=lpgCanonicalSegment(row.segment);
+    const region=lpgCanonicalRegion(row.region);
+    const segwil=industry&&region&&segment?lpgSegwilMappingFor(industry.industryCode,region.regionCode,segment.segmentCode):null;
+    return {
+      sourceRecord:apps.map(app=>app.recordId).join(" • ")||"—",
+      cif:apps.map(app=>String(app.sourceData?.no_cus||app.sourceData?.CUSTID||"")).filter(Boolean).join(" • ")||"—",
+      industry:row.sector||"—",
+      grouping:industry?.groupingName||"—",
+      segment:segment?.segmentName||row.segment||"—",
+      region:region?.regionName||row.region||"—",
+      icNasional:industry?.industryCode?lpgNationalIcName(industry.industryCode):"NOT MAPPED",
+      icSegwil:segwil?.icWilayahSegmenCode||"NOT MAPPED",
+      masterLimit:recordLimit("LPG",row),
+      canonicalOutstanding:recordExposure("LPG",row),
+      utilization:recordUtil("LPG",row),
+      status:recordStatus("LPG",row)
+    };
+  });
+  const dqSummary=dataQualitySummary();
+  const historicalDqClosure=[
+    "Credit Line raw-source schema / CCL source-field gap",
+    "LPG integration identity mismatch / Master Limit bucket keys",
+    "NCL Country HK deterministic Booking Office enrichment",
+    "NCL Country GB deterministic Booking Office enrichment",
+    "CCL ANZBAU3M canonical read model identity/scope",
+    "CCL MUFGJPJT canonical read model identity/scope",
+    "Historical CCL reconciliation deltas",
+    "CCL stale browser persistence",
+    "Country monitoring Indonesia exclusion",
+    "LPG unresolved classification / zero-limit risk",
+    "Product-layer contamination / source-only boundary",
+    "Report field-level lineage and LPG E2E lineage"
+  ];
+  return {
+    reports:reportTypes,
+    traceability,
+    dq:{summary:dqSummary,rows:dqSummary.registerRows},
+    mapping:Object.values(productIntegrationMappings||{}).flat(),
+    dictionary:{catalog:productMasterCatalog,fields:productTabFields,schemaFields:productSchemaFields},
+    historicalDqClosure,
+    governance:{
+      releaseGate:{status:release.status,blockingLayers:release.blockingLayers.length,numericFailures:release.numericFailures.length,activeDq:release.activeDq,detail:release.detail},
+      phases:Object.values(governance.phases||{}).map(phase=>({phase:phase.phase,title:phase.title,status:phase.status,issues:phase.issues.length}))
+    },
+    lpgLineage:lpgRows
+  };
+}
 function App(){
   const [login,setLogin]=useState(false);
   const [screen,setScreen]=useState("dashboard");
@@ -5608,6 +5808,32 @@ function App(){
     setScreen(id);
   };
   const navDetail=(type,key)=>{setSel(type);setSelKey(key);setScreen("detail")};
+  const productFinalSource={
+    limasDemoData,
+    productDatabase,
+    productIntegrationMappings,
+    productMasterCatalog,
+    productUniverseAudit,
+    runtimeMeta:E2E_DUMMY_META,
+    homeSnapshot:productFinalHomeSnapshot(),
+    monitoringSnapshots:{
+      Country:productFinalMonitoringSnapshot("Country"),
+      CCL:productFinalMonitoringSnapshot("CCL"),
+      MLK:productFinalMonitoringSnapshot("MLK"),
+      CIL:productFinalMonitoringSnapshot("CIL"),
+      LPG:productFinalMonitoringSnapshot("LPG"),
+    },
+    limitsSnapshot:productFinalLimitsSnapshot(),
+    productsSnapshot:{
+      catalog:productMasterCatalog,
+      fields:productTabFields,
+      samples:productSample,
+      schemaFields:productSchemaFields,
+      mappings:productIntegrationMappings,
+    },
+    reportsGovernanceSnapshot:productFinalReportsGovernanceSnapshot(),
+  };
+  if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
   if(screen==="dashboard") return <Dashboard nav={nav}/>;
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;

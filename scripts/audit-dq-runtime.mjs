@@ -6,6 +6,14 @@ import { transform } from "esbuild";
 
 const sourcePath=path.resolve("src/main.jsx");
 const source=fs.readFileSync(sourcePath,"utf8");
+// Product Final is a presentation-only dependency. The DQ audit evaluates the
+// existing governance runtime and does not need to execute the Product Final UI.
+// Stub the JSX module before transforming main.jsx so the audit stays focused
+// on data-quality/governance behavior.
+const auditSource=source.replace(
+  /import\s+ProductFinalApp\s+from\s+["']\.\/productFinal\/ProductFinalApp["'];?\s*/m,
+  "const ProductFinalApp=()=>null;\n"
+);
 
 globalThis.window={
   localStorage:{
@@ -22,7 +30,7 @@ globalThis.document={
 };
 globalThis.navigator={userAgent:"LIMAS-DQ-AUDIT"};
 
-let transformed=(await transform(source,{
+let transformed=(await transform(auditSource,{
   loader:"jsx",
   format:"esm",
   sourcemap:false,
