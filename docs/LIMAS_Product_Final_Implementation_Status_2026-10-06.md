@@ -60,17 +60,22 @@ Reference source:
 ### 8B implementation evidence
 - Visual reference primitives added: BarChart, HorizontalBarChart, DonutChart, analytics cards, reference KPI treatment, dashboard filters, exception table, Recommendation / Switching CTA, navigation glyph treatment.
 - Existing pre-build JSX warning in `src/main.jsx` was normalized in the same sequential gate; latest Vite build no longer reports the prior JSX warning.
-- Latest branch commit: `f7bf0766d2fc52d20b469df315bd17a2ec0553c8`.
+- Latest branch commit: `a57727f87ee59e9b5a3f7d557391c3833d5dfaac`.
 - GitHub Audit: SUCCESS.
 - GitHub Vite Build Validation: SUCCESS.
-- Vercel preview checks for both Product Final surfaces: SUCCESS.
+- Latest GitHub commit checks: Vercel previews currently report `failure` due Vercel build rate-limit gating (`upgradeToPro=build-rate-limit`); this is an infrastructure quota failure, not a code/build failure.
 - Remaining non-functional warnings: dependency vulnerabilities, runner/action Node warning, and Vite chunk-size warning.
 
 ### Gate decision
-8B implementation is technically PASS, but the mandatory visual gate is BLOCKED by deployment access. Do not start 8C until visual acceptance is available or an equivalent trusted visual verification path is established.
+8B implementation is technically PASS for code/QA and the target dashboard has been applied inside the existing `PRODUCT_FINAL` surface. Visual/browser acceptance remains BLOCKED until the preview can be accessed/deployed without protection/rate-limit failure. Do not start 8C until the visual gate is completed.
 
 ## Next gates
 8B PASS → 8C → 8F/8G workflow reconciliation → 8H → 8I → 8J.
+
+### Target screen lock
+- The implementation target is the existing Product Final Dashboard surface represented by the user-provided screenshot: `LIMAS Product Final` → `Dashboard` → `Bankwide Limit Position`.
+- No separate/parallel Product Final application is being introduced.
+- The reference enhancement is layered into this exact screen while retaining the existing Risk & Attention Center, Limit Actions, Universe Position, Trust & Data Health, and canonical read-only boundaries.
 
 Last known blocker before this tracker:
 - browser-level visual acceptance could not be performed because protected Vercel preview access returned 403.
