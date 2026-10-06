@@ -58,6 +58,20 @@ function MonitoringView({adapter}){
     </section>}
   </div>;
 }
+function LimitsView({adapter}){
+  const domains=adapter.getLimitsSnapshot();
+  const [domain,setDomain]=useState(domains[0]?.type||"Country");
+  const selected=domains.find(x=>x.type===domain)||domains[0];
+  return <div>
+    <div className="pf-monitor-tabs">{domains.map(x=><button key={x.type} type="button" className={domain===x.type?"active":""} onClick={()=>setDomain(x.type)}>{x.type}</button>)}</div>
+    <div className="pf-grid" style={{marginTop:12}}>
+      <section className="pf-card"><h2>Master Limit</h2><p>Read-only view dari master limit existing.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Total Limit</div><div className="pf-value">{Number(selected?.totalLimit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</div></div><div className="pf-status"><div className="pf-label">Exposure</div><div className="pf-value">{Number(selected?.totalExposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</div></div><div className="pf-status"><div className="pf-label">Utilization</div><div className="pf-value">{(Number(selected?.utilization||0)*100).toFixed(1)}%</div></div></div></section>
+      <section className="pf-card"><h2>Write Boundary</h2><p>Product Final tidak membuat CRUD master limit kedua.</p><div className="pf-note">Perubahan master limit tetap dilakukan pada Governance / Version 1 application.</div></section>
+      <section className="pf-card"><h2>Scope</h2><p>Detail limit mengikuti canonical scope. Product Final hanya menyajikan data yang sudah tersedia.</p><div className="pf-status-row"><div className="pf-status"><div className="pf-label">Objects</div><div className="pf-value">{selected?.rows?.length??0}</div></div></div></section>
+    </div>
+    <section className="pf-card" style={{marginTop:14}}><h2>Limit Detail</h2><div className="pf-table-wrap"><table className="pf-table"><thead><tr><th>Key</th><th>Name</th><th>Limit</th><th>Exposure</th><th>Status</th><th>Entity</th><th>Region</th></tr></thead><tbody>{(selected?.rows||[]).map(row=><tr key={row.key}><td>{row.key}</td><td>{row.name}</td><td>{Number(row.limit||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td>{Number(row.exposure||0).toLocaleString("id-ID",{maximumFractionDigits:2})}</td><td><span className={"pf-status-badge "+String(row.status||"").toLowerCase().replace(" ","-")}>{row.status}</span></td><td>{row.entity}</td><td>{row.region}</td></tr>)}</tbody></table></div></section>
+  </div>;
+}
 export default function ProductFinalApp({source}){
   const [active,setActive]=useState("home");
   const adapter=useMemo(()=>createProductFinalAdapter(source),[source]);
@@ -87,7 +101,7 @@ export default function ProductFinalApp({source}){
           <div className="pf-crumb">LIMAS › {current.label}</div>
           <h1 className="pf-title">{current.label}</h1>
           <p className="pf-subtitle">Foundation shell aktif. Business truth tetap berasal dari existing LIMAS; Product Final hanya mengubah experience layer.</p>
-          {active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
+          {active==="limits"?<LimitsView adapter={adapter}/>:active==="monitoring"?<MonitoringView adapter={adapter}/>:active==="home"?<>
             <div className="pf-grid">
               <section className="pf-card"><h2>Bankwide Overview</h2><p>Summary menggunakan snapshot yang sama dengan existing canonical monitoring presentation.</p><div className="pf-status-row">
                 <div className="pf-status"><div className="pf-label">Master Objects</div><div className="pf-value">{home?.masterObjects??"—"}</div></div>
