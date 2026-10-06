@@ -7,10 +7,13 @@ import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_P
 import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage,auditReportFieldTraceability,summarizeReportFieldTraceability} from './reportTraceability';
 import {auditMasterLimitGovernance,auditBusinessEnrichmentCoverage,auditCanonicalReadModel,auditReportRuntime} from './governancePhaseAudit';
 import {PRODUCT_SOURCE_SCHEMA_OVERRIDES,PRODUCT_DERIVED_FIELDS_FORBIDDEN,BUSINESS_MAPPING_CONTRACTS,buildDebtorClassificationRegistry,resolveMlkIdentity,businessContractFor} from './productSchemaGovernance';
+import ProductFinalApp from './productFinal/ProductFinalApp';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
 // - VITE_LIMAS_RUNTIME_MODE may explicitly select E2E or PRODUCTION.
+const LIMAS_SURFACE=String(import.meta.env?.VITE_LIMAS_SURFACE||"EXISTING").trim().toUpperCase();
+
 const LIMAS_RUNTIME_MODE=String(
   import.meta.env?.VITE_LIMAS_RUNTIME_MODE ||
   (import.meta.env?.DEV ? "E2E" : "PRODUCTION_SAMPLE")
@@ -5608,6 +5611,15 @@ function App(){
     setScreen(id);
   };
   const navDetail=(type,key)=>{setSel(type);setSelKey(key);setScreen("detail")};
+  const productFinalSource={
+    limasDemoData,
+    productDatabase,
+    productIntegrationMappings,
+    productMasterCatalog,
+    productUniverseAudit,
+    runtimeMeta:E2E_DUMMY_META,
+  };
+  if(LIMAS_SURFACE==="PRODUCT_FINAL") return <ProductFinalApp source={productFinalSource}/>;
   if(!login) return <Login go={()=>setLogin(true)}/>;
   if(screen==="dashboard") return <Dashboard nav={nav}/>;
   if(screen==="setup") return <Setup nav={nav} setSel={setSel}/>;
