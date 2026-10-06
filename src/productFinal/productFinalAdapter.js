@@ -8,6 +8,7 @@ export function createProductFinalAdapter(source={}) {
     getHomeSnapshot: () => source.homeSnapshot || null,
     getMonitoringSnapshot: (type) => source.monitoringSnapshots?.[type] || null,
     getLimitsSnapshot: () => source.limitsSnapshot || [],
+    getProductsSnapshot: () => source.productsSnapshot || {catalog:[],fields:{},samples:{},schemaFields:{},mappings:{}},
     getUniverses: () => (source.productMasterCatalog || []).map((item) => ({
       id: item.id,
       label: item.label,
