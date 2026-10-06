@@ -103,7 +103,13 @@ function ReportsView({adapter}){
   const rows=(report?.rows||[]).filter(row=>status==="All"||row.status===status||row.statusMaster===status);
   return <div>
     <div className="pf-product-selector">{types.map(x=><button key={x} type="button" className={type===x?"active":""} onClick={()=>setType(x)}>{snapshot.reports[x].title||x}</button>)}</div>
-    <div className="pf-monitor-toolbar"><select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><span className="pf-monitor-count">{rows.length} records</span></div>
+    <div className="pf-monitor-toolbar"><select value={status} onChange={e=>setStatus(e.target.value)} aria-label="Report status filter"><option>All</option><option>Normal</option><option>Warning</option><option>Breach</option><option>Data Issue</option></select><span className="pf-monitor-count">{rows.length} records</span><button type="button" className="pf-button-secondary" onClick={()=>{
+      const cols=(report?.columns||[]).slice(0,10), headers=cols.map(([label])=>label), keys=cols.map(([,key])=>key);
+      const esc=(v)=>{const s=String(v??"");return /[",\\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+      const body=[headers.join(","),...(rows||[]).map(row=>keys.map(k=>esc(row[k])).join(","))].join("\n");
+      const blob=new Blob([body],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+      a.href=url;a.download="LIMAS-"+type+".csv";a.click();URL.revokeObjectURL(url);
+    }}>Export CSV</button></div>
     {!report?<div className="pf-placeholder"><strong>Report unavailable</strong></div>:<section className="pf-card"><h2>{report.title}</h2><p>{report.subtitle} · {report.source}</p><div className="pf-table-wrap"><table className="pf-table"><thead><tr>{(report.columns||[]).slice(0,10).map(([label])=><th key={label}>{label}</th>)}</tr></thead><tbody>{rows.slice(0,50).map((row,index)=><tr key={row.no||index}>{(report.columns||[]).slice(0,10).map(([label,key])=><td key={key}>{key==="status"||key==="statusMaster"?<span className={"pf-status-badge "+String(row[key]||row.status||"").toLowerCase().replace(" ","-")}>{row[key]||row.status||"—"}</span>:String(row[key]??"—")}</td>)}</tr>)}</tbody></table></div></section>}
   </div>;
 }
