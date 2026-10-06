@@ -1066,8 +1066,20 @@ function downloadReportCsv(type,rows){
 function ReportFieldLineage({type,cfg,rows}){
   const lineage=auditReportFieldTraceability({[type]:cfg},{[type]:rows});
   const summary=summarizeReportFieldTraceability(lineage);
+  const businessEnrichmentFor=(r)=>{
+    if(r?.businessEnrichment)return r.businessEnrichment;
+    if(r?.sourceLayer==="BUSINESS_ENRICHMENT")return r.sourceReference;
+    return "Not required";
+  };
+  const lpgMappings=type==="LPG"
+    ? Object.values(productIntegrationMappings||{}).flat()
+        .filter(a=>a?.limitType==="LPG"&&a?.businessEnrichment)
+        .map(a=>({...a,businessEnrichment:a.businessEnrichment||{}}))
+    : [];
+  const lpgLineageRows=[...new Map(lpgMappings.map(a=>[String(a.recordId)+"|"+String(a.key),a])).values()];
+  const lpgLeaf=lpgLineageRows.slice(0,50);
   return <section className="card">
-    <div className="head"><div><h2>Report Field Lineage</h2><p>Traceability field report {type} dari source/master sampai transformation atau formula.</p></div><Status v={summary.ready?"Normal":"Data Issue"}/></div>
+    <div className="head"><div><h2>Report Field Lineage</h2><p>Traceability field report {type} dari source/master → business enrichment → transformation/formula → runtime output.</p></div><Status v={summary.ready?"Normal":"Data Issue"}/></div>
     <div className="body">
       <div className="metric-grid">
         <DomainKpi label="Fields" value={summary.totalFields} sub="Configured report columns"/>
@@ -1076,16 +1088,54 @@ function ReportFieldLineage({type,cfg,rows}){
       </div>
       <div className="table-wrap" style={{marginTop:12}}>
         <table className="table">
-          <thead><tr><th>Field</th><th>Source Layer</th><th>Source / Reference</th><th>Transformation / Formula</th><th>Status</th></tr></thead>
+          <thead><tr><th>Report Field</th><th>Source Layer</th><th>Source / Master Field</th><th>Business Enrichment</th><th>Transformation / Formula</th><th>Traceability Status</th></tr></thead>
           <tbody>{lineage.map((r,i)=><tr key={"lineage-"+type+"-"+r.field+"-"+i}>
             <td><b>{r.label}</b><div className="muted-small key">{r.field}</div></td>
             <td>{r.sourceLayer}</td>
             <td className="muted-small">{r.sourceReference}</td>
+            <td className="muted-small">{businessEnrichmentFor(r)}</td>
             <td className="muted-small">{r.transformation}</td>
             <td><Status v={r.status==="TRACEABLE"?"Normal":"Data Issue"}/></td>
           </tr>)}</tbody>
         </table>
       </div>
+      {type==="LPG"&&<section className="card" style={{marginTop:16,border:"1px solid var(--line)"}}>
+        <div className="head">
+          <div><h2>LPG E2E Classification Lineage</h2><p>Runtime lineage per mapped debtor/facility. Tidak menggunakan placeholder; setiap row berasal dari Integration / Business Mapping runtime.</p></div>
+          <span className="chip blue">{lpgLineageRows.length} mapped rows</span>
+        </div>
+        <div className="body">
+          <div className="field-help"><b>Required chain:</b> CIF → Industry → Grouping → Segment → Region → IC Nasional → IC Segwil → Master Limit → Canonical Outstanding → Utilization.</div>
+          <div className="table-wrap" style={{marginTop:12}}>
+            <table className="table">
+              <thead><tr><th>Source Record</th><th>CIF</th><th>Industry</th><th>Grouping</th><th>Segment</th><th>Region</th><th>IC Nasional</th><th>IC Segwil</th><th>Master Limit</th><th>Canonical Outstanding</th><th>Utilization</th><th>Status</th></tr></thead>
+              <tbody>{lpgLeaf.map((a,i)=>{
+                const e=a.businessEnrichment||{};
+                const master=(limasDemoData.LPG||[]).find(m=>String(m.key)===String(a.key));
+                const outstanding=Number(a.normalizedAmount??a.amount)||0;
+                const limit=master?Number(lpgScopeLimit(master,a.scope||LPG_BANK_SCOPE)||0):null;
+                const util=limit===null?null:(limit===0?(outstanding>0?Infinity:0):outstanding/limit);
+                const status=!a.masterMatch?"Data Issue":util===null?"Data Issue":util>=1?"Breach":util>=0.8?"Warning":"Normal";
+                return <tr key={"lpg-lineage-"+a.recordId+"-"+a.key+"-"+i}>
+                  <td className="key">{a.recordId}</td>
+                  <td>{e.cif||"—"}</td>
+                  <td>{e.industryName||e.industryCode||"—"}</td>
+                  <td>{e.groupingName||e.groupingCode||"—"}</td>
+                  <td>{e.segmentCode||"—"}</td>
+                  <td>{e.regionCode||"—"}</td>
+                  <td>{e.icNasionalCode||"—"}</td>
+                  <td>{e.icWilayahSegmenCode||"—"}</td>
+                  <td>{limit===null?"—":fmtReport(limit)}</td>
+                  <td>{fmtReport(outstanding)}</td>
+                  <td>{util===null?"—":util===Infinity?"∞":(util*100).toFixed(2)+"%"}</td>
+                  <td><Status v={status}/></td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          {lpgLineageRows.length>50&&<div className="field-help">Menampilkan 50 mapped rows pertama; total runtime lineage {lpgLineageRows.length} rows.</div>}
+        </div>
+      </section>}
     </div>
   </section>;
 }
