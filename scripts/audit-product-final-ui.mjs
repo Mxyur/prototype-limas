@@ -26,7 +26,14 @@ const requiredAppMarkers=[
   "Bankwide Limit Position",
   "Risk & Attention Center",
   "Limit Actions",
-  "Universe Position"
+  "Universe Position",
+  "Monitored Objects",
+  "Active Exceptions",
+  "MANAGEMENT HIGHLIGHTS",
+  "APPETITE / GUIDELINE POSITION",
+  "6-MONTH TREND",
+  "MANAGEMENT ACTION",
+  "function LineTrendChart"
 ];
 const failures=[];
 const assert=(ok,msg)=>{if(!ok)failures.push(msg)};
@@ -48,6 +55,8 @@ assert(!app.includes("fileURLToPath(import.meta.url)"),"Offline staging path hel
 assert(app.includes("columns.map(([label,key])"),"Report full-column rendering is missing.");
 assert(app.includes("allocation={structureRow?.allocation||[]}"),"Monitoring drill-down is not wired to canonical allocation.");
 assert(app.includes("Master Limit remains read-only")||app.includes("Master Limit is read-only"),"Canonical Master Limit boundary is not declared in UI.");
+assert(!app.includes("Across monitored universes"),"Deprecated synthetic bankwide exposure KPI wording remains in Product Final dashboard.");
+assert(app.includes("Historical snapshot feed is not connected")||app.includes("Historical trend not connected"),"Trend no-data guard is missing.");
 
 if(failures.length){
   console.error("PRODUCT-FINAL UI AUDIT — FAIL");
