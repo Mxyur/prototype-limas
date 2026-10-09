@@ -1,29 +1,30 @@
-# LIMAS Prototype v3
-Diperbarui langsung berdasarkan workbook master_reportMonitoringLimit dan master_dataproduk.
+# LIMAS Product Final — Sequential R5 Checkpoint
 
-Cakupan:
-- Country Master: identitas, checklist product, exposure, limit/gap/final limit
-- CCL Master: bank profile, rating, Tier 1 Capital, capacity, CCL, contractual limit, BMRI/PA exposure
-- MLK Master: CIF, group, BMPK, Inhouse, EBITDA, sektor, rating, multiplier, watchlist, borrowing capacity, product limit/exposure, master limit
-- CIL Master: insurer profile, jenis produk, Insurance Capacity, multiplier, CIT, EIL per entity, CIL, pertanggungan, proyeksi, PCP/EWS
-- LPG Master: sektor, segmen, bankwide dan region limit/outstanding/utilization
-- Product Source & Mapping: field-field source untuk Cash Loan, NCL, Commercial Line, Investment Line, Bonds, Nostro, Treasury Line
-- Early Warning
-- Dashboard Master Coverage
+This package is governed by:
 
-Menjalankan:
-npm install
-npm run dev
+`docs/LIMAS_MASTER_PLAN_FINAL_CONSOLIDATED_2026-10-08.md`
 
+## Current checkpoint
 
-## Update v4 – Dashboard & Monitoring
-Mempertahankan master data v3 dan memperkaya:
-- Executive Dashboard konsolidasi 5 domain
-- KPI limit/exposure/utilisasi/EWS/breach
-- Distribusi status dan tren utilisasi
-- Data freshness
-- Early Warning & Breach Center dengan filter domain/status/entity/period
-- Exception register dengan threshold dan last update
-- Dashboard monitoring detail per Country, CCL, MLK, CIL, LPG
-- Product contribution/heatmap
-- Drill-down menuju Master Detail dan Product Mapping
+R5 closes the missing business-semantic depth in the Limit Setup contract and strengthens the semantic/report/visual gates.
+
+Implemented highlights:
+- domain-specific Limit Setup for Country / CCL / MLK / CIL / LPG;
+- Screen + Bulk Upload parity using a common validation contract;
+- LPG Industry / Grouping / Region / Segment / IC Nasional / IC Segwil / Segwil Key / Scope / Limit Allocation;
+- LPG MENARIK / NETRAL / SELEKTIF / WASPADA business parameter treatment;
+- WASPADA → PLASTIK only;
+- CCL Direct / Indirect business structure;
+- MLK CIF / Entity / Group structure;
+- CIL IC / Multiplier / EIL structure;
+- explicit business contracts for MLK / CCL / LPG reports;
+- dark / black / deep-navy visual direction;
+- Product Final local dev default.
+
+## Validation
+
+See `docs/LIMAS_R5_Worklog_2026-10-08.md`.
+
+## Release rule
+
+Git/Vercel remain HOLD until 13R Final Acceptance passes.

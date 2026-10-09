@@ -854,6 +854,28 @@ const enrichProductData=()=>{
 };
 enrichProductData();
 
+// MLK Treasury source rows are upstream integration records, not duplicate Product DB records.
+// They retain raw Credit Line source fields needed by the MLK Treasury mapping contract.
+const buildMlkTreasuryIntegrationSource=()=>p["CREDIT LINE"]
+  .filter(r=>/^TL-MLK-/.test(String(r.meta?.recordId||"")))
+  .map(r=>({
+    recordId:String(r.meta?.recordId||""),
+    productId:"CREDIT LINE",
+    sourceSystem:String(r.meta?.sourceSystem||"LIMAST"),
+    asOfDate:E2E_DUMMY_META.asOfDate,
+    data:Object.fromEntries(["No","Nama","Swift Code","Code","Negara","Treasury Line Total Utilisasi","Credit Line Total Utilisasi"]
+      .filter(field=>Object.prototype.hasOwnProperty.call(r.data||{},field))
+      .map(field=>[field,r.data[field]])),
+    meta:{
+      sourceRecordId:String(r.meta?.recordId||""),
+      mlkCif:String(r.meta?.mlkCif||""),
+      reportingEntity:String(r.meta?.reportingEntity||""),
+      groupId:String(r.meta?.groupId||""),
+      mappingSource:"E2E upstream Credit Line Treasury source"
+    }
+  }));
+export const E2E_MLK_TREASURY_SOURCE=buildMlkTreasuryIntegrationSource();
+
 const SOURCE_ONLY_DERIVED_FIELDS={
   "CREDIT LINE":new Set(["Bade Treasury Line"]),
   "Nominal Pertanggungan":new Set([

@@ -2,17 +2,20 @@
 import React,{useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import './styles.css';
-import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE,E2E_LPG_IC_SEGWIL_MAPPING as E2E_LPG_IC_SEGWIL_MAPPING_FIXTURE,E2E_LPG_SEGWIL_MAPPING_META as E2E_LPG_SEGWIL_MAPPING_META_FIXTURE} from './e2eDummyData';
+import {E2E_DUMMY_META as E2E_DUMMY_META_FIXTURE,E2E_MASTER_DATA as E2E_MASTER_DATA_FIXTURE,E2E_DUMMY_PRODUCT_DATA as E2E_DUMMY_PRODUCT_DATA_FIXTURE,E2E_COUNTRY_MONITORING_POLICY as E2E_COUNTRY_MONITORING_POLICY_FIXTURE,E2E_ENTITY_MASTER as E2E_ENTITY_MASTER_FIXTURE,E2E_MLK_ENTITY_SCOPE as E2E_MLK_ENTITY_SCOPE_FIXTURE,E2E_CCL_ENTITY_SCOPE as E2E_CCL_ENTITY_SCOPE_FIXTURE,E2E_CCL_LIMIT_SCOPE as E2E_CCL_LIMIT_SCOPE_FIXTURE,E2E_LPG_MASTER_INDUSTRY as E2E_LPG_MASTER_INDUSTRY_FIXTURE,E2E_LPG_MASTER_IC_NATIONAL as E2E_LPG_MASTER_IC_NATIONAL_FIXTURE,E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE as E2E_LPG_INDUSTRY_IC_NATIONAL_SAMPLE_FIXTURE,E2E_LPG_MASTER_REGION as E2E_LPG_MASTER_REGION_FIXTURE,E2E_LPG_MASTER_SEGMENT as E2E_LPG_MASTER_SEGMENT_FIXTURE,E2E_LPG_IC_SEGWIL_MAPPING as E2E_LPG_IC_SEGWIL_MAPPING_FIXTURE,E2E_LPG_SEGWIL_MAPPING_META as E2E_LPG_SEGWIL_MAPPING_META_FIXTURE,E2E_MLK_TREASURY_SOURCE as E2E_MLK_TREASURY_SOURCE_FIXTURE} from './e2eDummyData';
 import {PRODUCTION_SAMPLE_META,PRODUCTION_SAMPLE_MASTER_DATA,PRODUCTION_SAMPLE_PRODUCT_DATA,PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY,PRODUCTION_SAMPLE_ENTITY_MASTER,PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_ENTITY_SCOPE,PRODUCTION_SAMPLE_CCL_LIMIT_SCOPE,PRODUCTION_SAMPLE_LPG_MASTER_INDUSTRY,PRODUCTION_SAMPLE_LPG_MASTER_IC_NATIONAL,PRODUCTION_SAMPLE_LPG_INDUSTRY_IC_NATIONAL_SAMPLE,PRODUCTION_SAMPLE_LPG_MASTER_REGION,PRODUCTION_SAMPLE_LPG_MASTER_SEGMENT,PRODUCTION_SAMPLE_LPG_IC_SEGWIL_MAPPING,PRODUCTION_SAMPLE_LPG_SEGWIL_MAPPING_META} from './productionSampleData';
 import {PRODUCT_REPORT_REQUIREMENTS,auditProductReportCoverage,summarizeProductReportCoverage,auditReportFieldTraceability,summarizeReportFieldTraceability} from './reportTraceability';
 import {auditMasterLimitGovernance,auditBusinessEnrichmentCoverage,auditCanonicalReadModel,auditReportRuntime} from './governancePhaseAudit';
 import {PRODUCT_SOURCE_SCHEMA_OVERRIDES,PRODUCT_DERIVED_FIELDS_FORBIDDEN,BUSINESS_MAPPING_CONTRACTS,buildDebtorClassificationRegistry,resolveMlkIdentity,businessContractFor} from './productSchemaGovernance';
+import {buildEntityMaster,buildGroupMaster,deriveMlkMappingRows,buildProductIdentityBridge,aggregateByIdentity,IDENTITY_STATUS} from './identity/identityContract';
+import {buildReportDependencyMatrix,evaluateReportReady} from './reportDependencyMatrix';
 import ProductFinalApp from './productFinal/ProductFinalApp';
+import {buildLimitSetupSeed} from './productFinal/limitSetupContract';
 // Runtime data mode:
 // - Local development defaults to E2E so the prototype remains fully reproducible.
 // - Production defaults to PRODUCTION and MUST NOT install E2E fixtures.
 // - VITE_LIMAS_RUNTIME_MODE may explicitly select E2E or PRODUCTION.
-const LIMAS_SURFACE=String(import.meta.env?.VITE_LIMAS_SURFACE||"EXISTING").trim().toUpperCase();
+const LIMAS_SURFACE=String(import.meta.env?.VITE_LIMAS_SURFACE||(import.meta.env?.DEV?"PRODUCT_FINAL":"EXISTING")).trim().toUpperCase();
 
 const LIMAS_RUNTIME_MODE=String(
   import.meta.env?.VITE_LIMAS_RUNTIME_MODE ||
@@ -34,6 +37,7 @@ const RUNTIME_STORAGE_NAMESPACE=IS_PRODUCTION_SAMPLE_RUNTIME
 const E2E_DUMMY_META=IS_E2E_RUNTIME?E2E_DUMMY_META_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_META:{period:"",datasetId:"",asOfDate:""};
 const E2E_MASTER_DATA=IS_E2E_RUNTIME?E2E_MASTER_DATA_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_MASTER_DATA:{};
 const E2E_DUMMY_PRODUCT_DATA=IS_E2E_RUNTIME?E2E_DUMMY_PRODUCT_DATA_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_PRODUCT_DATA:{};
+const E2E_MLK_TREASURY_SOURCE=IS_E2E_RUNTIME?E2E_MLK_TREASURY_SOURCE_FIXTURE:[];
 const E2E_COUNTRY_MONITORING_POLICY=IS_E2E_RUNTIME?E2E_COUNTRY_MONITORING_POLICY_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_COUNTRY_MONITORING_POLICY:{homeCountryCode:"ID",excludedCountryCodes:[]};
 const E2E_ENTITY_MASTER=IS_E2E_RUNTIME?E2E_ENTITY_MASTER_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_ENTITY_MASTER:[];
 const E2E_MLK_ENTITY_SCOPE=IS_E2E_RUNTIME?E2E_MLK_ENTITY_SCOPE_FIXTURE:IS_PRODUCTION_SAMPLE_RUNTIME?PRODUCTION_SAMPLE_MLK_ENTITY_SCOPE:[];
@@ -657,20 +661,25 @@ function cclScopeLimit(counterpartyKey,entityCode,limitType="DIRECT"){
 }
 function cclScopeContractual(counterpartyKey,entityCode,limitType="DIRECT"){
   const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
-  return row?normalizeMasterLimit("CCL",row.contractual).amount:null;
+  if(!row)return null;
+  const derived=(Number(row.bankLoan)||0)+(Number(row.commercialLine)||0)+(Number(row.treasuryLine)||0);
+  return normalizeMasterLimit("CCL",derived).amount;
 }
 function cclEntityFacility(counterpartyKey,entityCode,limitType="DIRECT"){
   const state=entityProductLimitState("CCL",counterpartyKey,entityCode,limitType);
   if(!state.exists)return null;
   const row=cclScopeRecords(counterpartyKey,limitType,entityCode)[0];
   const v=state.approved||{};
+  const bankLoan=Number(v.bankLoan ?? row?.bankLoan)||0;
+  const commercialLine=Number(v.commercialLine ?? row?.commercialLine)||0;
+  const treasuryLine=Number(v.treasuryLine ?? row?.treasuryLine)||0;
   return {
     ccl:Number(v.ccl)||0,
-    contractual:Number(v.contractual)||0,
+    contractual:bankLoan+commercialLine+treasuryLine,
     facility:Number(row?.facility??0)||0,
-    bankLoan:Number(v.bankLoan)||0,
-    commercialLine:Number(v.commercialLine)||0,
-    treasuryLine:Number(v.treasuryLine)||0
+    bankLoan,
+    commercialLine,
+    treasuryLine
   };
 }
 function cclEntityExposure(counterpartyKey,entityCode,limitType="DIRECT"){
@@ -978,20 +987,35 @@ function mlkFacilityMetrics(row){
 function mlkMonitoringRows(rows){
   const out=[];
   rows.forEach(r=>{
-    const f=mlkFacilityMetrics(r),bmpkKonsol=mlkNum(r.bmpkKonsol),bmpkEntitas=mlkNum(r.bmpkEntitas),borrowing=mlkNum(r.borrowingCapacity),masterLimit=effectiveMlkMasterLimit(r),setting=mlkNum(r.masterLimitSetting);
+    const identity=runtimeIdentityState.byCif.get(String(r.key||""));
+    const identityMapped=identity&&identity.mapping_status===IDENTITY_STATUS.MAPPED;
+    const group=identityMapped?(runtimeIdentityState.groupMaster.get(String(identity.group_id))||{}):{};
+    const effectiveRow=identityMapped?{...r,entity:identity.entity_code||r.entity,group:identity.group_id||r.group,groupUsahaHolding:group.holding||identity.group_id||r.groupUsahaHolding,subGroup:group.sub_group||identity.group_id||r.subGroup}:r;
+    const f=mlkFacilityMetrics(effectiveRow),bmpkKonsol=mlkNum(effectiveRow.bmpkKonsol),bmpkEntitas=mlkNum(effectiveRow.bmpkEntitas),borrowing=mlkNum(effectiveRow.borrowingCapacity),masterLimit=effectiveMlkMasterLimit(effectiveRow),setting=mlkNum(effectiveRow.masterLimitSetting);
     const mlkValue=masterLimit;
     const utilMlkBmpk=bmpkEntitas&&mlkValue?mlkValue/bmpkEntitas:null,utilMlkBmpkConsol=bmpkKonsol&&mlkValue?mlkValue/bmpkKonsol:null;
-    out.push({no:out.length+1,tier:r.tier,holding:r.groupUsahaHolding||r.group,subGroup:r.subGroup||r.group,flag:r.bumnSwasta,unit:r.unitKerja,entity:r.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:mlkValue,utilBade:f.totalLimitExisting&&f.totalBadeExisting!==null?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk,utilMlkBmpkConsol,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:recordStatus("MLK",r),cif:r.key,name:r.name,products:productContributionMap("MLK",r.key),metricAsOf:MLK_METRIC_AS_OF,rowType:"Debtor"});
+    const identityStatus=identity?identity.mapping_status:"DQ";
+    out.push({no:out.length+1,tier:effectiveRow.tier,holding:effectiveRow.groupUsahaHolding||effectiveRow.group,subGroup:effectiveRow.subGroup||effectiveRow.group,flag:effectiveRow.bumnSwasta,unit:effectiveRow.unitKerja,entity:effectiveRow.entity,bmpkKonsol,bmpkEntitas,limitFasilitas:f.totalLimitExisting,bade:f.totalBadeExisting,borrowing,masterLimit,masterLimitSetting:setting,mlk:mlkValue,utilBade:f.totalLimitExisting&&f.totalBadeExisting!==null?f.totalBadeExisting/f.totalLimitExisting:null,utilFacilityBmpk:bmpkEntitas&&f.totalLimitExisting?f.totalLimitExisting/bmpkEntitas:null,utilMlkBmpk,utilMlkBmpkConsol,debtors:1,totalBmpk:bmpkEntitas,totalMaster:masterLimit,totalBorrowing:borrowing,variance:null,status:identityStatus===IDENTITY_STATUS.DQ?"Data Issue":recordStatus("MLK",effectiveRow),cif:effectiveRow.key,name:effectiveRow.name,products:productContributionMap("MLK",effectiveRow.key),identity:{status:identityStatus,entityCode:identity?.entity_code||"",entityName:identity?.entity_name||"",groupId:identity?.group_id||"",groupName:identity?.group_name||"",mappingVersion:identity?.mapping_version||""},metricAsOf:MLK_METRIC_AS_OF,rowType:"Debtor"});
   });
   const groups=new Map();
-  rows.forEach(r=>{const h=r.groupUsahaHolding||r.group||"—";if(!groups.has(h))groups.set(h,[]);groups.get(h).push(r);});
+  rows.forEach(r=>{
+    const identity=runtimeIdentityState.byCif.get(String(r.key||""));
+    const governedGroup=identity?runtimeIdentityState.groupMaster.get(String(identity.group_id)):null;
+    // Preserve the existing MLK report aggregation semantics (Holding roll-up) while
+    // using governed identity to resolve which holding the product belongs to.
+    const holding=governedGroup?.holding||r.groupUsahaHolding||r.group||"—";
+    if(!groups.has(holding))groups.set(holding,[]);
+    groups.get(holding).push(r);
+  });
   groups.forEach((members,holding)=>{
     const totalMaster=mlkSum(members,"masterLimit"),totalBorrowing=mlkSum(members,"borrowingCapacity"),totalBmpk=mlkSum(members,"bmpkEntitas");
     const facility=members.map(mlkFacilityMetrics).map(x=>x.totalLimitExisting).filter(v=>v!==null).reduce((a,v)=>a+v,0);
     const bade=members.map(mlkFacilityMetrics).reduce((a,x)=>a+(x.totalBadeExisting||0),0);
     const groupMlk=totalMaster;
     const groupBmpkKonsol=mlkSum(members,"bmpkKonsol"),groupMlkToBmpkConsol=groupBmpkKonsol&&groupMlk?groupMlk/groupBmpkKonsol:null,groupMlkToBmpkEntitas=totalBmpk&&groupMlk?groupMlk/totalBmpk:null;
-    out.push({no:out.length+1,tier:"—",holding,subGroup:"Sub-total Group",flag:members[0]?.bumnSwasta||"—",unit:"—",entity:"Sub-total Group",bmpkKonsol:groupBmpkKonsol,bmpkEntitas:totalBmpk,limitFasilitas:facility,bade,borrowing:totalBorrowing,masterLimit:null,masterLimitSetting:null,mlk:groupMlk,utilBade:facility&&bade!==null?bade/facility:null,utilFacilityBmpk:totalBmpk&&facility?facility/totalBmpk:null,utilMlkBmpk:groupMlkToBmpkEntitas,utilMlkBmpkConsol:groupMlkToBmpkConsol,debtors:members.length,totalBmpk:totalBmpk,totalMaster:totalMaster,totalBorrowing:totalBorrowing,variance:null,status:"Normal",cif:"—",name:"—",products:{},metricAsOf:MLK_METRIC_AS_OF,rowType:"Sub-total Group"});
+    const groupMasterRows=[...runtimeIdentityState.groupMaster.values()].filter(g=>String(g.holding)===String(holding));
+    const groupIds=[...new Set(groupMasterRows.map(g=>String(g.group_id||g.groupId||"")).filter(Boolean))];
+    out.push({no:out.length+1,tier:"—",holding,subGroup:"Sub-total Group",groupId:holding,groupIds,flag:members[0]?.bumnSwasta||"—",unit:"—",entity:"Sub-total Group",bmpkKonsol:groupBmpkKonsol,bmpkEntitas:totalBmpk,limitFasilitas:facility,bade,borrowing:totalBorrowing,masterLimit:null,masterLimitSetting:null,mlk:groupMlk,utilBade:facility&&bade!==null?bade/facility:null,utilFacilityBmpk:totalBmpk&&facility?facility/totalBmpk:null,utilMlkBmpk:groupMlkToBmpkEntitas,utilMlkBmpkConsol:groupMlkToBmpkConsol,debtors:members.length,totalBmpk:totalBmpk,totalMaster:totalMaster,totalBorrowing:totalBorrowing,variance:null,status:"Normal",cif:"—",name:"—",products:{},metricAsOf:MLK_METRIC_AS_OF,rowType:"Sub-total Group"});
   });
   return out;
 }
@@ -2389,7 +2413,7 @@ function Setup({nav,setSel}){
           </table></div>
           <div className="field-help">CRUD: Read daftar master, Create record baru, Update melalui Draft → Approval, Delete dibatasi jika master masih direferensikan integration mapping. Untuk LPG, Master Limit hanya mengelola parent Bankwide; Region I–XII + KP + OVS dikelola di Limit Allocation / Scope. Bulk CSV mengikuti boundary domain tersebut.</div>
         </div>
-      </section>}
+      </section>
     </div>
   </Layout>;
 }
@@ -3458,6 +3482,90 @@ function resolveCclMaster(productId,row){
 
 const productIntegrationMappings={};
 const productDatabase={};
+// Governed 3R runtime state. This is derived from the actual runtime Product DB + mapping layer; raw Product rows are never mutated.
+const runtimeIdentityState={
+  bridgeRows:[],
+  dqRegister:[],
+  summary:{total:0,mapped:0,dq:0,byCode:{},silentUnknown:0},
+  byRecordId:new Map(),
+  byCif:new Map(),
+  byProductRecord:new Map(),
+  entityMaster:new Map(),
+  groupMaster:new Map(),
+  mappingRows:[],
+  asOfDate:"",
+  mappingVersion:"",
+  mlkAggregationAudit:null
+};
+const runtimeEnrichmentByProduct={};
+function resetRuntimeGovernedState(){
+  runtimeIdentityState.bridgeRows=[];
+  runtimeIdentityState.dqRegister=[];
+  runtimeIdentityState.summary={total:0,mapped:0,dq:0,byCode:{},silentUnknown:0};
+  runtimeIdentityState.byRecordId=new Map();
+  runtimeIdentityState.byCif=new Map();
+  runtimeIdentityState.byProductRecord=new Map();
+  runtimeIdentityState.entityMaster=new Map();
+  runtimeIdentityState.groupMaster=new Map();
+  runtimeIdentityState.mappingRows=[];
+  runtimeIdentityState.asOfDate=String(E2E_DUMMY_META.asOfDate||"");
+  runtimeIdentityState.mappingVersion="MLK-MAP-v1";
+  runtimeIdentityState.mlkAggregationAudit=null;
+  Object.keys(runtimeEnrichmentByProduct).forEach(k=>delete runtimeEnrichmentByProduct[k]);
+}
+function runtimeIdentityFor(productId,recordId){
+  return runtimeIdentityState.byProductRecord.get(String(productId)+"|"+String(recordId))||null;
+}
+function markRuntimeEnrichment(productId,values={}){
+  const set=(runtimeEnrichmentByProduct[productId]??=new Set());
+  Object.keys(values||{}).forEach(k=>{if(k)set.add(k);});
+  return set;
+}
+function markRuntimeEnrichmentKeys(productId,keys=[]){
+  const set=(runtimeEnrichmentByProduct[productId]??=new Set());
+  (keys||[]).forEach(k=>{if(k)set.add(k);});
+  return set;
+}
+function rebuildRuntimeIdentityBridge(){
+  const mappingRows=deriveMlkMappingRows(limasDemoData.MLK||[],{asOfDate:E2E_DUMMY_META.asOfDate,version:"MLK-MAP-v1",source:"MLK_MASTER_MIGRATION"});
+  const entityMaster=buildEntityMaster(E2E_ENTITY_MASTER||[]);
+  const groupMasterRows=deriveMlkMappingRows(limasDemoData.MLK||[],{asOfDate:E2E_DUMMY_META.asOfDate,version:"MLK-GROUP-v1",source:"MLK_MASTER_MIGRATION"}).map((x,i)=>({groupId:x.groupId,groupName:x.groupId,activeFlag:true,holding:limasDemoData.MLK?.[i]?.groupUsahaHolding||x.groupId,subGroup:limasDemoData.MLK?.[i]?.subGroup||x.groupId}));
+  const groupMaster=buildGroupMaster(groupMasterRows);
+  // Group master should preserve the first authoritative holding/sub-group descriptor per group.
+  const normalizedGroups=new Map();
+  (limasDemoData.MLK||[]).forEach(m=>{const gid=String(m.group||"").trim();if(gid&&!normalizedGroups.has(gid))normalizedGroups.set(gid,{groupId:gid,groupName:gid,holding:String(m.groupUsahaHolding||gid),subGroup:String(m.subGroup||gid),activeFlag:true});});
+  const effectiveGroupMaster=buildGroupMaster([...normalizedGroups.values()]);
+  const bridge=buildProductIdentityBridge(productDatabase,{entityMaster,groupMaster:effectiveGroupMaster,mappingRows,asOfDate:E2E_DUMMY_META.asOfDate});
+  resetRuntimeGovernedState();
+  runtimeIdentityState.entityMaster=entityMaster;
+  runtimeIdentityState.groupMaster=effectiveGroupMaster;
+  runtimeIdentityState.mappingRows=mappingRows;
+  runtimeIdentityState.bridgeRows=bridge.rows;
+  runtimeIdentityState.dqRegister=bridge.dqRegister;
+  runtimeIdentityState.summary=bridge.summary;
+  bridge.rows.forEach(r=>{
+    runtimeIdentityState.byRecordId.set(String(r.product_record_id),r);
+    runtimeIdentityState.byProductRecord.set(String(r.product_id)+"|"+String(r.product_record_id),r);
+    if(r.cif&&!runtimeIdentityState.byCif.has(String(r.cif)))runtimeIdentityState.byCif.set(String(r.cif),r);
+  });
+  // Governance-only reconciliation over the current MLK Product contribution set.
+  // It validates Entity / Group / Consolidated aggregation from governed identity without changing
+  // the existing MLK canonical numbers. Treasury integration-only records remain out of this 3R set.
+  const mlkContributions=(E2E_DUMMY_PRODUCT_DATA.CASHLOAN||[])
+    .concat(E2E_DUMMY_PRODUCT_DATA["NON CASH LOAN"]||[])
+    .map((r,index)=>{
+      const productId=String(r.productId||"");
+      const data=r.data||{};
+      const key=String(data.no_cus??data.CUSTID??"");
+      const bridgeRow=key?runtimeIdentityState.byCif.get(key):null;
+      if(!bridgeRow)return null;
+      // Canonical MLK exposure is Rp Juta. NCL EQVIDR is native Rp; Cash Loan total_bade is already Rp Juta.
+      const amount=productId.toUpperCase().includes("NCL")?((Number(data.EQVIDR)||0)/1000000):(Number(data.total_bade)||0);
+      return {product_record_id:String(r.meta?.recordId||r.recordId||productId+"-"+key+"-"+index),amount,metric:"MLK_BADE"};
+    }).filter(Boolean);
+  runtimeIdentityState.mlkAggregationAudit=aggregateByIdentity(runtimeIdentityState.bridgeRows,mlkContributions);
+  return bridge;
+}
 
 function initializeRuntimeDataset(){
   // Production must never hydrate runtime state from E2E_DUMMY_PRODUCT_DATA.
@@ -3620,6 +3728,7 @@ function addIntegrationMapping(productId,row,config){
     productId,recordId:row.recordId,sourceField:config.sourceField||productSourceField(productId,config.limitType),
     sourceValue:config.sourceValue??key,mappingRule:config.mappingRule||"Source key -> target master key",
     scope:config.scope||null,entity:config.entity||null,cclLimitType:config.cclLimitType||(config.limitType==="CCL"?"DIRECT":null),masterMatch:Boolean(master),
+    integrationOnly:Boolean(config.integrationOnly),
     businessEnrichment:{...(config.businessEnrichment||{})},
     masterObject:master?.name||master?.sector||master?.key||"—",
     cclExposureRole:config.cclExposureRole||row.meta?.cclExposureRole||null,
@@ -3630,25 +3739,39 @@ function addIntegrationMapping(productId,row,config){
     sourceSystem:row.sourceSystem,asOfDate:row.asOfDate
   };
   (productIntegrationMappings[productId]??=[]).push(entry);
+  // Runtime enrichment evidence is emitted by this mapping layer, not inferred from UI metadata.
+  markRuntimeEnrichment(productId,entry.businessEnrichment);
+  markRuntimeEnrichment(productId,{
+    bookingOffice:entry.bookingOffice,
+    bookingOfficeType:entry.bookingOfficeType
+  });
 }
 function buildProductIntegrationMappings(){
   const checks=[];
+  rebuildRuntimeIdentityBridge();
   Object.keys(productIntegrationMappings).forEach(k=>delete productIntegrationMappings[k]);
 
   (productDatabase.CASHLOAN||[]).forEach(r=>{
     const d=r.data||{},code=String(d.code||"").trim(),cif=String(d.no_cus||"").trim();
+    const identity=runtimeIdentityFor("CASHLOAN",r.recordId);
+    const booking=deriveBookingAttributes("CASHLOAN",d,r.meta||{});
+    markRuntimeEnrichment("CASHLOAN",{bookingOfficeType:booking.bookingOfficeType,lpgApplicability:lpgProductClassification(r).applicability});
+    if(isExplicitCclSource(r))markRuntimeEnrichment("CASHLOAN",{cclCounterpartyId:r.meta?.cclCounterpartyId,cclLimitType:r.meta?.cclLimitType||r.meta?.creditLineLimitType,reportingEntity:r.meta?.reportingEntity});
     if(code&&countryMonitoringEligible(code))addIntegrationMapping("CASHLOAN",r,{limitType:"Country",key:code,amount:d.total_bade,label:"Cash Loan",sourceField:"code",sourceValue:code,mappingRule:"Cash Loan code -> eligible foreign Country Code"});
-    const mlkIdentity=resolveMlkIdentity(cif,limasDemoData.MLK||[]);
-    const entity=mlkIdentity.entityCode||null;
-    if(cif&&mlkIdentity.master)
-      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> MLK master CIF -> entity",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:"",mlkIdentityStatus:mlkIdentity.status}});
+    const mlkIdentity=identity&&identity.mapping_status===IDENTITY_STATUS.MAPPED?identity:null;
+    const entity=mlkIdentity?.entity_code||null;
+    if(cif&&mlkIdentity)
+      addIntegrationMapping("CASHLOAN",r,{limitType:"MLK",key:cif,amount:d.total_bade,label:"Cash Loan",sourceField:"no_cus",sourceValue:cif,mappingRule:"Cash Loan no_cus -> governed Product Identity -> Entity / Group",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:"",entityCode:mlkIdentity.entity_code,entityName:mlkIdentity.entity_name,groupId:mlkIdentity.group_id,groupName:mlkIdentity.group_name,mappingStatus:mlkIdentity.mapping_status,mappingVersion:mlkIdentity.mapping_version}});
   });
 
   (productDatabase["NON CASH LOAN"]||[]).forEach(r=>{
     const d=r.data||{},country=String(d["Country Code"]||"").trim(),cif=String(d.CUSTID||"").trim(),swift=String(d["Swift Code"]||"").trim();
+    const stableReferenceId=String(r.recordId||"").replace(/^PRD-NCL-/i,"");
+    const booking=NCL_BOOKING_REFERENCE[r.recordId]||NCL_BOOKING_REFERENCE[stableReferenceId]||{};
+    const derivedBooking=deriveBookingAttributes("NON CASH LOAN",d,{...(r.meta||{}),...booking});
+    markRuntimeEnrichment("NON CASH LOAN",{"Booking Office":derivedBooking.bookingOffice,"Booking Office Type":derivedBooking.bookingOfficeType,bookingOfficeType:derivedBooking.bookingOfficeType,lpgApplicability:lpgProductClassification(r).applicability});
+    if(isExplicitCclSource(r))markRuntimeEnrichment("NON CASH LOAN",{cclCounterpartyId:r.meta?.cclCounterpartyId,cclLimitType:r.meta?.cclLimitType||r.meta?.creditLineLimitType,reportingEntity:r.meta?.reportingEntity});
     if(country){
-      const stableReferenceId=String(r.recordId||"").replace(/^PRD-NCL-/i,"");
-      const booking=NCL_BOOKING_REFERENCE[r.recordId]||NCL_BOOKING_REFERENCE[stableReferenceId]||{};
       addIntegrationMapping("NON CASH LOAN",r,{
         limitType:"Country",key:country,amount:d.EQVIDR,label:"Non Cash Loan",
         sourceField:"Country Code",sourceValue:country,
@@ -3659,13 +3782,14 @@ function buildProductIntegrationMappings(){
           :"NCL Country Code -> Country Code"
       });
     }
-    const mlkIdentity=resolveMlkIdentity(cif,limasDemoData.MLK||[]);
-    const entity=mlkIdentity.entityCode||null;
-    if(cif&&mlkIdentity.master)
-      addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> MLK master CIF -> entity",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:"",mlkIdentityStatus:mlkIdentity.status}});
+    const identity=runtimeIdentityFor("NON CASH LOAN",r.recordId);
+    const mlkIdentity=identity&&identity.mapping_status===IDENTITY_STATUS.MAPPED?identity:null;
+    const entity=mlkIdentity?.entity_code||null;
+    if(cif&&mlkIdentity)
+      addIntegrationMapping("NON CASH LOAN",r,{limitType:"MLK",key:cif,amount:d.EQVIDR,label:"Non Cash Loan",sourceField:"CUSTID",sourceValue:cif,mappingRule:"NCL CUSTID -> governed Product Identity -> Entity / Group",entity:mlkEntityEligible(entity)?entity:null,businessEnrichment:{mlkCif:cif,reportingEntity:mlkEntityEligible(entity)?entity:"",entityCode:mlkIdentity.entity_code,entityName:mlkIdentity.entity_name,groupId:mlkIdentity.group_id,groupName:mlkIdentity.group_name,mappingStatus:mlkIdentity.mapping_status,mappingVersion:mlkIdentity.mapping_version}});
     // FI NCL is upstream of Credit Line / Commercial Line.
     // It is intentionally not registered as a direct CCL utilization mapping.
-    // LPG mapping is built once in the dedicated LPG pass below, using the correct DWH Balance → Rp Juta rule.
+    // LPG mapping is built once in the dedicated LPG pass below.
   });
 
   cclCreditLineLineageAuditRows().forEach(audit=>{
@@ -3706,10 +3830,12 @@ function buildProductIntegrationMappings(){
     const explicitMlkKey=String(r.meta?.mlkCif||"").trim();
     const legacyMlkKey=/^TL-(.+)$/i.test(String(d["Swift Code"]||"")) ? String(d["Swift Code"]).replace(/^TL-/i,"").trim() : "";
     const mlkKey=explicitMlkKey||legacyMlkKey;
-    const mlkIdentity=resolveMlkIdentity(mlkKey,limasDemoData.MLK||[]);
-    if(mlkKey&&mlkIdentity.master){
+    markRuntimeEnrichment("CREDIT LINE",{cclCounterpartyId:r.meta?.cclCounterpartyId,cclLimitType:r.meta?.cclLimitType||r.meta?.creditLineLimitType,reportingEntity:r.meta?.reportingEntity});
+    if(explicitMlkKey)markRuntimeEnrichment("CREDIT LINE",{mlkCif:explicitMlkKey});
+    const mlkIdentity=explicitMlkKey?runtimeIdentityState.byCif.get(explicitMlkKey):null;
+    if(mlkKey&&mlkIdentity&&mlkIdentity.mapping_status===IDENTITY_STATUS.MAPPED){
       const treasury=Number(String(d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"]??0).replace(/,/g,""))||0;
-      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:"Treasury Line Total Utilisasi",sourceValue:d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:explicitMlkKey?"Credit Line explicit mlkCif -> MLK master CIF":"Credit Line legacy TL-CIF reference -> MLK master CIF (E2E compatibility)",entity:mlkIdentity.entityCode,businessEnrichment:{mlkCif:mlkKey,reportingEntity:mlkIdentity.entityCode,mlkIdentityStatus:mlkIdentity.status}});
+      addIntegrationMapping("CREDIT LINE",r,{limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",sourceField:"Treasury Line Total Utilisasi",sourceValue:d["Treasury Line Total Utilisasi"]??d["Credit Line Total Utilisasi"],mappingRule:explicitMlkKey?"Credit Line explicit mlkCif -> governed Product Identity":"Credit Line legacy TL-CIF reference -> governed Product Identity (E2E compatibility)",entity:mlkIdentity.entity_code,businessEnrichment:{mlkCif:mlkKey,reportingEntity:mlkIdentity.entity_code,entityCode:mlkIdentity.entity_code,entityName:mlkIdentity.entity_name,groupId:mlkIdentity.group_id,groupName:mlkIdentity.group_name,mlkIdentityStatus:mlkIdentity.mapping_status,mappingVersion:mlkIdentity.mapping_version}});
     }
     if(country){
       const components=[
@@ -3721,6 +3847,23 @@ function buildProductIntegrationMappings(){
         if(amount!==0)addIntegrationMapping("CREDIT LINE",r,{limitType:"Country",key:country,amount,label:"Credit Line",scope,sourceField:field,sourceValue:d[field],mappingRule:"Credit Line "+scope+" "+bo+" utilization -> Country "+bo});
       });
     }
+  });
+
+  // MLK Treasury Credit Line rows are an upstream integration source and must not be duplicated into raw Product DB.
+  (E2E_MLK_TREASURY_SOURCE||[]).forEach(r=>{
+    const mlkKey=String(r.meta?.mlkCif||"").trim();
+    const mlkIdentity=mlkKey?runtimeIdentityState.byCif.get(mlkKey):null;
+    const treasury=Number(String(r.data?.["Treasury Line Total Utilisasi"]??0).replace(/,/g,""))||0;
+    if(!mlkKey||!mlkIdentity||mlkIdentity.mapping_status!==IDENTITY_STATUS.MAPPED)return;
+    markRuntimeEnrichment("CREDIT LINE",{mlkCif:mlkKey});
+    addIntegrationMapping("CREDIT LINE",{recordId:r.recordId,productId:"CREDIT LINE",data:r.data,sourceSystem:r.sourceSystem,meta:r.meta},{
+      limitType:"MLK",key:mlkKey,amount:treasury,label:"Treasury Line",scope:"Treasury",
+      sourceField:"Treasury Line Total Utilisasi",sourceValue:r.data?.["Treasury Line Total Utilisasi"],
+      mappingRule:"Credit Line upstream Treasury source -> governed Product Identity -> MLK Entity / Group",
+      entity:mlkIdentity.entity_code,
+      integrationOnly:true,
+      businessEnrichment:{mlkCif:mlkKey,reportingEntity:mlkIdentity.entity_code,entityCode:mlkIdentity.entity_code,entityName:mlkIdentity.entity_name,groupId:mlkIdentity.group_id,groupName:mlkIdentity.group_name,mlkIdentityStatus:mlkIdentity.mapping_status,mappingVersion:mlkIdentity.mapping_version}
+    });
   });
 
   (productDatabase.BONDS||[]).forEach(r=>{
@@ -3740,6 +3883,7 @@ function buildProductIntegrationMappings(){
     const entityCode=entityMaster?.entityCode||sourceEntity;
     const entityEilKey=entityCode==="MANTAP"?"Mandiri Taspen":entityCode;
     const targetKey=master?.key||insurer;
+    markRuntimeEnrichment("Nominal Pertanggungan",{insuranceCompanyId:targetKey});
     if(insurer)addIntegrationMapping("Nominal Pertanggungan",r,{
       limitType:"CIL",key:targetKey,entity:entityCode,amount:d["Nominal Pertanggungan 2025 (Rp Juta)"],label:"Nominal Pertanggungan",
       sourceField:"Perusahaan Asuransi",sourceValue:insurer,mappingRule:"Insurance Company + Entity Code -> CIL master key + EIL entity key",
@@ -3756,6 +3900,7 @@ function buildProductIntegrationMappings(){
     (productDatabase[productId]||[]).forEach(r=>{
       const d=r.data||{},cif=String(productId==="CASHLOAN"?d.no_cus:d.CUSTID||"").trim();
       const applicability=lpgProductClassification(r).applicability;
+      markRuntimeEnrichment(productId,{lpgApplicability:applicability});
       if(applicability!=="APPLICABLE")return;
       const classification=debtorClassificationRegistry.byCif.get(cif)||{};
       const sector=String(classification.industryName||d.ecosystem_lpg||"").trim();
@@ -3832,6 +3977,7 @@ function cleanseMasterData(){
 function productApplicationsFor(type,key,options={}){
   if(type==="LPG")return lpgProductApplicationsForKey(key);
   const out=[];
+  const includeIntegrationOnly=Boolean(options.includeIntegrationOnly);
   const cclLimitType=type==="CCL"?String(options.cclLimitType||"DIRECT").toUpperCase():null;
   const exposureField=(domain,productId,scope)=>{
     if(productId==="CASHLOAN")return "total_bade";
@@ -3860,8 +4006,13 @@ function productApplicationsFor(type,key,options={}){
     (mappings||[]).forEach(a=>{
       if(a.limitType!==type||String(a.key)!==String(key))return;
       if(type==="CCL"&&String(a.cclLimitType||"DIRECT").toUpperCase()!==cclLimitType)return;
-      const r=(productDatabase[productId]||[]).find(x=>String(x.recordId)===String(a.recordId));
+      const productRow=(productDatabase[productId]||[]).find(x=>String(x.recordId)===String(a.recordId));
+      const integrationRow=(productId==="CREDIT LINE"&&type==="MLK")
+        ?(E2E_MLK_TREASURY_SOURCE||[]).find(x=>String(x.recordId)===String(a.recordId))
+        :null;
+      const r=productRow||integrationRow;
       if(!r)return;
+      if(type==="MLK"&&a.integrationOnly===true&&!includeIntegrationOnly)return;
       const normalized=normalizeAppliedAmount(type,productId,a.amount,r);
       out.push({
         ...a,productId,recordId:r.recordId,sourceSystem:r.sourceSystem,sourceData:r.data,
@@ -4606,6 +4757,7 @@ function governancePhaseAudit(){
     masterIssues:masterCanonicalQualityIssues(),
     entityMaster:E2E_ENTITY_MASTER,
     cclLimitScope:E2E_CCL_LIMIT_SCOPE,
+    limitSetupSnapshot:Object.values(buildLimitSetupSeed({limasDemoData,cclLimitScope:E2E_CCL_LIMIT_SCOPE,lpgIndustryMaster:E2E_LPG_MASTER_INDUSTRY,lpgRegionMaster:E2E_LPG_MASTER_REGION,lpgSegmentMaster:E2E_LPG_MASTER_SEGMENT,lpgSegwil:E2E_LPG_IC_SEGWIL_MAPPING})).flat(),
     lpgScopes:LPG_REGIONAL_SCOPES,
     homeCountryCode:HOME_COUNTRY_CODE
   });
@@ -5785,6 +5937,37 @@ function productFinalMasterLimitDetailsSnapshot(){
           status:recordStatus(type,row),
           masterLimit:recordLimit(type,row),
           exposure:recordExposure(type,row),
+          utilization:recordUtil(type,row),
+          available:recordLimit(type,row)-recordExposure(type,row),
+          provenance:{
+            source:provenanceDefaults[type]?.source||"—",
+            dataset:provenanceDefaults[type]?.dataset||"—",
+            system:provenanceDefaults[type]?.system||"—",
+            owner:provenanceDefaults[type]?.owner||"—",
+            period:provenanceDefaults[type]?.period||"—",
+            sourceNote:provenanceDefaults[type]?.sourceNote||"—",
+            sourceRecord:row.recordId||row.key||"—"
+          },
+          lifecycle:(()=>{const meta=loadRecordMeta(type,key);return {
+            status:meta.status||"—",
+            approvalStatus:meta.approvalStatus||"—",
+            effectiveDate:meta.effectiveDate||"—",
+            expiryDate:meta.expiryDate||"—",
+            version:Number(meta.version||1),
+            approvedBy:meta.approvedBy||"—",
+            approvedAt:meta.approvedAt||"—",
+            lastUpdated:meta.lastUpdated||"—"
+          };})(),
+          history:(typeof masterAuditFor==="function"?masterAuditFor(type,key):[]).map(item=>({
+            timestamp:item.timestamp||item.at||"—",
+            action:item.action||"—",
+            version:item.version||"—",
+            approvalStatus:item.approvalStatus||"—",
+            actor:item.submittedBy||item.approvedBy||item.by||"—",
+            status:item.status||"—",
+            effectiveDate:item.effectiveDate||"—",
+            detail:item.detail||item.notes||"—"
+          })),
           sections
         };
       })
@@ -5833,6 +6016,16 @@ function productFinalReportsGovernanceSnapshot(){
     columns:cfg.columns,
     rows:reportRows[type]||[]
   }]));
+  const reportDependencyMatrix=buildReportDependencyMatrix({
+    reportConfig,
+    productDb:productDatabase,
+    masterData:E2E_MASTER_DATA,
+    productSchemaFields,
+    fieldAliases:{},
+    asOfDate:E2E_DUMMY_META.asOfDate,
+    runtimeEnrichmentByProduct
+  });
+  const reportDependency=evaluateReportReady(reportDependencyMatrix);
   const traceability=auditReportFieldTraceability(reportConfig,reportRows);
   const governance=governancePhaseAudit();
   const release=releaseGate();
@@ -5875,6 +6068,7 @@ function productFinalReportsGovernanceSnapshot(){
   return {
     reports:reportTypes,
     traceability,
+    reportDependency:{rows:reportDependencyMatrix,summary:reportDependency,runtimeEnrichmentByProduct:Object.fromEntries(Object.entries(runtimeEnrichmentByProduct).map(([k,v])=>[k,[...v]]))},
     dq:{summary:dqSummary,rows:dqSummary.registerRows},
     mapping:Object.values(productIntegrationMappings||{}).flat(),
     dictionary:{catalog:productMasterCatalog,fields:productTabFields,schemaFields:productSchemaFields},
@@ -5902,6 +6096,14 @@ function App(){
     limasDemoData,
     productDatabase,
     productIntegrationMappings,
+    entityMaster:E2E_ENTITY_MASTER,
+    lpgIndustryMaster:E2E_LPG_MASTER_INDUSTRY,
+    lpgRegionMaster:E2E_LPG_MASTER_REGION,
+    lpgSegmentMaster:E2E_LPG_MASTER_SEGMENT,
+    lpgIcNational:E2E_LPG_MASTER_IC_NATIONAL,
+    lpgSegwil:E2E_LPG_IC_SEGWIL_MAPPING,
+    runtimeIdentityState:{summary:runtimeIdentityState.summary,rows:runtimeIdentityState.bridgeRows,dqRegister:runtimeIdentityState.dqRegister,mlkAggregationAudit:runtimeIdentityState.mlkAggregationAudit},
+    runtimeEnrichmentByProduct,
     productMasterCatalog,
     productUniverseAudit,
     runtimeMeta:E2E_DUMMY_META,
@@ -5916,12 +6118,16 @@ function App(){
     limitsSnapshot:productFinalLimitsSnapshot(),
     limitStructureSnapshot:productFinalLimitStructureSnapshot(),
     masterLimitDetailsSnapshot:productFinalMasterLimitDetailsSnapshot(),
+    cclLimitScope:E2E_CCL_LIMIT_SCOPE,
+    limitSetupSnapshot:Object.values(buildLimitSetupSeed({limasDemoData,cclLimitScope:E2E_CCL_LIMIT_SCOPE,lpgIndustryMaster:E2E_LPG_MASTER_INDUSTRY,lpgRegionMaster:E2E_LPG_MASTER_REGION,lpgSegmentMaster:E2E_LPG_MASTER_SEGMENT,lpgSegwil:E2E_LPG_IC_SEGWIL_MAPPING})).flat(),
     productsSnapshot:{
       catalog:productMasterCatalog,
-      fields:productTabFields,
+      // Source tab is governed from the raw Product schema only; report/derived fields stay outside raw Product.
+      fields:productSchemaFields,
       samples:productSample,
       schemaFields:productSchemaFields,
       mappings:productIntegrationMappings,
+      identity:{summary:runtimeIdentityState.summary,rows:runtimeIdentityState.bridgeRows,mlkAggregationAudit:runtimeIdentityState.mlkAggregationAudit}
     },
     reportsGovernanceSnapshot:productFinalReportsGovernanceSnapshot(),
   };

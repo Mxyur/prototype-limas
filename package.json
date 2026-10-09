@@ -1,15 +1,30 @@
 {
   "name": "limas-prototype-v3",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run audit && npm run audit:runtime && npm run audit:product-final && vite build",
+    "build": "npm run audit && npm run audit:runtime && npm run audit:product-final && npm run audit:limit-action && npm run audit:phase8 && npm run audit:identity && npm run audit:3r && npm run audit:source-contract && npm run audit:report-dependency && npm run audit:4r && npm run audit:5r && npm run audit:5r:domain && npm run audit:ops && npm run audit:6r && npm run audit:6r:deep && npm run audit:8r:contract && npm run audit:12r:visual && npm run audit:final && vite build",
     "preview": "vite preview",
     "audit": "node scripts/audit-e2e-data.mjs",
     "audit:runtime": "node scripts/audit-runtime-mode.mjs",
-    "audit:product-final": "node scripts/audit-product-final-ui.mjs"
+    "audit:product-final": "node scripts/audit-product-final-ui.mjs",
+    "audit:limit-action": "node scripts/audit-limit-action-rules.mjs",
+    "audit:phase8": "node scripts/audit-phase8-ux.mjs",
+    "audit:identity": "node scripts/audit-identity-resolution.mjs",
+    "audit:3r": "node scripts/audit-3r-runtime-wiring.mjs",
+    "audit:report-dependency": "node scripts/audit-report-dependency.mjs",
+    "audit:source-contract": "node scripts/audit-source-field-contract.mjs",
+    "audit:4r": "node scripts/audit-4r-reference-master.mjs",
+    "audit:5r": "node scripts/audit-phase5-limit-setup.mjs",
+    "audit:6r": "node scripts/audit-phase6-semantic.mjs",
+    "audit:final": "node scripts/audit-final-sequence.mjs",
+    "audit:5r:domain": "node scripts/audit-phase5-domain-specific.mjs",
+    "audit:8r:contract": "node scripts/audit-phase8-report-contract.mjs",
+    "audit:6r:deep": "node scripts/audit-phase6-semantic-deep.mjs",
+    "audit:12r:visual": "node scripts/audit-phase12-visual-contract.mjs",
+    "audit:ops": "node scripts/audit-operational-maintenance.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

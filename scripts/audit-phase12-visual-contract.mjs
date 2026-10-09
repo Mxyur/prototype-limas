@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const css=await readFile('src/productFinal/productFinal.css','utf8');
+const app=await readFile('src/productFinal/ProductFinalApp.jsx','utf8');
+assert.ok(css.includes('#050b14')&&css.includes('#07111f'),'dark/black/deep-navy shell not encoded');
+assert.ok(css.includes('.pf-card{background:#fbfdff'),'light data surface reference not encoded');
+assert.ok(css.includes('.pf-side{background:linear-gradient(180deg,#02060c'),'black enterprise shell sidebar not encoded');
+assert.ok(css.includes('var(--green)')||css.includes('.pf-status-badge'),'semantic status styling must remain present');
+assert.ok(app.includes('WASPADA')||app.includes('IC Nasional') ,'LPG semantic reference must remain represented in Product Final code');
+console.log('[LIMAS 12R VISUAL CONTRACT AUDIT] PASS • dark/black/deep-navy shell • light data surfaces • semantic status layer retained');

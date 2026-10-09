@@ -1,0 +1,86 @@
+{
+  "checkpoint": "2026-10-08",
+  "method": "transpiled main.jsx E2E runtime harness (not Vite/browser)",
+  "browserViteAvailable": false,
+  "identity": {
+    "total": 28,
+    "mapped": 28,
+    "dq": 0,
+    "byCode": {},
+    "silentUnknown": 0
+  },
+  "mlkAggregation": {
+    "consolidated": 71755,
+    "entityTotal": 71755,
+    "groupTotal": 71755,
+    "unresolved": {
+      "count": 0,
+      "amount": 0
+    },
+    "duplicateContributions": [],
+    "reconciles": true,
+    "entityKeys": 4,
+    "groupKeys": 7
+  },
+  "reportDependency": {
+    "CCL_DIRECT": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 19
+    },
+    "CCL_INDIRECT": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 19
+    },
+    "MLK_CONSOLIDATED": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 16
+    },
+    "Country": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 29
+    },
+    "CCL": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 36
+    },
+    "MLK": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 24
+    },
+    "CIL": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 23
+    },
+    "LPG": {
+      "reportReady": true,
+      "runtimePending": 0,
+      "orphanCount": 0,
+      "columns": 52
+    }
+  },
+  "runtimePendingTotal": 0,
+  "orphanTotal": 0,
+  "runtimeEnrichmentProducts": [
+    "BONDS",
+    "CASHLOAN",
+    "CREDIT LINE",
+    "NON CASH LOAN",
+    "NOSTRO",
+    "Nominal Pertanggungan"
+  ],
+  "mlkDebtorRows": 14
+}

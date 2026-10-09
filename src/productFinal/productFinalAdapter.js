@@ -10,6 +10,8 @@ export function createProductFinalAdapter(source={}) {
     getLimitsSnapshot: () => source.limitsSnapshot || [],
     getLimitStructureSnapshot: () => source.limitStructureSnapshot || [],
     getMasterLimitDetailsSnapshot: () => source.masterLimitDetailsSnapshot || [],
+    getLimitSetupSnapshot: () => source.limitSetupSnapshot || [],
+    getCCLLimitScope: () => source.cclLimitScope || source.E2E_CCL_LIMIT_SCOPE || [],
     getProductsSnapshot: () => source.productsSnapshot || {catalog:[],fields:{},samples:{},schemaFields:{},mappings:{}},
     getReportsGovernanceSnapshot: () => source.reportsGovernanceSnapshot || {reports:{},traceability:[],governance:{releaseGate:{},phases:[]},lpgLineage:[]},
     getGovernanceDetail: () => { const x=source.reportsGovernanceSnapshot || {}; return {dq:x.dq||{summary:{},rows:[]},mapping:x.mapping||[],dictionary:x.dictionary||{catalog:[],fields:{},schemaFields:{}},historicalDqClosure:x.historicalDqClosure||[]}; },
